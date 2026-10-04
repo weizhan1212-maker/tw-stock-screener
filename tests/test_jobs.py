@@ -69,8 +69,8 @@ def test_run_daily(fake, tmp_path):
 
 def test_backfill_daily_resumes(fake, tmp_path):
     s = make_store(tmp_path)
-    left1 = jobs.run_backfill_daily(s, fake, years=0.02, max_days=2, today=dt.date(2026, 10, 3))
-    left2 = jobs.run_backfill_daily(s, fake, years=0.02, today=dt.date(2026, 10, 3))
+    _, left1 = jobs.run_backfill_daily(s, fake, years=0.02, max_days=2, today=dt.date(2026, 10, 3))
+    _, left2 = jobs.run_backfill_daily(s, fake, years=0.02, today=dt.date(2026, 10, 3))
     assert left2 == 0 and left1 > left2
     assert jobs.day_complete(s.get_state("days")["2026-10-02"])
 
@@ -81,7 +81,7 @@ def test_backfill_finmind(fake, tmp_path, monkeypatch):
                                                "industry": ["半導體業", ""], "market": ["TWSE", "TWSE"],
                                                "sec_type": ["stock", "etf"]}))
     monkeypatch.setattr(jobs.time, "sleep", lambda *_: None)
-    left = jobs.run_backfill_finmind(s, fake, today=dt.date(2026, 10, 4))
+    _, left = jobs.run_backfill_finmind(s, fake, today=dt.date(2026, 10, 4))
     assert left == 0 and s.get_state("finmind_backfill")["_complete"] is True
     assert not s.read_table("income").empty and not s.read_table("dividend").empty
     datasets = {p["dataset"] for _, p in fake.calls if "dataset" in p}
@@ -103,3 +103,29 @@ def test_supabase_url_normalized():
     from pipeline.storage import SupabaseStorage
     for u in ("https://abc.supabase.co", "https://abc.supabase.co/", "https://abc.supabase.co/rest/v1/", "abc.supabase.co"):
         assert SupabaseStorage(u, "sb_secret_x").base == "https://abc.supabase.co/storage/v1"
+
+
+def test_errors_give_up_after_max_tries(fake, monkeypatch):
+    from pipeline.http import FetchError
+    orig = fake.get_json
+
+    def flaky(url, params=None, delay=None):
+        if "peQryDate" in url:
+            raise FetchError("boom")
+        return orig(url, params, delay)
+    fake.get_json = flaky
+    st = None
+    for _ in range(jobs.MAX_TRIES):
+        st, _ = jobs.fetch_day(fake, dt.date(2026, 10, 2), st, False, set())
+    assert st["tpex_valuation"] == "missing" and jobs.day_complete(st)
+
+
+def test_fin_refresh_drops_up_to_date(fake, tmp_path):
+    s = make_store(tmp_path)
+    s.put_state("finmind_backfill", {"_complete": True})
+    s.upsert_table("income_periods", pd.DataFrame({"code": ["2330", "1101"], "year": [2026, 2026], "quarter": [2, 2]}))
+    s.upsert_table("income", pd.DataFrame({"code": ["1101"], "date": pd.to_datetime(["2026-06-30"]),
+                                           "type": ["EPS"], "value": [0.38]}))
+    s.put_state("fin_queue", {"codes": ["1101", "2330"]})
+    jobs.run_fin_refresh(s, fake)
+    assert {p.get("data_id") for _, p in fake.calls} == {"2330"}

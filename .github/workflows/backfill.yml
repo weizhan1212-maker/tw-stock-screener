@@ -60,6 +60,12 @@ jobs:
         run: |
           set -o pipefail
           python -m pipeline backfill-finmind --budget-min 320 ${{ github.event.inputs.chain == 'true' && '--chain' || '' }} 2>&1 | tee -a run.log
+      - name: 資料檢查報告
+        if: always()
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python -m pipeline report 2>&1 | tee -a run.log
       - name: 保存執行紀錄
         if: always()
         run: .github/scripts/save-log.sh backfill

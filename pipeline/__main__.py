@@ -30,6 +30,7 @@ def main(argv=None):
     f.add_argument("--budget-min", type=float, default=320)
     f.add_argument("--max-codes", type=int)
     f.add_argument("--chain", action="store_true")
+    sub.add_parser("report")
     r = sub.add_parser("fin-refresh")
     r.add_argument("--budget-min", type=float, default=40)
     a = p.parse_args(argv)
@@ -41,13 +42,18 @@ def main(argv=None):
     if a.cmd == "daily":
         jobs.run_daily(store, fetcher, lookback_days=a.lookback)
     elif a.cmd == "backfill-daily":
-        left = jobs.run_backfill_daily(store, fetcher, years=a.years, budget_min=a.budget_min, max_days=a.max_days)
-        if left and a.chain:
+        before, left = jobs.run_backfill_daily(store, fetcher, years=a.years, budget_min=a.budget_min,
+                                               max_days=a.max_days)
+        if left and a.chain and left < before:     # 有進度才接力，避免卡在永遠失敗的日期
             jobs.redispatch("backfill.yml", {"job": "daily", "chain": "true"})
     elif a.cmd == "backfill-finmind":
-        left = jobs.run_backfill_finmind(store, fetcher, years=a.years, budget_min=a.budget_min, max_codes=a.max_codes)
-        if left and a.chain:
+        before, left = jobs.run_backfill_finmind(store, fetcher, years=a.years, budget_min=a.budget_min,
+                                                 max_codes=a.max_codes)
+        if left and a.chain and left < before:
             jobs.redispatch("backfill.yml", {"job": "finmind", "chain": "true"})
+    elif a.cmd == "report":
+        from .report import run_report
+        run_report(store)
     elif a.cmd == "fin-refresh":
         jobs.run_fin_refresh(store, fetcher, budget_min=a.budget_min)
 

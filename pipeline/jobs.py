@@ -20,7 +20,11 @@ from .store import DataStore
 
 log = logging.getLogger(__name__)
 
-DAY_TASKS = list(twse.PARSERS) + list(tpex.PARSERS)
+# 證交所、櫃買交錯抓：兩個網站各自限速，交錯可以讓等待時間重疊
+DAY_TASKS = ["twse_quotes", "tpex_quotes", "twse_insti", "tpex_insti", "twse_margin", "tpex_margin",
+             "twse_valuation", "tpex_valuation", "twse_qfii"]
+assert set(DAY_TASKS) == set(twse.PARSERS) | set(tpex.PARSERS)
+MAX_TRIES = 3   # 同一天連續失敗幾次後放棄（標記 missing），避免回補無限重試
 PARSERS = {**twse.PARSERS, **tpex.PARSERS}
 DONE = {"ok", "missing", "holiday"}
 
@@ -69,7 +73,11 @@ def fetch_day(fetcher: Fetcher, d: dt.date, prev: dict | None, is_today: bool, h
         try:
             body = fetcher.get_json(url, params)
         except FetchError as e:
+            tries = int(prev.get("_tries", 0)) + 1
+            status["_tries"] = tries
             status["twse_quotes"] = f"error:{e}"[:200]
+            if tries >= MAX_TRIES:
+                status = {t: "missing" for t in DAY_TASKS} | {"_tries": tries}
             return status, frames
         parsed = twse.parse_quotes(body, d)
         if not parsed or parsed["prices"].empty:
@@ -90,8 +98,10 @@ def fetch_day(fetcher: Fetcher, d: dt.date, prev: dict | None, is_today: bool, h
             body = fetcher.get_json(url, params)
             parsed = PARSERS[task](body, d)
         except (FetchError, ValueError) as e:
-            status[task] = f"error:{e}"[:200]
-            log.warning("%s %s 失敗：%s", d, task, e)
+            tries = int(prev.get("_tries", 0)) + 1
+            status["_tries"] = tries
+            status[task] = "missing" if tries >= MAX_TRIES else f"error:{e}"[:200]
+            log.warning("%s %s 失敗（第 %d 次）：%s", d, task, tries, e)
             continue
         if parsed and any(not x.empty for x in parsed.values()):
             _append(frames, parsed)
@@ -286,6 +296,7 @@ def run_backfill_daily(store: DataStore, fetcher: Fetcher, years: int = 4, budge
 
     dates = [start + dt.timedelta(days=i) for i in range((today - start).days)]   # 不含今天
     todo = [d for d in reversed(dates) if d.weekday() < 5 and not day_complete(state.get(d.isoformat()))]
+    before = len(todo)
     log.info("待回補 %d 天（%s ~ %s）", len(todo), start, today)
     frames: dict = {}
     processed = 0
@@ -309,7 +320,7 @@ def run_backfill_daily(store: DataStore, fetcher: Fetcher, years: int = 4, budge
         derive_tpex_exright(store, pd.Timestamp(start), pd.Timestamp(today))
     summary(f"## 日資料回補\n\n本次處理 {processed} 天，剩餘 {remaining} 天，請求 {fetcher.count} 次，"
             f"耗時 {(time.monotonic() - t0) / 60:.1f} 分鐘")
-    return remaining
+    return before, remaining
 
 
 # ---------------- 歷史回補：FinMind ----------------
@@ -354,6 +365,7 @@ def run_backfill_finmind(store: DataStore, fetcher: Fetcher, years: int = 8, bud
     state = store.get_state("finmind_backfill", {})
     state.pop("_complete", None)
     todo = [c for c in codes if not all(k in state.get(c, []) for k in kinds)]
+    before = len(todo)
     log.info("FinMind 待回補 %d 檔（共 %d 檔），每小時上限 %d 次", len(todo), len(codes), finmind.per_hour_limit())
     buf: dict = {k: [] for k in kinds}
     processed = 0
@@ -383,7 +395,7 @@ def run_backfill_finmind(store: DataStore, fetcher: Fetcher, years: int = 8, bud
                     if (time.monotonic() - t0) / 60 + 62 > budget_min:
                         state[code] = sorted(done)
                         do_flush()
-                        return len(todo) - processed
+                        return before, before - processed
                     _sleep_to_next_hour()
                 except (FetchError, ValueError) as e:
                     log.warning("FinMind %s %s 失敗：%s", code, k, e)
@@ -398,10 +410,27 @@ def run_backfill_finmind(store: DataStore, fetcher: Fetcher, years: int = 8, bud
     do_flush()
     summary(f"## FinMind 回補\n\n本次處理 {processed} 檔，剩餘 {remaining} 檔，請求 {fetcher.count} 次，"
             f"耗時 {(time.monotonic() - t0) / 60:.1f} 分鐘")
-    return remaining
+    return before, remaining
 
 
 # ---------------- 季報補抓 ----------------
+
+def _latest_quarters(store: DataStore) -> dict:
+    inc = store.read_table("income")
+    if inc.empty:
+        return {}
+    last = inc.groupby("code")["date"].max()
+    return {c: (d.year, (d.month - 1) // 3 + 1) for c, d in last.items()}
+
+
+def _still_needed(store: DataStore, codes) -> list:
+    """佇列中已經有最新一季財報的公司就不用再抓（回補期間累積的佇列會在這裡被清掉）。"""
+    per = store.read_table("income_periods")
+    if per.empty:
+        return list(codes)
+    published = per.groupby("code").apply(lambda g: max(zip(g["year"], g["quarter"]))).to_dict()
+    have = _latest_quarters(store)
+    return [c for c in codes if have.get(c, (0, 0)) < published.get(c, (0, 0))]
 
 def run_fin_refresh(store: DataStore, fetcher: Fetcher, budget_min: float = 40) -> int:
     t0 = time.monotonic()
@@ -409,7 +438,7 @@ def run_fin_refresh(store: DataStore, fetcher: Fetcher, budget_min: float = 40) 
         summary("## 季報補抓\n\nFinMind 歷史回補尚未完成，先跳過（避免兩個任務同時寫入財報檔）")
         return -1
     q = store.get_state("fin_queue", {"codes": []})
-    queue = list(q.get("codes", []))
+    queue = _still_needed(store, q.get("codes", []))
     start = (util.today_tw() - dt.timedelta(days=400)).isoformat()
     kinds = ("income", "balance", "cashflow", "dividend")
     buf: dict = {k: [] for k in kinds}
