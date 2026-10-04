@@ -1,0 +1,13 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/__main__.py", line 56, in <module>
+    main()
+  File "/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/__main__.py", line 38, in main
+    store = DataStore(from_env())
+                      ^^^^^^^^^^
+  File "/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/storage.py", line 130, in from_env
+    st.ensure_bucket()
+  File "/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/storage.py", line 80, in ensure_bucket
+    raise RuntimeError(f"建立 bucket 失敗：{r.status_code} {r.text[:200]}")
+RuntimeError: 建立 bucket 失敗：404 {"code":"PGRST125","details":null,"hint":null,"message":"Invalid path specified in request URL"}
