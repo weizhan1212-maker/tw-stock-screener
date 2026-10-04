@@ -1,0 +1,60 @@
+name: PoC 資料源驗證
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "full = 完整檢查；publish = 公布時間探測"
+        default: full
+  push:
+    branches: [main]
+    paths:
+      - "poc/*.py"
+      - "poc/requirements.txt"
+      - ".github/workflows/poc.yml"
+  # 公布時間探測：台灣時間（UTC+8）週一至週五
+  # 14:45、15:30、16:30、17:30、19:00、20:30、21:30、22:30
+  # PoC 結束後刪除這段排程
+  schedule:
+    - cron: "45 6 * * 1-5"
+    - cron: "30 7 * * 1-5"
+    - cron: "30 8 * * 1-5"
+    - cron: "30 9 * * 1-5"
+    - cron: "0 11 * * 1-5"
+    - cron: "30 12 * * 1-5"
+    - cron: "30 13 * * 1-5"
+    - cron: "30 14 * * 1-5"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: poc
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r poc/requirements.txt
+      - name: 執行 PoC
+        env:
+          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+        run: |
+          MODE="${{ github.event.inputs.mode }}"
+          if [ "${{ github.event_name }}" = "schedule" ]; then MODE=publish; fi
+          if [ -z "$MODE" ]; then MODE=full; fi
+          python poc/poc.py "$MODE"
+      - name: 提交結果
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add poc/results
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "PoC results (${{ github.event_name }})"
+          for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done
