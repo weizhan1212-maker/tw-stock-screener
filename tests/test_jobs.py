@@ -97,3 +97,9 @@ def test_fin_refresh_waits_for_backfill(fake, tmp_path):
     s.put_state("finmind_backfill", {"_complete": True})
     assert jobs.run_fin_refresh(s, fake) == 0
     assert not s.read_table("income").empty
+
+
+def test_supabase_url_normalized():
+    from pipeline.storage import SupabaseStorage
+    for u in ("https://abc.supabase.co", "https://abc.supabase.co/", "https://abc.supabase.co/rest/v1/", "abc.supabase.co"):
+        assert SupabaseStorage(u, "sb_secret_x").base == "https://abc.supabase.co/storage/v1"

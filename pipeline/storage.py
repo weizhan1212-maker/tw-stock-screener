@@ -9,6 +9,7 @@ import os
 import time
 
 import requests
+from urllib.parse import urlparse
 
 log = logging.getLogger(__name__)
 
@@ -50,7 +51,9 @@ class LocalStorage:
 
 class SupabaseStorage:
     def __init__(self, url: str, key: str, bucket: str = "market-data"):
-        self.base = url.rstrip("/") + "/storage/v1"
+        # 只取 https://xxxx.supabase.co，容許使用者貼成 .../rest/v1/ 等帶路徑的網址
+        u = urlparse(url.strip() if "://" in url else "https://" + url.strip())
+        self.base = f"{u.scheme}://{u.netloc}/storage/v1"
         self.bucket = bucket
         self.s = requests.Session()
         # 新版 secret key（sb_secret_ 開頭）只放 apikey 標頭；舊版 service_role JWT 兩個都放
