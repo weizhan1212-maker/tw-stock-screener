@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write
   actions: write
 
 jobs:
@@ -46,12 +46,20 @@ jobs:
       - name: 試跑
         if: github.event.inputs.job == 'smoke'
         run: |
-          python -m pipeline daily --lookback 4
-          python -m pipeline backfill-daily --max-days 3
-          python -m pipeline backfill-finmind --max-codes 2
+          set -o pipefail
+          python -m pipeline daily --lookback 4 2>&1 | tee -a run.log
+          python -m pipeline backfill-daily --max-days 3 2>&1 | tee -a run.log
+          python -m pipeline backfill-finmind --max-codes 2 2>&1 | tee -a run.log
       - name: 日資料回補
         if: github.event.inputs.job == 'daily'
-        run: python -m pipeline backfill-daily --budget-min 320 ${{ github.event.inputs.chain == 'true' && '--chain' || '' }}
+        run: |
+          set -o pipefail
+          python -m pipeline backfill-daily --budget-min 320 ${{ github.event.inputs.chain == 'true' && '--chain' || '' }} 2>&1 | tee -a run.log
       - name: FinMind 回補
         if: github.event.inputs.job == 'finmind'
-        run: python -m pipeline backfill-finmind --budget-min 320 ${{ github.event.inputs.chain == 'true' && '--chain' || '' }}
+        run: |
+          set -o pipefail
+          python -m pipeline backfill-finmind --budget-min 320 ${{ github.event.inputs.chain == 'true' && '--chain' || '' }} 2>&1 | tee -a run.log
+      - name: 保存執行紀錄
+        if: always()
+        run: .github/scripts/save-log.sh backfill
