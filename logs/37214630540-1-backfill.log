@@ -1,0 +1,24 @@
+2026-10-04 15:52:53,013 WARNING 抓取失敗 https://www.tpex.org.tw/www/zh-tw/afterTrading/dailyQuotes（第 1 次）：Response ended prematurely，10 秒後重試
+2026-10-04 15:53:07,641 WARNING 抓取失敗 https://www.tpex.org.tw/www/zh-tw/afterTrading/dailyQuotes（第 2 次）：Response ended prematurely，30 秒後重試
+2026-10-04 15:53:51,546 INFO 2026-09-30 → {'twse_quotes': 'ok', 'twse_insti': 'ok', 'twse_margin': 'ok', 'twse_valuation': 'ok', 'twse_qfii': 'ok', 'tpex_quotes': 'ok', 'tpex_insti': 'ok', 'tpex_margin': 'ok', 'tpex_valuation': 'ok'}
+2026-10-04 15:54:17,605 INFO 2026-10-01 → {'twse_quotes': 'ok', 'twse_insti': 'ok', 'twse_margin': 'ok', 'twse_valuation': 'ok', 'twse_qfii': 'ok', 'tpex_quotes': 'ok', 'tpex_insti': 'ok', 'tpex_margin': 'ok', 'tpex_valuation': 'ok'}
+2026-10-04 15:54:43,441 INFO 2026-10-02 → {'twse_quotes': 'ok', 'twse_insti': 'ok', 'twse_margin': 'ok', 'twse_valuation': 'ok', 'twse_qfii': 'ok', 'tpex_quotes': 'ok', 'tpex_insti': 'ok', 'tpex_margin': 'ok', 'tpex_valuation': 'ok'}
+2026-10-04 15:55:05,440 WARNING 抓取失敗 https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap05_O（第 1 次）：Response ended prematurely，10 秒後重試
+2026-10-04 15:55:45,774 INFO ## 每日任務 2026-10-04
+
+| 日期 | 狀態 |
+|---|---|
+| 2026-09-30 | 完成 |
+| 2026-10-01 | 完成 |
+| 2026-10-02 | 完成 |
+
+寫入筆數：prices=6996, index=3, insti=6666, margin=6635, valuation=5907, qfii=3987, exright_twse=10, exright_tpex=3, revenue=1977, income_periods=1933, qfii_tpex=892, securities=2419, company=1981, delisting=706
+2026-10-04 15:58:17,857 INFO 待回補 1046 天（2022-09-27 ~ 2026-10-04）
+2026-10-04 15:58:37,593 WARNING 抓取失敗 https://www.tpex.org.tw/www/zh-tw/afterTrading/dailyQuotes（第 1 次）：Response ended prematurely，10 秒後重試
+2026-10-04 15:59:24,960 INFO ## 日資料回補
+
+本次處理 3 天，剩餘 1043 天，請求 62 次，耗時 3.6 分鐘
+2026-10-04 15:59:28,833 INFO FinMind 待回補 1997 檔（共 1997 檔），每小時上限 600 次
+2026-10-04 16:00:30,024 INFO ## FinMind 回補
+
+本次處理 2 檔，剩餘 1995 檔，請求 10 次，耗時 1.1 分鐘
