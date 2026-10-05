@@ -67,3 +67,12 @@ def test_daily_with_extras_and_market(fake, tmp_path):
     assert write_market(s, m) > 0 and s.st.get(MARKET_PATH)
     df, _ = build_snapshot(s)
     assert {"daytrade_lots", "sbl_balance_lots", "total_value"} <= set(df.columns)
+
+
+def test_margin_total_from_ms_only():
+    """selectType=MS 的回應只有「信用交易統計」表，也要解析出融資總額。"""
+    body = load("twse_margin_2026")
+    body = {**body, "tables": [t for t in body["tables"] if "信用交易統計" in t.get("title", "")]}
+    out = twse.parse_margin(body, D)
+    assert out["margin"].empty
+    assert out["margin_total"].iloc[0]["margin_amount"] > 1e11

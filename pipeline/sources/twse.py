@@ -89,13 +89,13 @@ def parse_margin(body, d: dt.date) -> dict:
     if not has_data(body):
         return {}
     t = find_table(body, "融資融券彙總")
-    if t is None:
-        return {"margin": pd.DataFrame()}
-    df = build_frame(t["fields"], t["data"], d, MARKET, {}, positional={
-        "margin_buy": 2, "margin_sell": 3, "margin_redeem": 4, "margin_prev": 5, "margin_balance": 6,
-        "short_buy": 8, "short_sell": 9, "short_redeem": 10, "short_prev": 11, "short_balance": 12, "offset": 14,
-    })
-    out = {"margin": df.drop(columns=["name"], errors="ignore")}
+    out = {"margin": pd.DataFrame()}
+    if t is not None:   # selectType=MS 只有「信用交易統計」，沒有個股表
+        df = build_frame(t["fields"], t["data"], d, MARKET, {}, positional={
+            "margin_buy": 2, "margin_sell": 3, "margin_redeem": 4, "margin_prev": 5, "margin_balance": 6,
+            "short_buy": 8, "short_sell": 9, "short_redeem": 10, "short_prev": 11, "short_balance": 12, "offset": 14,
+        })
+        out["margin"] = df.drop(columns=["name"], errors="ignore")
     tot = find_table(body, "信用交易統計")
     if tot:
         row = {"date": pd.Timestamp(d), "market": MARKET}
