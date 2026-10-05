@@ -85,6 +85,10 @@ def main():
     # 非交易日（週六）的回應長什麼樣
     cap("twse_mi_index_holiday", f"{tw}/afterTrading/MI_INDEX", {"date": "20261003", "type": "ALLBUT0999", "response": "json"})
     cap("tpex_quotes_holiday", f"{tp}/afterTrading/dailyQuotes", {"date": "2026/10/03", "response": "json"})
+    # 指數：類股指數（某日全部）、加權指數月 OHLC、櫃買指數月資料
+    cap("twse_mi_index_ind_2023", f"{tw}/afterTrading/MI_INDEX", {"date": "20230103", "type": "IND", "response": "json"})
+    cap("twse_taiex_ohlc_202609", f"{tw}/TAIEX/MI_5MINS_HIST", {"date": "20260901", "response": "json"})
+    cap("twse_taiex_ohlc_202301", f"{tw}/TAIEX/MI_5MINS_HIST", {"date": "20230101", "response": "json"})
     cap("twse_twt49u_2026", f"{tw}/exRight/TWT49U", {"startDate": "20260801", "endDate": "20261002", "response": "json"})
     oa = "https://openapi.twse.com.tw/v1"
     cap("twse_oa_company", f"{oa}/opendata/t187ap03_L")
