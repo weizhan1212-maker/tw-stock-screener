@@ -5,6 +5,8 @@ import Link from "next/link";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import DataStatus from "@/components/DataStatus";
 import KChart from "@/components/KChart";
+import NewsList from "@/components/NewsList";
+import WatchStar from "@/components/WatchStar";
 import { useSnapshot } from "@/hooks/useSnapshot";
 import { num, type Row } from "@/lib/screener";
 import {
@@ -82,6 +84,7 @@ export default function StockPage({ code }: { code: string }) {
           <div className="flex flex-wrap items-baseline gap-x-2">
             <h1 className="text-2xl font-bold text-ink">{name || code}</h1>
             <span className="num text-lg text-muted">{code}</span>
+            <span className="self-center"><WatchStar code={code} name={name} size="md" /></span>
           </div>
           <div className="mt-1 flex flex-wrap gap-1.5 text-xs">
             {(row?.market ?? data?.info.market) && (
@@ -163,6 +166,11 @@ export default function StockPage({ code }: { code: string }) {
         {data?.revenue && data.revenue.length > 0 && <RevenueCard s={data} />}
         {data?.quarters && data.quarters.length > 0 && <QuartersCard s={data} />}
         {data?.dividends && data.dividends.length > 0 && <DividendCard s={data} />}
+        {name && (
+          <Section id="news" title="相關新聞" note="來源：Google 新聞，點標題到原網站閱讀">
+            <NewsList q={`${name} ${code}`} fallback={name} limit={10} />
+          </Section>
+        )}
       </div>
     </div>
   );

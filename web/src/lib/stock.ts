@@ -29,7 +29,7 @@ export function dailyBars(s: StockFile, adjusted: boolean): Bar[] {
   return out;
 }
 
-function weekKey(t: string) {
+export function weekKey(t: string) {
   const dt = new Date(`${t}T00:00:00Z`);
   const day = (dt.getUTCDay() + 6) % 7;            // 週一 = 0
   dt.setUTCDate(dt.getUTCDate() - day);
@@ -56,6 +56,28 @@ export function aggregate(bars: Bar[], p: Period): Bar[] {
     }
   }
   return out;
+}
+
+export function periodKey(t: string, p: Period) {
+  return p === "D" ? t : p === "W" ? weekKey(t) : t.slice(0, 7);
+}
+
+/** 法人買賣超（期間加總）與融資餘額（期間最後一天），對齊到 K 棒。 */
+export function chipSeries(s: StockFile, bars: Bar[], p: Period) {
+  const d = s.daily;
+  const acc = new Map<string, { fi: number; it: number; dl: number; mb: number | null; has: boolean }>();
+  for (let i = 0; i < d.d.length; i++) {
+    const k = periodKey(d.d[i], p);
+    const a = acc.get(k) ?? { fi: 0, it: 0, dl: 0, mb: null, has: false };
+    if (d.fi[i] != null || d.it[i] != null) a.has = true;
+    a.fi += d.fi[i] ?? 0; a.it += d.it[i] ?? 0; a.dl += d.dl[i] ?? 0;
+    if (d.mb[i] != null) a.mb = d.mb[i];
+    acc.set(k, a);
+  }
+  return bars.map((b) => {
+    const a = acc.get(periodKey(b.t, p));
+    return a && a.has ? { fi: a.fi, it: a.it, dl: a.dl, mb: a.mb } : { fi: null, it: null, dl: null, mb: a?.mb ?? null };
+  });
 }
 
 export function sma(xs: number[], n: number): (number | null)[] {

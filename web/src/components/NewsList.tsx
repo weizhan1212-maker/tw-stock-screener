@@ -12,15 +12,19 @@ function ago(iso: string) {
 }
 
 /** 新聞：只顯示標題、來源、時間，點擊到原網站閱讀。 */
-export default function NewsList({ q = "台股", limit = 12 }: { q?: string; limit?: number }) {
+export default function NewsList({ q = "台股", fallback, limit = 12 }: { q?: string; fallback?: string; limit?: number }) {
   const [items, setItems] = useState<Item[] | null>(null);
   const [error, setError] = useState(false);
   useEffect(() => {
-    fetch(`/api/news?q=${encodeURIComponent(q)}`)
+    const get = (k: string) => fetch(`/api/news?q=${encodeURIComponent(k)}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((j) => setItems(j.items ?? []))
+      .then((j) => (j.items ?? []) as Item[]);
+    // 先用精確關鍵字，沒有結果再用較寬的關鍵字
+    get(q)
+      .then((a) => (a.length || !fallback ? a : get(fallback)))
+      .then(setItems)
       .catch(() => setError(true));
-  }, [q]);
+  }, [q, fallback]);
   if (error) return <p className="text-sm text-muted">新聞暫時無法載入。</p>;
   if (!items) return <p className="text-sm text-muted">載入新聞中…</p>;
   if (!items.length) return <p className="text-sm text-muted">目前沒有相關新聞。</p>;

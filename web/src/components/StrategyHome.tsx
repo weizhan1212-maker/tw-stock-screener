@@ -5,7 +5,8 @@ import { useMemo } from "react";
 import DataStatus from "@/components/DataStatus";
 import { sortRows } from "@/components/Results";
 import { useSnapshot } from "@/hooks/useSnapshot";
-import { fmt } from "@/lib/screener";
+import { useWatchlist } from "@/hooks/useWatchlist";
+import { fmt, type Row } from "@/lib/screener";
 import { defaults, makeCtx, STRATEGIES, type Strategy } from "@/lib/strategies";
 
 export default function StrategyHome() {
@@ -32,6 +33,8 @@ export default function StrategyHome() {
           )}
         </p>
       )}
+
+      {snap && <MyWatch rows={snap.rows} />}
 
       {(["基本策略", "大師策略"] as const).map((g) => (
         <section key={g} className="mt-6">
@@ -74,5 +77,43 @@ function StrategyCard({ s, rows }: { s: Strategy; rows: ReturnType<Strategy["run
         </p>
       </Link>
     </li>
+  );
+}
+
+function MyWatch({ rows }: { rows: Row[] }) {
+  const w = useWatchlist();
+  if (!w.codes) return null;
+  const by = new Map(rows.map((r) => [r.code as string, r]));
+  const list = w.codes.flatMap((c) => (by.has(c) ? [by.get(c)!] : [])).slice(0, 8);
+  return (
+    <section className="mt-6">
+      <div className="mb-2 flex items-baseline justify-between">
+        <h2 className="text-base font-bold text-ink">我的自選股</h2>
+        <Link href="/watchlist" className="text-sm text-accent hover:underline">全部 {w.codes.length} 檔 →</Link>
+      </div>
+      {list.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-line bg-surface p-4 text-sm text-muted">在股票列表或個股頁按 ☆ 加入自選股，這裡就會顯示。</p>
+      ) : (
+        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {list.map((r) => {
+            const c = r.chg_pct as number | null;
+            return (
+              <li key={r.code as string}>
+                <Link href={`/stock/${r.code}`} className="block rounded-lg border border-line bg-surface px-3 py-2 hover:border-accent">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="truncate text-sm text-ink">{r.name}</span>
+                    <span className="num text-xs text-muted">{r.code}</span>
+                  </div>
+                  <div className="num mt-0.5 flex items-baseline justify-between">
+                    <span className="text-ink">{fmt(r.close, "price")}</span>
+                    <span className={`text-sm ${c == null || c === 0 ? "text-muted" : c > 0 ? "text-up" : "text-down"}`}>{fmt(c, "pct", true)}%</span>
+                  </div>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }

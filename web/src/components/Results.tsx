@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { type ReactNode, useMemo, useState } from "react";
 import { FIELD_MAP, UNIT } from "@/lib/fields";
+import WatchStar from "@/components/WatchStar";
 import { fmt, fmtUnit, isSigned, type Row, tone } from "@/lib/screener";
 
 export type Sort = { key: string; dir: 1 | -1 };
@@ -33,10 +34,14 @@ const headLabel = (k: string) => {
 };
 
 export default function Results({
-  rows, cols, sort, setSort, csvName, loading, empty, countLabel = "符合條件",
+  rows, cols, sort, setSort, csvName, loading, empty, countLabel = "符合條件", badge, actions,
 }: {
   rows: Row[]; cols: string[]; sort: Sort; setSort: (s: Sort) => void; csvName: string;
   loading?: boolean; empty?: ReactNode; countLabel?: string;
+  /** 名稱下方額外顯示的內容（例如符合的策略） */
+  badge?: (r: Row) => ReactNode;
+  /** 每列最右邊的操作（例如排序、移除） */
+  actions?: (r: Row) => ReactNode;
 }) {
   const [limit, setLimit] = useState(PAGE);
   const sorted = useMemo(() => sortRows(rows, sort), [rows, sort]);
@@ -86,13 +91,16 @@ export default function Results({
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-surface-2 text-left text-xs text-muted">
             <tr>
+              <th scope="col" className="w-8 px-1"><span className="sr-only">自選</span></th>
               <Th label="代號／名稱" k="code" sort={sort} setSort={setSort} left />
               {cols.map((k) => <Th key={k} label={headLabel(k)} k={k} sort={sort} setSort={setSort} />)}
+              {actions && <th scope="col"><span className="sr-only">操作</span></th>}
             </tr>
           </thead>
           <tbody>
             {sorted.slice(0, limit).map((r) => (
               <tr key={r.code as string} className="border-t border-line hover:bg-surface-2">
+                <td className="px-1 py-2 text-center"><WatchStar code={r.code as string} name={r.name as string} /></td>
                 <td className="whitespace-nowrap px-3 py-2">
                   <Link href={`/stock/${r.code}`} className="group">
                     <span className="num mr-2 text-muted">{r.code}</span>
@@ -100,8 +108,10 @@ export default function Results({
                   </Link>
                   {r.market === "TPEX" && <span className="ml-1.5 text-xs text-muted">櫃</span>}
                   {r.stale === 1 && <span className="ml-1.5 text-xs text-warn-ink">未交易</span>}
+                  {badge && <div className="mt-0.5 whitespace-normal">{badge(r)}</div>}
                 </td>
                 {cols.map((k) => <Cell key={k} r={r} k={k} />)}
+                {actions && <td className="whitespace-nowrap px-2 py-2 text-right">{actions(r)}</td>}
               </tr>
             ))}
           </tbody>
@@ -112,7 +122,8 @@ export default function Results({
         {sorted.slice(0, limit).map((r) => (
           <li key={r.code as string} className="rounded-lg border border-line bg-surface p-3">
             <div className="flex items-baseline justify-between gap-2">
-              <Link href={`/stock/${r.code}`} className="min-w-0">
+              <WatchStar code={r.code as string} name={r.name as string} />
+              <Link href={`/stock/${r.code}`} className="min-w-0 flex-1">
                 <span className="num mr-2 text-sm text-muted">{r.code}</span>
                 <span className="font-medium text-ink underline-offset-2 hover:underline">{r.name}</span>
                 {r.market === "TPEX" && <span className="ml-1.5 text-xs text-muted">櫃</span>}
@@ -122,6 +133,7 @@ export default function Results({
                 <span className={`ml-2 text-sm ${toneClass(r.chg_pct)}`}>{fmt(r.chg_pct, "pct", true)}%</span>
               </div>
             </div>
+            {badge && <div className="mt-1">{badge(r)}</div>}
             <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
               {cols.filter((k) => k !== "close" && k !== "chg_pct").map((k) => (
                 <div key={k} className="flex justify-between gap-2">
@@ -130,6 +142,7 @@ export default function Results({
                 </div>
               ))}
             </dl>
+            {actions && <div className="mt-2 flex justify-end gap-1">{actions(r)}</div>}
           </li>
         ))}
       </ul>

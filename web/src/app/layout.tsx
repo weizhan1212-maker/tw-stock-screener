@@ -45,6 +45,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <Link href="/ranking" className="rounded-md px-2.5 py-1 text-ink hover:bg-surface-2">
                 排行榜
               </Link>
+              <Link href="/watchlist" className="rounded-md px-2.5 py-1 text-ink hover:bg-surface-2">
+                自選股
+              </Link>
             </nav>
             <div className="ml-auto flex items-center gap-3">
               <StockSearch />
