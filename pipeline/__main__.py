@@ -32,6 +32,8 @@ def main(argv=None):
     f.add_argument("--chain", action="store_true")
     sub.add_parser("report")
     sub.add_parser("snapshot")
+    sub.add_parser("market")
+    sub.add_parser("backfill-extras").add_argument("--days", type=int, default=70)
     r = sub.add_parser("fin-refresh")
     r.add_argument("--budget-min", type=float, default=40)
     a = p.parse_args(argv)
@@ -60,6 +62,14 @@ def main(argv=None):
         df, meta = build_snapshot(store)
         write_snapshot(store, df, meta)
         jobs.summary(f"## 篩選快照\n\n資料日 {meta['asof']}，{meta['count']} 檔，{len(df.columns)} 欄")
+    elif a.cmd == "market":
+        from .market import build_market, write_market
+        data = build_market(store)
+        size = write_market(store, data)
+        jobs.summary(f"## 市場總覽\n\n資料日 {data['asof']}，指數 {len(data.get('indices', []))} 項，{size / 1024:.0f} KB")
+    elif a.cmd == "backfill-extras":
+        from .market import backfill_extras
+        jobs.summary(f"## 補充資料回補\n\n{backfill_extras(store, fetcher, days=a.days)} 個交易日")
     elif a.cmd == "fin-refresh":
         jobs.run_fin_refresh(store, fetcher, budget_min=a.budget_min)
 

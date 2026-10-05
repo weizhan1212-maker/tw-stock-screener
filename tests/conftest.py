@@ -41,10 +41,18 @@ class FakeFetcher:
         if "twse.com.tw/rwd" in url:
             if last == "TWT49U":
                 return load("twse_twt49u_2026")
+            more = {"BFI82U": "twse_bfi82u", "TWTB4U": "twse_twtb4u", "TWT93U": "twse_twt93u", "BFIAUU": "twse_block"}
+            if last in more:
+                ok = (params.get("date") or params.get("dayDate")) == "20261002"
+                return load(f"more_{more[last]}") if ok else {"stat": "很抱歉，沒有符合條件的資料!"}
+            if last == "MI_INDEX" and params.get("type") == "IND":
+                return load("more_twse_mi_index_ind") if params.get("date") == "20261002" else {"stat": "查無資料"}
             tag = DATE_TAG.get(params.get("date"))
             if tag and last in TWSE_PATHS:
                 return load(f"{TWSE_PATHS[last]}_{tag}")
             return {"stat": "很抱歉，沒有符合條件的資料!"}
+        if last == "inx":
+            return load("more_tpex_index_hist")
         if "tpex.org.tw/www" in url:
             tag = DATE_TAG.get(params.get("date"))
             if tag and last in TPEX_PATHS:
@@ -52,6 +60,11 @@ class FakeFetcher:
             return {"stat": "ok", "date": params.get("date", "").replace("/", ""), "tables": [{"title": "", "data": []}]}
         if last in OA:
             return load(OA[last])
+        more_oa = {"tpex_3insti_summary": "tpex_insti_summary", "tpex_intraday_trading_statistics": "tpex_daytrade",
+                   "tpex_margin_sbl": "tpex_sbl", "tpex_daily_trading_block": "tpex_block",
+                   "DailyMarketReportFut": "taifex_fut"}
+        if last in more_oa:
+            return load(f"more_{more_oa[last]}")
         if "finmindtrade" in url:
             ds = params["dataset"]
             return load(f"finmind_{ds}")

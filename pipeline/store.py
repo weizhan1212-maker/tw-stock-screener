@@ -23,6 +23,14 @@ DAILY_KEYS = {
     "qfii": ["date", "code"],
     "exright": ["date", "code"],
     "index": ["date"],
+    "indices": ["date", "name"],          # 各類指數（證交所＋櫃買）
+    "margin_total": ["date", "market"],   # 融資融券總額
+    "market_insti": ["date", "market"],   # 三大法人買賣金額（元）
+    "daytrade": ["date", "code"],         # 個股當沖量值
+    "daytrade_total": ["date", "market"],
+    "sbl": ["date", "code"],              # 借券賣出
+    "block": ["date", "code"],            # 鉅額交易
+    "futures": ["date", "session"],       # 台指期近月（一般／盤後）
 }
 
 TABLE_KEYS = {

@@ -343,6 +343,7 @@ def build_snapshot(store: DataStore, asof=None, lookback_days: int = 420) -> tup
             base["roa"] = base["_ni_ttm"] / base["_assets"] * 100
         if "eps_ttm" in base:
             base["pe_calc"] = (base["close"] / base["eps_ttm"]).where(base["eps_ttm"] > 0)
+    base = base.join(stock_extras(store, asof, base))
     sf = strategy_factors(store)
     if not sf.empty:
         base = base.join(sf)
@@ -355,6 +356,35 @@ def build_snapshot(store: DataStore, asof=None, lookback_days: int = 420) -> tup
             "count": int(len(base)), "fin_complete": bool(store.get_state("finmind_backfill", {}).get("_complete")),
             **market_state(store, asof)}
     return base, meta
+
+
+def stock_extras(store: DataStore, asof: pd.Timestamp, base: pd.DataFrame) -> pd.DataFrame:
+    """排行榜用：當沖、借券賣出、鉅額交易（取最近一天）、法人買賣超金額（估算：張數 × 1000 × 收盤價）。"""
+    out = pd.DataFrame(index=base.index)
+    lo = asof - pd.Timedelta(days=5)
+
+    def latest(name):
+        df = store.read_daily(name, lo, asof)
+        if df.empty:
+            return df
+        return df.sort_values("date").groupby("code").last()
+
+    dtr = latest("daytrade")
+    if not dtr.empty:
+        out["daytrade_lots"] = dtr["dt_volume"] / 1000
+        out["daytrade_ratio"] = out["daytrade_lots"] / base["volume_lots"].replace(0, np.nan) * 100
+    sbl = latest("sbl")
+    if not sbl.empty:
+        out["sbl_sell_lots"] = sbl["sbl_sell"] / 1000
+        out["sbl_balance_lots"] = sbl["sbl_balance"] / 1000
+    blk = store.read_daily("block", lo, asof)
+    if not blk.empty:
+        blk = blk[blk["date"] == blk["date"].max()]
+        out["block_value"] = blk.set_index("code")["block_value"]
+    for who in ("foreign", "trust", "dealer", "total"):
+        if f"{who}_net" in base:
+            out[f"{who}_value"] = base[f"{who}_net"] * 1000 * base["close"] / 1e8      # 億元
+    return out
 
 
 def market_state(store: DataStore, asof: pd.Timestamp) -> dict:

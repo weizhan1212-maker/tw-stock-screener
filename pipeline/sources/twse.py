@@ -49,7 +49,20 @@ def parse_quotes(body, d: dt.date) -> dict:
             if str(r[0]).strip() == row_name:
                 idx[col] = to_num(r[1])
     index = pd.DataFrame([idx]) if len(idx) > 1 else pd.DataFrame()
-    return {"prices": prices, "index": index}
+    return {"prices": prices, "index": index, "indices": parse_indices(body, d)}
+
+
+def parse_indices(body, d: dt.date) -> pd.DataFrame:
+    """證交所全部價格指數（加權指數、各類股指數）：name, close, chg, chg_pct。"""
+    tb = find_table(body, "價格指數(臺灣證券交易所)")
+    recs = []
+    for r in (tb or {}).get("data") or []:
+        pct = to_num(r[4]) if len(r) > 4 else float("nan")
+        pts = to_num(r[3]) if len(r) > 3 else float("nan")
+        sign = -1 if (pct == pct and pct < 0) or "-" in str(r[2]) else 1
+        recs.append({"date": pd.Timestamp(d), "name": str(r[0]).strip(), "market": MARKET,
+                     "close": to_num(r[1]), "chg": abs(pts) * sign if pts == pts else pts, "chg_pct": pct})
+    return pd.DataFrame.from_records(recs)
 
 
 def parse_insti(body, d: dt.date) -> dict:
@@ -82,7 +95,21 @@ def parse_margin(body, d: dt.date) -> dict:
         "margin_buy": 2, "margin_sell": 3, "margin_redeem": 4, "margin_prev": 5, "margin_balance": 6,
         "short_buy": 8, "short_sell": 9, "short_redeem": 10, "short_prev": 11, "short_balance": 12, "offset": 14,
     })
-    return {"margin": df.drop(columns=["name"], errors="ignore")}
+    out = {"margin": df.drop(columns=["name"], errors="ignore")}
+    tot = find_table(body, "信用交易統計")
+    if tot:
+        row = {"date": pd.Timestamp(d), "market": MARKET}
+        for r in tot.get("data") or []:
+            item = str(r[0])
+            if item.startswith("融資金額"):
+                row["margin_amount"] = to_num(r[5]) * 1000          # 仟元 → 元
+                row["margin_amount_prev"] = to_num(r[4]) * 1000
+            elif item.startswith("融資("):
+                row["margin_lots"], row["margin_lots_prev"] = to_num(r[5]), to_num(r[4])
+            elif item.startswith("融券("):
+                row["short_lots"], row["short_lots_prev"] = to_num(r[5]), to_num(r[4])
+        out["margin_total"] = pd.DataFrame([row])
+    return out
 
 
 def parse_valuation(body, d: dt.date) -> dict:

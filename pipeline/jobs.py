@@ -192,6 +192,12 @@ def run_daily(store: DataStore, fetcher: Fetcher, lookback_days: int = 10, today
         counts["exright_tpex"] = derive_tpex_exright(store, pd.Timestamp(lo) - pd.Timedelta(days=7), pd.Timestamp(hi))
 
     counts.update(refresh_reference(store, fetcher))
+    # 市場總覽／排行榜補充資料（法人金額、當沖、借券、鉅額、期貨、櫃買指數）
+    from .market import run_extras
+    complete = [today - dt.timedelta(days=i) for i in range(lookback_days, -1, -1)
+                if isinstance(state.get((today - dt.timedelta(days=i)).isoformat()), dict)
+                and day_complete(state[(today - dt.timedelta(days=i)).isoformat()])]
+    counts.update({f"extras_{k}": v for k, v in run_extras(store, fetcher, complete).items()})
     lines = [f"## 每日任務 {today}", "", "| 日期 | 狀態 |", "|---|---|"]
     for i in range(lookback_days, -1, -1):
         k = (today - dt.timedelta(days=i)).isoformat()

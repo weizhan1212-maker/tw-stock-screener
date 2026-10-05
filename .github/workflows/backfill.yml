@@ -2,13 +2,14 @@ name: 歷史資料回補
 
 # job=daily   證交所＋櫃買 4 年日資料（每次最多約 5.3 小時，chain=true 時自動接力到完成）
 # job=finmind FinMind 8 年財報／月營收／股利（同上）
-# job=snapshot 重新產生網站用的篩選快照
+# job=snapshot 重新產生網站用的篩選快照與市場總覽
+# job=extras   補最近 70 個交易日的類股指數、法人金額、當沖、借券、鉅額（市場總覽走勢用）
 # job=smoke   小規模試跑：每日任務＋回補 3 天＋FinMind 2 檔，用來驗證設定
 on:
   workflow_dispatch:
     inputs:
       job:
-        description: "daily / finmind / snapshot / smoke"
+        description: "daily / finmind / snapshot / extras / smoke"
         default: smoke
       chain:
         description: "跑不完是否自動接力（true/false）"
@@ -61,11 +62,17 @@ jobs:
         run: |
           set -o pipefail
           python -m pipeline backfill-finmind --budget-min 320 ${{ github.event.inputs.chain == 'true' && '--chain' || '' }} 2>&1 | tee -a run.log
-      - name: 篩選快照
-        if: github.event.inputs.job == 'snapshot'
+      - name: 補充資料回補
+        if: github.event.inputs.job == 'extras'
+        run: |
+          set -o pipefail
+          python -m pipeline backfill-extras --days 70 2>&1 | tee -a run.log
+      - name: 篩選快照與市場總覽
+        if: github.event.inputs.job == 'snapshot' || github.event.inputs.job == 'extras'
         run: |
           set -o pipefail
           python -m pipeline snapshot 2>&1 | tee -a run.log
+          python -m pipeline market 2>&1 | tee -a run.log
       - name: 資料檢查報告
         if: always()
         env:
