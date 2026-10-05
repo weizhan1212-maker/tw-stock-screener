@@ -36,6 +36,9 @@ def main(argv=None):
     sk = sub.add_parser("stocks")
     sk.add_argument("--codes", help="只產生這些代號（逗號分隔），測試用")
     sub.add_parser("backfill-extras").add_argument("--days", type=int, default=70)
+    bi = sub.add_parser("backfill-indices")
+    bi.add_argument("--years", type=float, default=4)
+    bi.add_argument("--budget-min", type=float, default=320)
     r = sub.add_parser("fin-refresh")
     r.add_argument("--budget-min", type=float, default=40)
     a = p.parse_args(argv)
@@ -70,12 +73,19 @@ def main(argv=None):
         jobs.summary(f"## 個股檔\n\n{res['count']} 檔，平均 {res['avg_kb']} KB，合計 {res['total_mb']} MB，失敗 {res['n_failed']} 檔")
     elif a.cmd == "market":
         from .market import build_market, write_market
+        from .market import build_indices, write_indices
         data = build_market(store)
         size = write_market(store, data)
-        jobs.summary(f"## 市場總覽\n\n資料日 {data['asof']}，指數 {len(data.get('indices', []))} 項，{size / 1024:.0f} KB")
+        isize = write_indices(store, build_indices(store))
+        log_ind = f"，指數歷史 {isize / 1024:.0f} KB"
+        jobs.summary(f"## 市場總覽\n\n資料日 {data['asof']}，指數 {len(data.get('indices', []))} 項，{size / 1024:.0f} KB{log_ind}")
     elif a.cmd == "backfill-extras":
         from .market import backfill_extras
         jobs.summary(f"## 補充資料回補\n\n{backfill_extras(store, fetcher, days=a.days)} 個交易日")
+    elif a.cmd == "backfill-indices":
+        from .market import backfill_indices
+        total, left = backfill_indices(store, fetcher, years=a.years, budget_min=a.budget_min)
+        jobs.summary(f"## 指數歷史回補\n\n待補 {total} 天，剩 {left} 天")
     elif a.cmd == "fin-refresh":
         jobs.run_fin_refresh(store, fetcher, budget_min=a.budget_min)
 

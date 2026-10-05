@@ -162,3 +162,21 @@ PARSERS = {
     "twse_valuation": parse_valuation,
     "twse_qfii": parse_qfii,
 }
+
+
+def taiex_ohlc_request(month: dt.date):
+    return f"{BASE}/TAIEX/MI_5MINS_HIST", {"date": month.strftime("%Y%m01"), "response": "json"}
+
+
+def parse_taiex_ohlc(body) -> pd.DataFrame:
+    """加權指數每月的每日開高低收。"""
+    if not has_data(body):
+        return pd.DataFrame()
+    recs = []
+    for r in body.get("data") or []:
+        d = roc_to_date(r[0])
+        if d is None:
+            continue
+        recs.append({"date": pd.Timestamp(d), "open": to_num(r[1]), "high": to_num(r[2]),
+                     "low": to_num(r[3]), "close": to_num(r[4])})
+    return pd.DataFrame.from_records(recs)

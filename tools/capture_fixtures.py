@@ -63,6 +63,10 @@ def cap(name, url, params=None):
                           "status": r.status_code}, "body": trim(j)}
     except Exception as e:
         data = {"_meta": {"url": url, "error": repr(e)}}
+    if "error" in data["_meta"] and os.path.exists(os.path.join(OUT, name + ".json")):
+        print(name, "失敗，保留舊樣本：", data["_meta"]["error"])
+        time.sleep(3)
+        return
     with open(os.path.join(OUT, name + ".json"), "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False)
     print(name, data["_meta"].get("status"), data["_meta"].get("error", ""))

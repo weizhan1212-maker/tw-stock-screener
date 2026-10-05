@@ -23,7 +23,8 @@ DAILY_KEYS = {
     "qfii": ["date", "code"],
     "exright": ["date", "code"],
     "index": ["date"],
-    "holders": ["date", "code"],          # 集保股權分散（每週）
+    "holders": ["date", "code"],
+    "taiex_ohlc": ["date"],               # 加權指數開高低收          # 集保股權分散（每週）
     "indices": ["date", "name"],          # 各類指數（證交所＋櫃買）
     "margin_total": ["date", "market"],   # 融資融券總額
     "market_insti": ["date", "market"],   # 三大法人買賣金額（元）

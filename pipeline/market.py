@@ -98,7 +98,13 @@ def fetch_latest_extras(fetcher: Fetcher, store: DataStore) -> dict:
             store.put_state("dca_rank", {**data, "fetched": util.today_tw().isoformat()})
         return len(data["stocks"]) + len(data["etfs"])
 
-    for name, fn in (("dca_rank", dca_rank), ("tpex_insti", tpex_insti), ("tpex_daytrade", tpex_daytrade), ("tpex_sbl", tpex_sbl),
+    def taiex_ohlc():
+        url, params = twse.taiex_ohlc_request(util.today_tw())
+        df = twse.parse_taiex_ohlc(fetcher.get_json(url, params))
+        _put(store, "taiex_ohlc", df)
+        return len(df)
+
+    for name, fn in (("taiex_ohlc", taiex_ohlc), ("dca_rank", dca_rank), ("tpex_insti", tpex_insti), ("tpex_daytrade", tpex_daytrade), ("tpex_sbl", tpex_sbl),
                      ("tpex_block", tpex_block), ("futures", futures), ("tpex_index", tpex_index)):
         safe(name, fn)
     return counts
@@ -146,6 +152,104 @@ def backfill_extras(store: DataStore, fetcher: Fetcher, days: int = 70) -> int:
             m = (m.replace(day=28) + dt.timedelta(days=4)).replace(day=1)
     run_extras(store, fetcher, trading)
     return len(trading)
+
+
+def backfill_indices(store: DataStore, fetcher: Fetcher, years: float = 4, budget_min: float = 320) -> tuple[int, int]:
+    """指數歷史：證交所各類股指數（每個交易日一次）、加權指數開高低收與櫃買指數（每月一次）。可續跑。"""
+    import time
+    t0 = time.monotonic()
+    st = store.get_state("indices_hist", {"days": [], "months": []})
+    done_d, done_m = set(st["days"]), set(st["months"])
+    today = util.today_tw()
+    start = today - dt.timedelta(days=int(365.25 * years))
+    state = store.get_state("days", {})
+    trading = sorted(dt.date.fromisoformat(k) for k, v in state.items()
+                     if isinstance(v, dict) and v.get("twse_quotes") == "ok" and dt.date.fromisoformat(k) >= start)
+    # 每月：加權 OHLC、櫃買指數（本月與上月每次都重抓）
+    m = dt.date(start.year, start.month, 1)
+    recent = (today.replace(day=1) - dt.timedelta(days=1)).replace(day=1)
+    while m <= today:
+        key = m.strftime("%Y-%m")
+        if key not in done_m or m >= recent:
+            try:
+                url, params = twse.taiex_ohlc_request(m)
+                _put(store, "taiex_ohlc", twse.parse_taiex_ohlc(fetcher.get_json(url, params)))
+                url, params = extras.tpex_index_request(m)
+                _put(store, "indices", extras.parse_tpex_index(fetcher.get_json(url, params)))
+                done_m.add(key)
+            except FetchError as e:
+                log.warning("指數月資料 %s 失敗：%s", key, e)
+        m = (m.replace(day=28) + dt.timedelta(days=4)).replace(day=1)
+    # 每日：類股指數
+    have = store.read_daily("indices", start, today)
+    have_days = set(have[have["market"] == "TWSE"]["date"].dt.date) if not have.empty else set()
+    todo = [d for d in reversed(trading) if d.isoformat() not in done_d and d not in have_days]
+    buf, n = [], 0
+    for d in todo:
+        if (time.monotonic() - t0) / 60 > budget_min:
+            break
+        try:
+            url, params = extras.indices_request(d)
+            df = twse.parse_indices(fetcher.get_json(url, params), d)
+            if not df.empty:
+                buf.append(df)
+            done_d.add(d.isoformat())
+            n += 1
+        except FetchError as e:
+            log.warning("%s 類股指數失敗：%s", d, e)
+        if len(buf) >= 40:
+            store.upsert_daily("indices", pd.concat(buf, ignore_index=True))
+            buf = []
+            store.put_state("indices_hist", {"days": sorted(done_d), "months": sorted(done_m)})
+    if buf:
+        store.upsert_daily("indices", pd.concat(buf, ignore_index=True))
+    store.put_state("indices_hist", {"days": sorted(done_d), "months": sorted(done_m)})
+    left = len(todo) - n
+    log.info("指數回補：本次 %d 天，剩 %d 天", n, left)
+    return len(todo), left
+
+
+INDICES_PATH = "site/indices.json.gz"
+
+
+def build_indices(store: DataStore, asof=None) -> dict:
+    """指數詳細頁用：每個指數 4 年收盤（加權指數含開高低收）、台指期近月（一般／盤後）。"""
+    days = store.get_state("days", {})
+    if asof is None:
+        done = [d for d, s in days.items() if isinstance(s, dict) and s.get("twse_quotes") == "ok"]
+        asof = max(done)
+    asof = pd.Timestamp(asof)
+    start = asof - pd.Timedelta(days=int(365.25 * 4) + 10)
+    out: dict = {"asof": asof.strftime("%Y-%m-%d"), "series": {}}
+    ind = store.read_daily("indices", start, asof)
+    if not ind.empty:
+        ind = ind.sort_values("date")
+        for (name, mkt), g in ind.groupby(["name", "market"], sort=False):
+            g = g.dropna(subset=["close"])
+            if len(g) < 5:
+                continue
+            out["series"][name] = {"market": mkt, "d": g["date"].dt.strftime("%Y-%m-%d").tolist(),
+                                   "c": [_num(x) for x in g["close"]]}
+    oh = store.read_daily("taiex_ohlc", start, asof)
+    name = "發行量加權股價指數"
+    if not oh.empty:
+        oh = oh.sort_values("date").dropna(subset=["close"])
+        out["series"].setdefault(name, {"market": "TWSE"}).update({"d": oh["date"].dt.strftime("%Y-%m-%d").tolist(), "o": [_num(x) for x in oh["open"]],
+                                    "h": [_num(x) for x in oh["high"]], "l": [_num(x) for x in oh["low"]],
+                                    "c": [_num(x) for x in oh["close"]]})
+    fut = store.read_daily("futures", start, asof + pd.Timedelta(days=3))
+    for session, label in (("一般", "台指期"), ("盤後", "台指期盤後")):
+        g = fut[fut["session"] == session].sort_values("date") if not fut.empty else fut
+        if g is not None and not g.empty:
+            out["series"][label] = {"market": "TAIFEX", "d": g["date"].dt.strftime("%Y-%m-%d").tolist(),
+                                    "c": [_num(x) for x in g["close"]]}
+    return out
+
+
+def write_indices(store: DataStore, data: dict) -> int:
+    raw = gzip.compress(json.dumps(data, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+    store.st.put(INDICES_PATH, raw, "application/gzip")
+    return len(raw)
 
 
 # ---------------- 市場總覽檔 ----------------

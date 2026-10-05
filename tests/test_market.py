@@ -76,3 +76,23 @@ def test_margin_total_from_ms_only():
     out = twse.parse_margin(body, D)
     assert out["margin"].empty
     assert out["margin_total"].iloc[0]["margin_amount"] > 1e11
+
+
+def test_taiex_ohlc_and_indices_file(fake, tmp_path):
+    import datetime as dt
+    from conftest import load
+    from pipeline import jobs
+    from pipeline.market import build_indices
+    from pipeline.sources import twse
+    from pipeline.storage import LocalStorage
+    from pipeline.store import DataStore
+    oh = twse.parse_taiex_ohlc(load("twse_taiex_ohlc_202609"))
+    assert len(oh) == 20 and (oh["high"] >= oh["low"]).all() and oh["close"].iloc[0] == 46948.72
+    ind = twse.parse_indices(load("twse_mi_index_ind_2023"), dt.date(2023, 1, 3))
+    assert "發行量加權股價指數" in set(ind["name"]) and len(ind) > 40
+    s = DataStore(LocalStorage(str(tmp_path)))
+    jobs.run_daily(s, fake, lookback_days=3, today=dt.date(2026, 10, 2))
+    s.upsert_daily("indices", ind)
+    s.upsert_daily("taiex_ohlc", oh)
+    data = build_indices(s, asof="2026-10-02")
+    assert data["series"]["發行量加權股價指數"]["o"][0] == 46177.11
