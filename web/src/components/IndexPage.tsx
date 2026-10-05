@@ -36,7 +36,7 @@ function pool(name: string, rows: Row[]): { rows: Row[]; note: string } | null {
 
 const RANGES: [string, number][] = [["1 月", 22], ["3 月", 66], ["6 月", 130], ["1 年", 250], ["3 年", 750], ["全部", 99999]];
 
-export default function IndexPage({ name }: { name: string }) {
+export default function IndexPage({ name: asked }: { name: string }) {
   const router = useRouter();
   const [data, setData] = useState<IndicesFile | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +51,11 @@ export default function IndexPage({ name }: { name: string }) {
       .catch((e) => setError(String(e.message ?? e)));
   }, []);
 
+  // 網址可能是完整名稱（半導體類指數）或顯示名稱（半導體類、加權指數），兩種都對得到
+  const name = useMemo(() => {
+    if (!data || data.series[asked]) return asked;
+    return Object.keys(data.series).find((k) => label(k) === asked) ?? asked;
+  }, [data, asked]);
   const s = data?.series[name];
   const names = useMemo(() => {
     if (!data) return [];
@@ -96,7 +101,7 @@ export default function IndexPage({ name }: { name: string }) {
     return () => chart.remove();
   }, [s, range]);
 
-  const p = useMemo(() => (snap ? pool(name, snap.rows) : null), [snap, name]);
+  const p = useMemo(() => (snap && data ? pool(name, snap.rows) : null), [snap, data, name]);
   const breadth = useMemo(() => {
     if (!p) return null;
     let up = 0, down = 0, flat = 0, value = 0;
@@ -137,7 +142,7 @@ export default function IndexPage({ name }: { name: string }) {
       </div>
 
       {error && <p className="mt-4 rounded-lg border border-line bg-surface p-4 text-sm text-up">指數資料載入失敗：{error}</p>}
-      {data && !s && <p className="mt-4 rounded-lg border border-line bg-surface p-4 text-sm text-ink">找不到「{name}」的歷史資料。</p>}
+      {data && !s && <p className="mt-4 rounded-lg border border-line bg-surface p-4 text-sm text-ink">找不到「{asked}」的歷史資料。</p>}
 
       {stats && (
         <dl className="num mt-4 grid grid-cols-2 gap-x-6 gap-y-2 rounded-lg border border-line bg-surface p-4 text-sm sm:grid-cols-5">
@@ -169,7 +174,7 @@ export default function IndexPage({ name }: { name: string }) {
           <h2 className="text-base font-bold text-ink">相關股票</h2>
           <DataStatus snap={snap} error={snapErr} />
         </div>
-        {snap && !p ? (
+        {snap && data && !p ? (
           <p className="rounded-lg border border-line bg-surface p-4 text-sm text-muted">這個指數沒有對應的產業股票清單。</p>
         ) : (
           <>
