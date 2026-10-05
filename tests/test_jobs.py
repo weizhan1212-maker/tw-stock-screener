@@ -129,3 +129,20 @@ def test_fin_refresh_drops_up_to_date(fake, tmp_path):
     s.put_state("fin_queue", {"codes": ["1101", "2330"]})
     jobs.run_fin_refresh(s, fake)
     assert {p.get("data_id") for _, p in fake.calls} == {"2330"}
+
+
+def test_fin_refresh_skips_recently_tried(fake, tmp_path):
+    s = make_store(tmp_path)
+    s.put_state("finmind_backfill", {"_complete": True})
+    # 9999 已公布 2026Q2，但 FinMind 沒資料
+    s.upsert_table("income_periods", pd.DataFrame({"code": ["9999"], "year": [2026], "quarter": [2]}))
+    s.put_state("fin_queue", {"codes": ["9999"]})
+    orig = fake.get_json
+    fake.get_json = lambda url, params=None, delay=None: (
+        {"status": 200, "data": []} if "finmind" in url else orig(url, params, delay))
+    jobs.run_fin_refresh(s, fake)
+    assert s.get_state("fin_tried")["9999"]["p"] == "2026Q2"
+    s.put_state("fin_queue", {"codes": ["9999"]})
+    fake.calls.clear()
+    jobs.run_fin_refresh(s, fake)
+    assert not fake.calls

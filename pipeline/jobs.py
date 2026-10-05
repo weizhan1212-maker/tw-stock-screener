@@ -437,9 +437,25 @@ def _still_needed(store: DataStore, codes) -> list:
     per = store.read_table("income_periods")
     if per.empty:
         return list(codes)
-    published = per.groupby("code").apply(lambda g: max(zip(g["year"], g["quarter"]))).to_dict()
+    published = _published(per)
     have = _latest_quarters(store)
-    return [c for c in codes if have.get(c, (0, 0)) < published.get(c, (0, 0))]
+    tried = store.get_state("fin_tried", {})
+    today = util.today_tw()
+
+    def recently_tried(c):
+        t = tried.get(c)
+        if not t or t.get("p") != _pkey(published.get(c, (0, 0))):
+            return False
+        return (today - dt.date.fromisoformat(t["at"])).days < 7
+    return [c for c in codes if have.get(c, (0, 0)) < published.get(c, (0, 0)) and not recently_tried(c)]
+
+
+def _published(per: pd.DataFrame) -> dict:
+    return per.groupby("code").apply(lambda g: max(zip(g["year"], g["quarter"])), include_groups=False).to_dict()
+
+
+def _pkey(yq) -> str:
+    return f"{yq[0]}Q{yq[1]}"
 
 def run_fin_refresh(store: DataStore, fetcher: Fetcher, budget_min: float = 40) -> int:
     t0 = time.monotonic()
@@ -468,6 +484,17 @@ def run_fin_refresh(store: DataStore, fetcher: Fetcher, budget_min: float = 40) 
     for k, parts in buf.items():
         if parts:
             store.upsert_table(k, pd.concat(parts, ignore_index=True))
+    # 記錄這次抓過但 FinMind 還沒有新一季的公司，7 天內不再重抓（避免每天浪費額度）
+    per = store.read_table("income_periods")
+    if done_codes and not per.empty:
+        published, have = _published(per), _latest_quarters(store)
+        tried = store.get_state("fin_tried", {})
+        for c in done_codes:
+            if have.get(c, (0, 0)) < published.get(c, (0, 0)):
+                tried[c] = {"p": _pkey(published[c]), "at": util.today_tw().isoformat()}
+            else:
+                tried.pop(c, None)
+        store.put_state("fin_tried", tried)
     q["codes"] = [c for c in queue if c not in set(done_codes)]
     store.put_state("fin_queue", q)
     summary(f"## 季報補抓\n\n完成 {len(done_codes)} 檔，佇列剩 {len(q['codes'])} 檔")

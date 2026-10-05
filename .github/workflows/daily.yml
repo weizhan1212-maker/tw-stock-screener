@@ -41,7 +41,7 @@ jobs:
           FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
         run: |
           set -o pipefail
-          python -m pipeline fin-refresh --budget-min 40 2>&1 | tee -a run.log
+          python -m pipeline fin-refresh --budget-min 20 2>&1 | tee -a run.log
       - name: 篩選快照
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
