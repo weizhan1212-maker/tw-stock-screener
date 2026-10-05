@@ -1,0 +1,76 @@
+@import "tailwindcss";
+
+/* 顏色：淺色＝紙感冷白、深色＝深海軍藍；台股紅漲綠跌 */
+:root {
+  --paper: #f5f6f8;
+  --surface: #ffffff;
+  --surface-2: #eef1f5;
+  --ink: #18202e;
+  --muted: #5e6878;
+  --line: #dfe3ea;
+  --accent: #2b4c9b;
+  --accent-soft: #e4eaf7;
+  --up: #d3263a;
+  --down: #0f9d6b;
+  --warn-bg: #fff4d6;
+  --warn-ink: #7a5600;
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --paper: #0e131b;
+  --surface: #151b25;
+  --surface-2: #1b2330;
+  --ink: #e4e8ef;
+  --muted: #8c96a8;
+  --line: #263043;
+  --accent: #7c9bf0;
+  --accent-soft: #1d2840;
+  --up: #f0505f;
+  --down: #2fbf88;
+  --warn-bg: #3a2f10;
+  --warn-ink: #f1d27a;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-up: var(--up);
+  --color-down: var(--down);
+  --color-warn-bg: var(--warn-bg);
+  --color-warn-ink: var(--warn-ink);
+  --font-sans: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+}
+
+html {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+body {
+  font-family: var(--font-sans);
+  font-feature-settings: "tnum" 1;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

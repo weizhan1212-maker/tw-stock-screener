@@ -3,7 +3,7 @@ name: 測試
 on:
   push:
     branches: [main]
-    paths: ["pipeline/**", "tests/**", "requirements.txt"]
+    paths: ["pipeline/**", "tests/**", "requirements.txt", "web/**", ".github/workflows/ci.yml"]
   pull_request:
 
 jobs:
@@ -18,3 +18,20 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt pytest
       - run: python -m pytest -q tests
+
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
