@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
+import UserMenu from "@/components/UserMenu";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -35,7 +36,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 自訂篩選
               </Link>
             </nav>
-            <div className="ml-auto">
+            <div className="ml-auto flex items-center gap-3">
+              <UserMenu />
               <ThemeToggle />
             </div>
           </div>

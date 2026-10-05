@@ -1,24 +1,30 @@
 /**
- * 臨時密碼鎖（Google 登入做好之前使用）：
- * Vercel 環境變數設定 SITE_PASSWORD 後，整個網站與 API 都要輸入帳號 friend／密碼才能看。
- * 沒設定 SITE_PASSWORD 就不檢查（本機開發用）。
+ * 存取控制：
+ * - 沒登入 → 登入頁（API 回 401）
+ * - 已登入但還沒核准 → 等待核准頁（API 回 403）
  */
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 
-export function proxy(request: NextRequest) {
-  const password = process.env.SITE_PASSWORD;
-  if (!password) return NextResponse.next();
-  const auth = request.headers.get("authorization") ?? "";
-  const [scheme, encoded] = auth.split(" ");
-  if (scheme === "Basic" && encoded) {
-    const [, pass] = atob(encoded).split(":");
-    if (pass === password) return NextResponse.next();
+const PUBLIC = ["/login", "/api/auth"];
+
+export const proxy = auth((req) => {
+  const path = req.nextUrl.pathname;
+  if (PUBLIC.some((p) => path.startsWith(p))) return NextResponse.next();
+  const user = req.auth?.user as { status?: string } | undefined;
+  const isApi = path.startsWith("/api/");
+  if (!user) {
+    return isApi
+      ? NextResponse.json({ error: "請先登入" }, { status: 401 })
+      : NextResponse.redirect(new URL("/login", req.nextUrl));
   }
-  return new NextResponse("需要密碼", {
-    status: 401,
-    headers: { "WWW-Authenticate": 'Basic realm="tw-stock-screener", charset="UTF-8"' },
-  });
-}
+  if (user.status !== "approved" && !path.startsWith("/pending")) {
+    return isApi
+      ? NextResponse.json({ error: "帳號尚未核准" }, { status: 403 })
+      : NextResponse.redirect(new URL("/pending", req.nextUrl));
+  }
+  return NextResponse.next();
+});
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
