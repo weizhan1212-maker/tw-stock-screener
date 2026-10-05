@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import DataStatus from "@/components/DataStatus";
 import Results, { type Sort } from "@/components/Results";
@@ -79,7 +80,7 @@ function DcaRank() {
                 <li key={x.code} className="flex items-center gap-3 border-t border-line px-3 py-2 first:border-t-0">
                   <span className="num w-5 text-right text-muted">{i + 1}</span>
                   <span className="num w-14 text-muted">{x.code}</span>
-                  <span className="min-w-0 flex-1 truncate text-ink">{x.name}</span>
+                  <Link href={`/stock/${x.code}`} className="min-w-0 flex-1 truncate text-ink hover:text-accent hover:underline">{x.name}</Link>
                   <span className="num text-ink">{x.accounts.toLocaleString()} 戶</span>
                 </li>
               ))}

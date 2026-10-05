@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { type ReactNode, useMemo, useState } from "react";
 import { FIELD_MAP, UNIT } from "@/lib/fields";
 import { fmt, fmtUnit, isSigned, type Row, tone } from "@/lib/screener";
@@ -93,8 +94,10 @@ export default function Results({
             {sorted.slice(0, limit).map((r) => (
               <tr key={r.code as string} className="border-t border-line hover:bg-surface-2">
                 <td className="whitespace-nowrap px-3 py-2">
-                  <span className="num mr-2 text-muted">{r.code}</span>
-                  <span className="text-ink">{r.name}</span>
+                  <Link href={`/stock/${r.code}`} className="group">
+                    <span className="num mr-2 text-muted">{r.code}</span>
+                    <span className="text-ink group-hover:text-accent group-hover:underline">{r.name}</span>
+                  </Link>
                   {r.market === "TPEX" && <span className="ml-1.5 text-xs text-muted">櫃</span>}
                   {r.stale === 1 && <span className="ml-1.5 text-xs text-warn-ink">未交易</span>}
                 </td>
@@ -109,11 +112,11 @@ export default function Results({
         {sorted.slice(0, limit).map((r) => (
           <li key={r.code as string} className="rounded-lg border border-line bg-surface p-3">
             <div className="flex items-baseline justify-between gap-2">
-              <div className="min-w-0">
+              <Link href={`/stock/${r.code}`} className="min-w-0">
                 <span className="num mr-2 text-sm text-muted">{r.code}</span>
-                <span className="font-medium text-ink">{r.name}</span>
+                <span className="font-medium text-ink underline-offset-2 hover:underline">{r.name}</span>
                 {r.market === "TPEX" && <span className="ml-1.5 text-xs text-muted">櫃</span>}
-              </div>
+              </Link>
               <div className="num text-right">
                 <span className="text-ink">{fmt(r.close, "price")}</span>
                 <span className={`ml-2 text-sm ${toneClass(r.chg_pct)}`}>{fmt(r.chg_pct, "pct", true)}%</span>

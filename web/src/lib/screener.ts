@@ -92,7 +92,7 @@ const N0 = nf(0), N1 = nf(1), N2 = nf(2);
 
 /** 會有正負號的欄位（漲跌、成長率、買賣超等）才顯示「+」 */
 export function isSigned(key: string): boolean {
-  return /^(chg_pct|ret\d+|dist_|eps_q_yoy|rev_yoy|rev_mom|.*_net\d*$|margin_chg5|macd_hist|(foreign|trust|dealer|total)_value$)/.test(key);
+  return /^(chg_pct|ret\d+|dist_|eps_q_yoy|rev_yoy|rev_mom|.*_net\d*$|margin_chg5|macd_hist|big_pct_chg|(foreign|trust|dealer|total)_value$)/.test(key);
 }
 
 export function fmt(v: unknown, format: Format, signed = false): string {

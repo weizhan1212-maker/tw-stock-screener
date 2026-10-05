@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import StockSearch from "@/components/StockSearch";
 import ThemeToggle from "@/components/ThemeToggle";
 import UserMenu from "@/components/UserMenu";
 import "./globals.css";
@@ -46,6 +47,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               </Link>
             </nav>
             <div className="ml-auto flex items-center gap-3">
+              <StockSearch />
               <UserMenu />
               <ThemeToggle />
             </div>

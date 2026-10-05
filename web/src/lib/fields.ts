@@ -73,6 +73,8 @@ export const FIELDS: Field[] = [
   { key: "sbl_balance_lots", label: "借券賣出餘額", group: "籌碼面", format: "lots", help: "借券賣出還沒還回去的張數。" },
   { key: "block_value", label: "鉅額交易金額", group: "籌碼面", format: "yi", help: "今天鉅額交易（大宗交易）的成交金額（億元）。" },
   { key: "foreign_ratio", label: "外資持股比", group: "籌碼面", format: "pct", help: "外資持有的股數占發行股數的比例。" },
+  { key: "big_pct", label: "千張大戶持股比", group: "籌碼面", format: "pct", help: "持有 1,000 張以上的股東合計持股比例（集保資料，每週五更新）。比例上升代表籌碼往大戶集中。" },
+  { key: "big_pct_chg", label: "千張大戶週增減", group: "籌碼面", format: "pct", help: "千張大戶持股比例跟上一週相比增減幾個百分點。" },
   { key: "margin_balance", label: "融資餘額", group: "籌碼面", format: "lots", help: "散戶借錢買股票、還沒還的張數。增加太快代表散戶追高。" },
   { key: "margin_chg5", label: "融資 5 日增減", group: "籌碼面", format: "lots", help: "融資餘額跟 5 個交易日前相比增減的張數。" },
   { key: "short_balance", label: "融券餘額", group: "籌碼面", format: "lots", help: "借券賣出、還沒買回的張數。" },
@@ -103,6 +105,7 @@ export const FIELDS: Field[] = [
   { key: "fcf_ttm", label: "近四季自由現金流", group: "基本面", format: "yi", help: "營業現金流 − 資本支出（億元）。正數代表真的有賺到現金。" },
   { key: "eps_min5y", label: "近 5 年最低年 EPS", group: "基本面", format: "price", help: "近 5 個完整年度中，年 EPS 最低的那一年。大於 0 代表 5 年都賺錢。" },
   { key: "gm_stability", label: "毛利率穩定度", group: "基本面", format: "pct", help: "近 5 年毛利率最低值 ÷ 最高值。越接近 100% 越穩定。" },
+  { key: "health_score", label: "財務健康度", group: "基本面", format: "num", help: "盈利能力、流動性、財務結構、營運效率、成長性五項的平均分數（0–100），用全市場百分位計算。85 分以上為 A+。" },
   { key: "div_years", label: "連續配息年數", group: "基本面", format: "years", help: "連續幾年都有發現金股利。" },
   { key: "cash_div_last", label: "最近一年現金股利", group: "基本面", format: "price", help: "最近一個年度合計發多少現金股利（元）。" },
 ];

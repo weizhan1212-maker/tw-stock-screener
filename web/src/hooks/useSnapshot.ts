@@ -32,3 +32,13 @@ export function useSnapshot() {
   }, []);
   return { snap, error };
 }
+
+/** 需要時才下載（例如頁首搜尋框聚焦時）。 */
+export function useSnapshotLazy() {
+  const [snap, setSnap] = useState<Snapshot | null>(null);
+  const start = () => {
+    if (snap) return;
+    load().then(setSnap).catch(() => {});
+  };
+  return { snap, start };
+}
