@@ -343,11 +343,15 @@ def build_snapshot(store: DataStore, asof=None, lookback_days: int = 420) -> tup
             base["roa"] = base["_ni_ttm"] / base["_assets"] * 100
         if "eps_ttm" in base:
             base["pe_calc"] = (base["close"] / base["eps_ttm"]).where(base["eps_ttm"] > 0)
+        if "_rev_q_ttm" in base and "_assets" in base:
+            base["asset_turnover"] = (base["_rev_q_ttm"] / base["_assets"]).where(base["_assets"] > 0)
     base = base.join(stock_extras(store, asof, base))
+    base = base.join(holder_stats(store, asof))
     sf = strategy_factors(store)
     if not sf.empty:
         base = base.join(sf)
     base = finish(base)
+    base = health_scores(base)
     base["sec_type"] = base.get("sec_type", pd.Series(index=base.index, dtype=object)).fillna(
         base.index.to_series().map(util.security_type))
     base = base.drop(columns=[c for c in base.columns if c.startswith("_")] + ["shares_issued"], errors="ignore")
@@ -356,6 +360,63 @@ def build_snapshot(store: DataStore, asof=None, lookback_days: int = 420) -> tup
             "count": int(len(base)), "fin_complete": bool(store.get_state("finmind_backfill", {}).get("_complete")),
             **market_state(store, asof)}
     return base, meta
+
+
+def holder_stats(store: DataStore, asof: pd.Timestamp) -> pd.DataFrame:
+    """集保大戶：最新一週千張大戶持股比例、與上週相比的變化（百分點）。"""
+    h = store.read_daily("holders", asof - pd.Timedelta(days=40), asof)
+    if h.empty:
+        return pd.DataFrame()
+    h = h.sort_values(["code", "date"])
+    g = h.groupby("code")
+    last = g.tail(1).set_index("code")
+    prev = g.nth(-2).set_index("code") if len(h) > len(last) else pd.DataFrame()
+    out = pd.DataFrame({"big_pct": last["pct_1000"], "big400_pct": last["pct_400"], "holders": last["holders"]})
+    if not prev.empty:
+        out["big_pct_chg"] = last["pct_1000"] - prev["pct_1000"].reindex(last.index)
+        out["holders_chg"] = last["holders"] - prev["holders"].reindex(last.index)
+    return out
+
+
+def health_scores(base: pd.DataFrame) -> pd.DataFrame:
+    """
+    財務健康評級（只算普通股）：五個面向各 0–100 分，用全市場百分位計算，再取平均。
+      盈利能力：ROE、ROA、毛利率、營業利益率
+      流動性：流動比率、近四季自由現金流是否 > 0
+      財務結構：負債比（越低越好）
+      營運效率：資產周轉率、F-Score
+      成長性：近 12 月營收年增、單季 EPS 年增、EPS 3 年年化成長
+    金融股的流動比率、負債比、周轉率不適用，只算盈利能力與成長性。
+    """
+    stock = base.get("sec_type", pd.Series(index=base.index)).fillna(
+        base.index.to_series().map(util.security_type)) == "stock"
+    fin = base.get("is_financial", pd.Series(0, index=base.index)) == 1
+
+    def pct(col, higher=True, mask=None):
+        if col not in base:
+            return pd.Series(np.nan, index=base.index)
+        m = stock & base[col].notna() & np.isfinite(base[col])
+        if mask is not None:
+            m &= mask
+        r = base.loc[m, col].rank(pct=True, ascending=higher) * 100
+        return r.reindex(base.index)
+
+    def avg(parts, min_n):
+        df = pd.concat(parts, axis=1)
+        return df.mean(axis=1).where(df.notna().sum(axis=1) >= min_n)
+
+    nonfin = ~fin
+    fcf_pos = (base["fcf_ttm"] > 0).astype(float).where(base.get("fcf_ttm").notna()) * 100 \
+        if "fcf_ttm" in base else pd.Series(np.nan, index=base.index)
+    base["hs_profit"] = avg([pct("roe"), pct("roa"), pct("gross_margin", mask=nonfin), pct("op_margin", mask=nonfin)], 2)
+    base["hs_liquid"] = avg([pct("current_ratio", mask=nonfin), fcf_pos.where(nonfin & stock)], 1)
+    base["hs_struct"] = avg([pct("debt_ratio", higher=False, mask=nonfin)], 1)
+    base["hs_eff"] = avg([pct("asset_turnover", mask=nonfin), pct("f_score", mask=nonfin)], 1)
+    base["hs_growth"] = avg([pct("rev_ttm_yoy"), pct("eps_q_yoy"), pct("eps_cagr3")], 2)
+    parts = base[["hs_profit", "hs_liquid", "hs_struct", "hs_eff", "hs_growth"]]
+    need = np.where(fin, 2, 4)
+    base["health_score"] = parts.mean(axis=1).where(parts.notna().sum(axis=1) >= need).where(stock)
+    return base
 
 
 def stock_extras(store: DataStore, asof: pd.Timestamp, base: pd.DataFrame) -> pd.DataFrame:

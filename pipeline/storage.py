@@ -18,6 +18,9 @@ class LocalStorage:
     def __init__(self, root: str):
         self.root = root
 
+    def clone(self):
+        return LocalStorage(self.root)
+
     def _p(self, path):
         return os.path.join(self.root, path)
 
@@ -50,7 +53,12 @@ class LocalStorage:
 
 
 class SupabaseStorage:
+    def clone(self):
+        """多執行緒上傳時，每個執行緒各用一份（requests.Session 不保證跨執行緒安全）。"""
+        return SupabaseStorage(self._url, self._key, self.bucket)
+
     def __init__(self, url: str, key: str, bucket: str = "market-data"):
+        self._url, self._key = url, key
         # 只取 https://xxxx.supabase.co，容許使用者貼成 .../rest/v1/ 等帶路徑的網址
         u = urlparse(url.strip() if "://" in url else "https://" + url.strip())
         self.base = f"{u.scheme}://{u.netloc}/storage/v1"

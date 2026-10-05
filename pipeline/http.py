@@ -34,6 +34,29 @@ class Fetcher:
                 time.sleep(delay - gap)
         self._last[host] = time.monotonic()
 
+    def get_text(self, url: str, params: dict | None = None, delay: float | None = None) -> str:
+        """回傳文字（CSV 等）；先試 UTF-8，再試 Big5（cp950）。"""
+        host = urlparse(url).netloc
+        err = None
+        for attempt in range(self.retries + 1):
+            self._wait(host, self.delay if delay is None else delay)
+            try:
+                r = self.session.get(url, params=params, timeout=self.timeout)
+                self.count += 1
+                if r.status_code != 200:
+                    raise FetchError(f"HTTP {r.status_code}")
+                for enc in ("utf-8-sig", "cp950"):
+                    try:
+                        return r.content.decode(enc)
+                    except UnicodeDecodeError:
+                        continue
+                return r.content.decode("utf-8", errors="replace")
+            except (requests.RequestException, FetchError) as e:
+                err = e
+                if attempt < self.retries:
+                    time.sleep(self.backoff[min(attempt, len(self.backoff) - 1)])
+        raise FetchError(f"{url}: {err}")
+
     def get_json(self, url: str, params: dict | None = None, delay: float | None = None):
         """回傳解析後的 JSON；重試用完仍失敗則丟 FetchError。"""
         host = urlparse(url).netloc

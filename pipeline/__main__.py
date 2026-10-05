@@ -33,6 +33,8 @@ def main(argv=None):
     sub.add_parser("report")
     sub.add_parser("snapshot")
     sub.add_parser("market")
+    sk = sub.add_parser("stocks")
+    sk.add_argument("--codes", help="只產生這些代號（逗號分隔），測試用")
     sub.add_parser("backfill-extras").add_argument("--days", type=int, default=70)
     r = sub.add_parser("fin-refresh")
     r.add_argument("--budget-min", type=float, default=40)
@@ -62,6 +64,10 @@ def main(argv=None):
         df, meta = build_snapshot(store)
         write_snapshot(store, df, meta)
         jobs.summary(f"## 篩選快照\n\n資料日 {meta['asof']}，{meta['count']} 檔，{len(df.columns)} 欄")
+    elif a.cmd == "stocks":
+        from .stocks import build_all
+        res = build_all(store, codes=a.codes.split(",") if a.codes else None)
+        jobs.summary(f"## 個股檔\n\n{res['count']} 檔，平均 {res['avg_kb']} KB，合計 {res['total_mb']} MB，失敗 {res['n_failed']} 檔")
     elif a.cmd == "market":
         from .market import build_market, write_market
         data = build_market(store)

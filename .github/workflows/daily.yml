@@ -50,6 +50,7 @@ jobs:
           set -o pipefail
           python -m pipeline snapshot 2>&1 | tee -a run.log
           python -m pipeline market 2>&1 | tee -a run.log
+          python -m pipeline stocks 2>&1 | tee -a run.log
       - name: 資料檢查報告
         if: always()
         env:

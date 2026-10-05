@@ -33,6 +33,15 @@ class FakeFetcher:
         self.count = 0
         self.calls = []
 
+    def get_text(self, url, params=None, delay=None):
+        self.count += 1
+        self.calls.append((url, dict(params or {})))
+        if "tdcc" in url:
+            return ("資料日期,證券代號,持股分級,人數,股數,占集保庫存數比例%\n"
+                    "20261002,2330,1,500000,1,1.50\n20261002,2330,12,100,1,0.50\n"
+                    "20261002,2330,15,1500,1,80.00\n20261002,2330,17,900000,1,100.00\n")
+        raise AssertionError(f"未預期的網址 {url}")
+
     def get_json(self, url, params=None, delay=None):
         self.count += 1
         params = params or {}
