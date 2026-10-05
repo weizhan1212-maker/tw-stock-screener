@@ -79,6 +79,9 @@ export default function KChart({ s }: { s: StockFile }) {
       rightPriceScale: { borderVisible: false },
       timeScale: { borderVisible: false, rightOffset: 3 },
       crosshair: { mode: 0 },
+      // 滾輪留給整頁捲動；拖曳可平移、雙指可縮放；手機上下滑動照常捲頁
+      handleScroll: { mouseWheel: false, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
+      handleScale: { mouseWheel: false, pinch: true, axisPressedMouseMove: true, axisDoubleClickReset: true },
       localization: { locale: "zh-TW", dateFormat: "yyyy/MM/dd" },
     });
     chartRef.current = chart;
@@ -163,7 +166,9 @@ export default function KChart({ s }: { s: StockFile }) {
         </div>
       )}
       <div ref={box} className="h-[420px] w-full sm:h-[520px]" aria-label="K 線圖" role="img" />
-      {adjusted && <p className="mt-1 text-xs text-muted">還原價：把除權息、減資的影響補回，適合看長期漲跌；最新一天與原始價相同。</p>}
+      <p className="mt-1 text-xs text-muted">
+        拖曳圖表可左右移動，拖曳右側價格軸可縮放。{adjusted && "還原價：把除權息、減資的影響補回，適合看長期漲跌；最新一天與原始價相同。"}
+      </p>
     </div>
   );
 }
