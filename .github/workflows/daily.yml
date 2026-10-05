@@ -42,6 +42,13 @@ jobs:
         run: |
           set -o pipefail
           python -m pipeline fin-refresh --budget-min 40 2>&1 | tee -a run.log
+      - name: 篩選快照
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          set -o pipefail
+          python -m pipeline snapshot 2>&1 | tee -a run.log
       - name: 資料檢查報告
         if: always()
         env:

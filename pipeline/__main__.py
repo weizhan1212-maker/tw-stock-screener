@@ -31,6 +31,7 @@ def main(argv=None):
     f.add_argument("--max-codes", type=int)
     f.add_argument("--chain", action="store_true")
     sub.add_parser("report")
+    sub.add_parser("snapshot")
     r = sub.add_parser("fin-refresh")
     r.add_argument("--budget-min", type=float, default=40)
     a = p.parse_args(argv)
@@ -54,6 +55,11 @@ def main(argv=None):
     elif a.cmd == "report":
         from .report import run_report
         run_report(store)
+    elif a.cmd == "snapshot":
+        from .snapshot import build_snapshot, write_snapshot
+        df, meta = build_snapshot(store)
+        write_snapshot(store, df, meta)
+        jobs.summary(f"## 篩選快照\n\n資料日 {meta['asof']}，{meta['count']} 檔，{len(df.columns)} 欄")
     elif a.cmd == "fin-refresh":
         jobs.run_fin_refresh(store, fetcher, budget_min=a.budget_min)
 
