@@ -18,13 +18,14 @@ export async function GET(req: Request) {
     const res = await fetch(url, { next: { revalidate: 900 }, headers: { "User-Agent": "Mozilla/5.0 tw-stock-screener" } });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const xml = await res.text();
-    const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)].slice(0, 20).map((m) => {
+    const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)].map((m) => {
       const it = m[1];
       const source = tag(it, "source");
       let title = tag(it, "title");
       if (source && title.endsWith(` - ${source}`)) title = title.slice(0, -(source.length + 3));
-      return { title, source, link: tag(it, "link"), time: new Date(tag(it, "pubDate")).toISOString() };
-    });
+      const t = new Date(tag(it, "pubDate"));
+      return { title, source, link: tag(it, "link"), time: Number.isNaN(t.getTime()) ? "" : t.toISOString() };
+    }).filter((x) => x.time).sort((a, b) => b.time.localeCompare(a.time)).slice(0, 20);  // 新的在前
     return Response.json({ q, items }, { headers: { "Cache-Control": "private, max-age=600" } });
   } catch (e) {
     return Response.json({ q, items: [], error: String((e as Error).message) }, { status: 502 });
