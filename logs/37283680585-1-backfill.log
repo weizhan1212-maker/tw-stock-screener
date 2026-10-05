@@ -1,0 +1,63 @@
+2026-10-05 08:29:36,074 INFO FinMind 待回補 215 檔（共 1997 檔），每小時上限 600 次
+2026-10-05 08:57:46,998 WARNING Supabase GET https://cmqrrravcrdirhdmtdsm.supabase.co/storage/v1/object/market-data/master/income.parquet 失敗：HTTPSConnectionPool(host='cmqrrravcrdirhdmtdsm.supabase.co', port=443): Read timed out. (read timeout=120)，重試
+2026-10-05 08:58:00,766 INFO FinMind 已處理 50 / 215 檔，耗時 28.4 分
+2026-10-05 09:26:09,736 WARNING Supabase GET https://cmqrrravcrdirhdmtdsm.supabase.co/storage/v1/object/market-data/master/income.parquet 失敗：HTTPSConnectionPool(host='cmqrrravcrdirhdmtdsm.supabase.co', port=443): Read timed out. (read timeout=120)，重試
+2026-10-05 09:26:29,316 INFO FinMind 已處理 100 / 215 檔，耗時 56.9 分
+2026-10-05 09:54:38,935 WARNING Supabase GET https://cmqrrravcrdirhdmtdsm.supabase.co/storage/v1/object/market-data/master/income.parquet 失敗：HTTPSConnectionPool(host='cmqrrravcrdirhdmtdsm.supabase.co', port=443): Read timed out. (read timeout=120)，重試
+2026-10-05 09:54:57,525 INFO FinMind 已處理 150 / 215 檔，耗時 85.4 分
+2026-10-05 10:21:21,313 INFO FinMind 已處理 200 / 215 檔，耗時 111.8 分
+2026-10-05 10:29:21,957 INFO ## FinMind 回補
+
+本次處理 215 檔，剩餘 0 檔，請求 1075 次，耗時 119.8 分鐘
+2026-10-05 10:31:52,592 INFO ## 資料檢查報告
+
+### 日資料
+
+| 資料集 | 月份數 | 總筆數 | 日期範圍 | 近 20 日每日檔數（最少/中位/最多） | 缺值比例 |
+|---|---|---|---|---|---|
+| prices | 50 | 2,077,075 | 2022-09-28 ~ 2026-10-02 | 2328/2331/2336 | close=0.9%, volume=0.0% |
+| insti | 50 | 1,942,847 | 2022-09-28 ~ 2026-10-02 | 2188/2210/2231 | foreign=0.0%, trust=0.0%, dealer=0.0% |
+| margin | 50 | 1,932,940 | 2022-09-28 ~ 2026-10-02 | 2211/2213/2213 | margin_balance=0.0%, short_balance=0.0% |
+| valuation | 50 | 1,804,382 | 2022-09-28 ~ 2026-10-02 | 1965/1968/1973 | pe=23.5%, pb=0.0%, dividend_yield=0.0% |
+| qfii | 50 | 1,173,388 | 2022-09-28 ~ 2026-10-02 | 1328/1328/2221 | foreign_ratio=0.0% |
+| exright | 50 | 9,284 | 2022-09-01 ~ 2026-10-05 | 1/7/54 | prev_close=0.0%, ref_price=0.0% |
+| index | 50 | 972 | 2022-09-28 ~ 2026-10-02 | 1/1/1 | taiex=0.0%, taiex_tr=0.0% |
+| indices | 5 | 4,007 | 2026-06-01 ~ 2026-10-05 | 1/57/57 |  |
+| margin_total | 5 | 70 | 2026-06-24 ~ 2026-10-02 | 1/1/1 |  |
+| market_insti | 5 | 71 | 2026-06-24 ~ 2026-10-05 | 1/1/1 |  |
+| daytrade | 5 | 85,217 | 2026-06-24 ~ 2026-10-02 | 1225/1230/1233 |  |
+| daytrade_total | 5 | 72 | 2026-06-24 ~ 2026-10-02 | 1/1/2 |  |
+| sbl | 5 | 91,247 | 2026-06-24 ~ 2026-10-02 | 1296/1296/2228 |  |
+| block | 5 | 1,277 | 2026-06-24 ~ 2026-10-02 | 11/20/30 |  |
+| futures | 1 | 2 | 2026-10-02 ~ 2026-10-02 | 2/2/2 |  |
+
+### 其他表
+
+| 表 | 筆數 | 檔數 |
+|---|---|---|
+| income | 874,263 | 1898 |
+| balance | 2,302,709 | 1908 |
+| cashflow | 1,338,713 | 1900 |
+| revenue | 171,349 | 1891 |
+| revenue_latest | 1,977 | 1977 |
+| dividend | 12,268 | 1724 |
+| securities | 2,419 | 2419 |
+| company | 1,981 | 1981 |
+| delisting | 706 | 706 |
+| income_periods | 1,933 | 1933 |
+
+### 回補進度
+
+- 日資料：完成 972 個交易日、休市 76 天、未完成 1 天、有缺漏端點 0 天
+- FinMind：完成 1997 檔（全部完成：True）
+- 季報補抓佇列：1933 檔
+- 未完成範例：2026-10-05: {'twse_quotes': 'pending'}
+
+### 抽樣：台積電最近 3 天
+
+```
+      date code market name   open   high    low  close     volume        value  trades  shares_issued  ref_next
+2026-09-30 2330   TWSE  台積電 2495.0 2510.0 2480.0 2480.0 34282491.0 8.538853e+10 83797.0            NaN       NaN
+2026-10-01 2330   TWSE  台積電 2490.0 2510.0 2485.0 2510.0 20666092.0 5.170245e+10 57634.0            NaN       NaN
+2026-10-02 2330   TWSE  台積電 2505.0 2515.0 2495.0 2500.0 15792206.0 3.950816e+10 65783.0            NaN       NaN
+```
