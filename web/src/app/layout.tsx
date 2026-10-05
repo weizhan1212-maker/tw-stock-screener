@@ -27,16 +27,22 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="min-h-dvh flex flex-col antialiased">
         <header className="border-b border-line bg-surface">
-          <div className="mx-auto flex max-w-[1440px] items-center gap-4 px-4 py-3">
-            <Link href="/" className="text-[17px] font-bold tracking-wide text-ink">
+          <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+            <Link href="/" className="whitespace-nowrap text-[17px] font-bold tracking-wide text-ink">
               台股選股
             </Link>
-            <nav className="flex gap-1 text-sm">
+            <nav className="order-last -mx-2.5 flex w-full gap-1 overflow-x-auto whitespace-nowrap text-sm sm:order-none sm:mx-0 sm:w-auto">
               <Link href="/" className="rounded-md px-2.5 py-1 text-ink hover:bg-surface-2">
                 策略選股
               </Link>
               <Link href="/screener" className="rounded-md px-2.5 py-1 text-ink hover:bg-surface-2">
                 自訂篩選
+              </Link>
+              <Link href="/market" className="rounded-md px-2.5 py-1 text-ink hover:bg-surface-2">
+                市場總覽
+              </Link>
+              <Link href="/ranking" className="rounded-md px-2.5 py-1 text-ink hover:bg-surface-2">
+                排行榜
               </Link>
             </nav>
             <div className="ml-auto flex items-center gap-3">

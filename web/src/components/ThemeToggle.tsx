@@ -24,7 +24,7 @@ export default function ThemeToggle() {
     <button
       type="button"
       onClick={toggle}
-      className="rounded-md border border-line px-2.5 py-1 text-sm text-muted hover:text-ink"
+      className="whitespace-nowrap rounded-md border border-line px-2.5 py-1 text-sm text-muted hover:text-ink"
       aria-label={theme === "dark" ? "切換成淺色" : "切換成深色"}
     >
       {theme === "dark" ? "淺色" : theme === "light" ? "深色" : "\u3000\u3000"}
