@@ -1,12 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import NewsList from "@/components/NewsList";
 import Sparkline from "@/components/Sparkline";
 import { Seg } from "@/components/Screener";
 import { fmt } from "@/lib/screener";
 
-type Card = { label: string; date: string; close: number | null; chg: number | null; chg_pct: number | null; spark: (number | null)[] };
+type Card = { label: string; name?: string; date: string; close: number | null; chg: number | null; chg_pct: number | null; spark: (number | null)[] };
 interface Market {
   asof: string;
   indices: Card[];
@@ -79,7 +80,9 @@ export default function MarketOverview() {
       {/* 指數全覽 */}
       <ul className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         {m.indices.map((c) => (
-          <li key={c.label} className="rounded-lg border border-line bg-surface p-3">
+          <li key={c.label}>
+            <Link href={`/market/index/${encodeURIComponent(c.name ?? c.label)}`}
+              className="block h-full rounded-lg border border-line bg-surface p-3 transition-colors hover:border-accent">
             <div className="flex items-baseline justify-between gap-2">
               <span className="truncate text-sm text-ink">{c.label}</span>
               {c.date !== m.asof && <span className="num shrink-0 text-[11px] text-muted">{c.date.slice(5).replace("-", "/")}</span>}
@@ -87,6 +90,7 @@ export default function MarketOverview() {
             <div className={`num mt-1 text-lg font-bold ${toneCls(c.chg)}`}>{fmt(c.close, "price")}</div>
             <div className={`num text-xs ${toneCls(c.chg)}`}>{sign(c.chg)}{fmt(c.chg, "price")}（{sign(c.chg_pct)}{fmt(c.chg_pct, "num")}%）</div>
             <div className="mt-2"><Sparkline data={c.spark} up={c.chg == null ? null : c.chg >= 0} width={140} height={32} /></div>
+            </Link>
           </li>
         ))}
       </ul>

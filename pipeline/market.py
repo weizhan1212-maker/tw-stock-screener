@@ -289,7 +289,7 @@ def build_market(store: DataStore, asof=None) -> dict:
             if s.empty:
                 continue
             last = s.iloc[-1]
-            cards.append({"label": label, "date": last["date"].strftime("%Y-%m-%d"), "close": _num(last["close"]),
+            cards.append({"label": label, "name": name, "date": last["date"].strftime("%Y-%m-%d"), "close": _num(last["close"]),
                           "chg": _num(last["chg"]), "chg_pct": _num(last["chg_pct"]),
                           "spark": [_num(x) for x in s["close"].tail(60)]})
     fut = store.read_daily("futures", start, asof + pd.Timedelta(days=3))
@@ -298,7 +298,8 @@ def build_market(store: DataStore, asof=None) -> dict:
         if s is not None and not s.empty:
             last = s.iloc[-1]
             cards.insert(1 if session == "一般" else 2, {
-                "label": "台指期" if session == "一般" else "台指期盤後", "date": last["date"].strftime("%Y-%m-%d"),
+                "label": "台指期" if session == "一般" else "台指期盤後",
+                "name": "台指期" if session == "一般" else "台指期盤後", "date": last["date"].strftime("%Y-%m-%d"),
                 "close": _num(last["close"]), "chg": _num(last["chg"]), "chg_pct": _num(last["chg_pct"]),
                 "spark": [_num(x) for x in s["close"].tail(60)]})
     out["indices"] = cards
