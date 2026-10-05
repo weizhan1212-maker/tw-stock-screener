@@ -12,18 +12,6 @@ on:
       - "poc/*.py"
       - "poc/requirements.txt"
       - ".github/workflows/poc.yml"
-  # 公布時間探測：台灣時間（UTC+8）週一至週五
-  # 14:45、15:30、16:30、17:30、19:00、20:30、21:30、22:30
-  # PoC 結束後刪除這段排程
-  schedule:
-    - cron: "45 6 * * 1-5"
-    - cron: "30 7 * * 1-5"
-    - cron: "30 8 * * 1-5"
-    - cron: "30 9 * * 1-5"
-    - cron: "0 11 * * 1-5"
-    - cron: "30 12 * * 1-5"
-    - cron: "30 13 * * 1-5"
-    - cron: "30 14 * * 1-5"
 
 permissions:
   contents: write

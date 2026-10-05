@@ -1,7 +1,13 @@
 name: 每日資料更新
 
-# 排程等歷史回補完成、且確認公布時間後再開啟（見 docs/專案上下文.md D24）
+# 交易日（週一至週五，台灣時間）跑兩次，見 docs/PoC報告.md 5.8、docs/專案上下文.md D50：
+#   18:43 傍晚場：行情、法人、本益比已公布 → 先更新網站（不跑季報補抓與檢查報告，省 Actions 分鐘數）
+#   23:27 夜間場：融資融券、外資持股也公布了 → 補齊當天資料，加跑季報補抓與檢查報告
+# 休市日沒有資料，任務會自動判斷；GitHub 排程可能延遲或漏跑，下一場會往回補 10 天。
 on:
+  schedule:
+    - cron: "43 10 * * 1-5"
+    - cron: "27 15 * * 1-5"
   workflow_dispatch:
     inputs:
       lookback:
@@ -35,6 +41,7 @@ jobs:
           set -o pipefail
           python -m pipeline daily --lookback "${{ github.event.inputs.lookback || '10' }}" 2>&1 | tee -a run.log
       - name: 季報補抓
+        if: github.event.schedule != '43 10 * * 1-5'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
@@ -52,7 +59,7 @@ jobs:
           python -m pipeline market 2>&1 | tee -a run.log
           python -m pipeline stocks 2>&1 | tee -a run.log
       - name: 資料檢查報告
-        if: always()
+        if: always() && github.event.schedule != '43 10 * * 1-5'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
