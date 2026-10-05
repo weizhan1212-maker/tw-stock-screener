@@ -62,7 +62,7 @@ class FakeFetcher:
             return load(OA[last])
         more_oa = {"tpex_3insti_summary": "tpex_insti_summary", "tpex_intraday_trading_statistics": "tpex_daytrade",
                    "tpex_margin_sbl": "tpex_sbl", "tpex_daily_trading_block": "tpex_block",
-                   "DailyMarketReportFut": "taifex_fut"}
+                   "DailyMarketReportFut": "taifex_fut", "ETFRank": "twse_dca_rank"}
         if last in more_oa:
             return load(f"more_{more_oa[last]}")
         if "finmindtrade" in url:

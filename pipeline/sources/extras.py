@@ -39,7 +39,20 @@ LATEST = {
     "tpex_sbl": f"{TP}/openapi/v1/tpex_margin_sbl",
     "tpex_block": f"{TP}/openapi/v1/tpex_daily_trading_block",
     "futures": "https://openapi.taifex.com.tw/v1/DailyMarketReportFut",
+    "dca_rank": "https://openapi.twse.com.tw/v1/ETFReport/ETFRank",
 }
+
+
+def parse_dca_rank(body) -> dict:
+    """證交所定期定額交易戶數排行（前 20 名個股與 ETF，每月更新）。"""
+    stocks, etfs = [], []
+    for r in body if isinstance(body, list) else []:
+        for kind, out in (("STOCKs", stocks), ("ETFs", etfs)):
+            code = str(r.get(f"{kind}SecurityCode") or "").strip()
+            n = to_num(r.get(f"{kind}NumberofTradingAccounts"))
+            if code and n == n:
+                out.append({"code": code, "name": str(r.get(f"{kind}Name") or "").strip(), "accounts": int(n)})
+    return {"stocks": stocks, "etfs": etfs}
 
 
 def tpex_index_request(month: dt.date):

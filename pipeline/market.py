@@ -92,7 +92,13 @@ def fetch_latest_extras(fetcher: Fetcher, store: DataStore) -> dict:
         _put(store, "indices", df)
         return len(df)
 
-    for name, fn in (("tpex_insti", tpex_insti), ("tpex_daytrade", tpex_daytrade), ("tpex_sbl", tpex_sbl),
+    def dca_rank():
+        data = extras.parse_dca_rank(fetcher.get_json(extras.LATEST["dca_rank"]))
+        if data["stocks"] or data["etfs"]:
+            store.put_state("dca_rank", {**data, "fetched": util.today_tw().isoformat()})
+        return len(data["stocks"]) + len(data["etfs"])
+
+    for name, fn in (("dca_rank", dca_rank), ("tpex_insti", tpex_insti), ("tpex_daytrade", tpex_daytrade), ("tpex_sbl", tpex_sbl),
                      ("tpex_block", tpex_block), ("futures", futures), ("tpex_index", tpex_index)):
         safe(name, fn)
     return counts
@@ -248,6 +254,11 @@ def build_market(store: DataStore, asof=None) -> dict:
         it["industry"] = it["industry"].str.split("、").str[0]
         g = it.groupby("industry")["amt"].sum().sort_values()
         out["industry_flow"] = {"days": len(last5), "items": [{"industry": k, "amount": _num(v)} for k, v in g.items()]}
+
+    # 定期定額交易戶數排行（證交所每月公布）
+    dca = store.get_state("dca_rank", {})
+    if dca.get("stocks") or dca.get("etfs"):
+        out["dca"] = dca
     return out
 
 

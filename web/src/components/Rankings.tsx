@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import DataStatus from "@/components/DataStatus";
 import Results, { type Sort } from "@/components/Results";
 import { Seg } from "@/components/Screener";
@@ -58,10 +58,44 @@ function topRows(all: Row[], rank: Rank, universe: Universe, market: Market): Ro
   return pool.sort((a, b) => ((num(a[k]) as number) - (num(b[k]) as number)) * rank.dir).slice(0, TOP);
 }
 
+type Dca = { code: string; name: string; accounts: number };
+
+/** 定期定額交易戶數排行：證交所每月公布前 20 名（個股、ETF 各一）。 */
+function DcaRank() {
+  const [dca, setDca] = useState<{ stocks: Dca[]; etfs: Dca[] } | null | undefined>(undefined);
+  useEffect(() => {
+    fetch("/api/market").then((r) => (r.ok ? r.json() : null)).then((m) => setDca(m?.dca ?? null)).catch(() => setDca(null));
+  }, []);
+  if (dca === undefined) return <p className="text-sm text-muted">載入中…</p>;
+  if (!dca) return <p className="rounded-lg border border-line bg-surface p-4 text-sm text-muted">定期定額排行目前沒有資料（每天收盤後更新一次）。</p>;
+  return (
+    <>
+      <div className="grid gap-3 md:grid-cols-2">
+        {([["ETF", dca.etfs], ["個股", dca.stocks]] as const).map(([title, list]) => (
+          <section key={title} className="overflow-hidden rounded-lg border border-line bg-surface">
+            <h2 className="border-b border-line bg-surface-2 px-3 py-2 text-sm font-bold text-ink">{title}</h2>
+            <ol className="text-sm">
+              {list.map((x, i) => (
+                <li key={x.code} className="flex items-center gap-3 border-t border-line px-3 py-2 first:border-t-0">
+                  <span className="num w-5 text-right text-muted">{i + 1}</span>
+                  <span className="num w-14 text-muted">{x.code}</span>
+                  <span className="min-w-0 flex-1 truncate text-ink">{x.name}</span>
+                  <span className="num text-ink">{x.accounts.toLocaleString()} 戶</span>
+                </li>
+              ))}
+            </ol>
+          </section>
+        ))}
+      </div>
+      <p className="mt-2 text-xs text-muted">資料來源：臺灣證券交易所「定期定額交易戶數統計排行」，每月更新；只含上市證券。</p>
+    </>
+  );
+}
+
 export default function Rankings() {
   const { snap, error } = useSnapshot();
   const [gid, setGid] = useState("hot");
-  const group = GROUPS.find((g) => g.id === gid)!;
+  const group = GROUPS.find((g) => g.id === gid) ?? GROUPS[0];
   const [rid, setRid] = useState(group.ranks[0].id);
   const rank = group.ranks.find((r) => r.id === rid) ?? group.ranks[0];
   const [universe, setUniverse] = useState<Universe>("stock");
@@ -69,6 +103,7 @@ export default function Rankings() {
   const [sort, setSort] = useState<Sort>({ key: rank.key, dir: rank.dir });
 
   function pick(g: string, r?: string) {
+    if (g === "dca") { setGid(g); return; }
     const grp = GROUPS.find((x) => x.id === g)!;
     const rk = grp.ranks.find((x) => x.id === r) ?? grp.ranks[0];
     setGid(g); setRid(rk.id); setSort({ key: rk.key, dir: rk.dir });
@@ -84,7 +119,7 @@ export default function Rankings() {
       </div>
 
       <div role="tablist" aria-label="排行分類" className="mt-4 flex gap-1 overflow-x-auto border-b border-line">
-        {GROUPS.map((g) => (
+        {[...GROUPS, { id: "dca", label: "定期定額" }].map((g) => (
           <button key={g.id} type="button" role="tab" aria-selected={g.id === gid} onClick={() => pick(g.id)}
             className={`-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-sm ${g.id === gid ? "border-accent font-medium text-accent" : "border-transparent text-muted hover:text-ink"}`}>
             {g.label}
@@ -92,6 +127,7 @@ export default function Rankings() {
         ))}
       </div>
 
+      {gid === "dca" ? <div className="mt-4"><DcaRank /></div> : (<>
       <div className="mt-3 flex flex-wrap gap-1.5">
         {group.ranks.map((r) => (
           <button key={r.id} type="button" aria-pressed={r.id === rank.id} onClick={() => pick(gid, r.id)}
@@ -112,6 +148,7 @@ export default function Rankings() {
           loading={!snap && !error} countLabel="共"
           empty={<p className="rounded-lg border border-line bg-surface p-4 text-sm text-muted">這個排行目前沒有資料（可能資料還在補齊中）。</p>} />
       </div>
+      </>)}
     </div>
   );
 }

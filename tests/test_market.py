@@ -58,6 +58,8 @@ def test_daily_with_extras_and_market(fake, tmp_path):
     assert not s.read_daily("margin_total").empty and not s.read_daily("indices").empty
     m = build_market(s)
     assert m["asof"] == "2026-10-02"
+    assert m["dca"]["stocks"][1] == {"code": "2884", "name": "玉山金", "accounts": 27261}
+    assert m["dca"]["etfs"][0]["code"] == "0050"
     labels = [c["label"] for c in m["indices"]]
     assert "加權指數" in labels and "櫃買指數" in labels
     assert m["insti"]["total"] is not None and m["margin"]["margin_amount"] > 0
