@@ -48,6 +48,10 @@ export const FIELDS: Field[] = [
   { key: "pb", label: "股價淨值比", group: "估值", format: "times", help: "股價 ÷ 每股淨值。小於 1 代表股價低於公司帳面價值。" },
   { key: "dividend_yield", label: "殖利率", group: "估值", format: "pct", help: "一年現金股利 ÷ 股價。存股族最常看的指標。" },
   { key: "psr", label: "股價營收比", group: "估值", format: "times", help: "市值 ÷ 近 12 個月營收。適合看還沒賺錢或獲利波動大的公司。" },
+  { key: "pcf", label: "股價現金流比", group: "估值", format: "times", help: "市值 ÷ 近四季營業現金流。越低代表用越便宜的價格買到現金流。" },
+  { key: "pe_pb", label: "本益比 × 淨值比", group: "估值", format: "num", help: "葛拉漢的合理價檢查：本益比乘以股價淨值比小於 22.5 算便宜。" },
+  { key: "peg", label: "PEG", group: "估值", format: "num", help: "本益比 ÷ EPS 年成長率（%）。彼得林區認為小於 1 代表成長被低估。" },
+  { key: "earnings_yield", label: "盈餘殖利率（神奇公式）", group: "估值", format: "pct", help: "營業利益 ÷ 企業價值（市值＋有息負債−現金）。越高代表越便宜。" },
 
   // 籌碼面
   { key: "foreign_net", label: "外資買賣超", group: "籌碼面", format: "lots", help: "外資今天買進減賣出的張數，正數是買超。" },
@@ -80,6 +84,14 @@ export const FIELDS: Field[] = [
   { key: "roa", label: "ROA", group: "基本面", format: "pct", help: "資產報酬率：公司用全部資產一年賺多少 %。" },
   { key: "debt_ratio", label: "負債比", group: "基本面", format: "pct", help: "總負債 ÷ 總資產。越低財務越穩健。" },
   { key: "current_ratio", label: "流動比率", group: "基本面", format: "times", help: "流動資產 ÷ 流動負債。大於 2 代表短期還債能力好。" },
+  { key: "roc", label: "資本報酬率（神奇公式）", group: "基本面", format: "pct", help: "營業利益 ÷（淨營運資金＋固定資產）。越高代表做生意越有效率。" },
+  { key: "roe_min5y", label: "近 5 年最低 ROE", group: "基本面", format: "pct", help: "近 5 個完整年度中 ROE 最低的那一年。大於 15% 代表 5 年都很會賺。" },
+  { key: "eps_cagr3", label: "EPS 3 年年化成長率", group: "基本面", format: "pct", help: "年度 EPS 近 3 年平均每年成長幾 %。" },
+  { key: "eps_growth_3v3", label: "近 3 年 vs 前 3 年平均 EPS", group: "基本面", format: "times", help: "近 3 年平均 EPS ÷ 前 3 年平均 EPS。1.33 代表成長三分之一。" },
+  { key: "eps_up3y", label: "年度 EPS 連 3 年成長", group: "基本面", format: "bool", help: "最近 3 個年度的 EPS 一年比一年高。" },
+  { key: "rev_ttm_yoy", label: "近 12 月營收年增率", group: "基本面", format: "pct", help: "最近 12 個月營收跟前 12 個月相比成長幾 %。" },
+  { key: "f_score", label: "F-Score", group: "基本面", format: "num", help: "皮爾托斯基的 9 項財務健康分數（獲利、現金流、槓桿、效率是否改善），0–9 分，越高越健康。" },
+  { key: "neff_ratio", label: "總報酬比（聶夫）", group: "估值", format: "num", help: "（EPS 成長率 % ＋ 殖利率 %）÷ 本益比。越高代表用越低的價格買到成長加股利。" },
   { key: "fcf_ttm", label: "近四季自由現金流", group: "基本面", format: "yi", help: "營業現金流 − 資本支出（億元）。正數代表真的有賺到現金。" },
   { key: "eps_min5y", label: "近 5 年最低年 EPS", group: "基本面", format: "price", help: "近 5 個完整年度中，年 EPS 最低的那一年。大於 0 代表 5 年都賺錢。" },
   { key: "gm_stability", label: "毛利率穩定度", group: "基本面", format: "pct", help: "近 5 年毛利率最低值 ÷ 最高值。越接近 100% 越穩定。" },
@@ -87,7 +99,13 @@ export const FIELDS: Field[] = [
   { key: "cash_div_last", label: "最近一年現金股利", group: "基本面", format: "price", help: "最近一個年度合計發多少現金股利（元）。" },
 ];
 
-export const FIELD_MAP: Record<string, Field> = Object.fromEntries(FIELDS.map((f) => [f.key, f]));
+/** 只在策略結果裡出現、不放進自訂篩選選單的欄位 */
+const HIDDEN: Field[] = [
+  { key: "magic_rank", label: "神奇公式排名", group: "估值", format: "num", help: "盈餘殖利率與資本報酬率兩項排名相加後的名次。" },
+  { key: "years_fin", label: "財報年數", group: "基本面", format: "years", help: "有完整四季財報的年數。" },
+];
+
+export const FIELD_MAP: Record<string, Field> = Object.fromEntries([...FIELDS, ...HIDDEN].map((f) => [f.key, f]));
 export const GROUPS: Group[] = ["價量", "技術面", "估值", "籌碼面", "基本面"];
 
 export const UNIT: Partial<Record<Format, string>> = {

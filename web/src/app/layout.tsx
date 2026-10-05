@@ -33,6 +33,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </Link>
             <nav className="flex gap-1 text-sm">
               <Link href="/" className="rounded-md px-2.5 py-1 text-ink hover:bg-surface-2">
+                策略選股
+              </Link>
+              <Link href="/screener" className="rounded-md px-2.5 py-1 text-ink hover:bg-surface-2">
                 自訂篩選
               </Link>
             </nav>

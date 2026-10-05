@@ -1,10 +1,5 @@
-import { Suspense } from "react";
-import Screener from "@/components/Screener";
+import StrategyHome from "@/components/StrategyHome";
 
 export default function Page() {
-  return (
-    <Suspense>
-      <Screener />
-    </Suspense>
-  );
+  return <StrategyHome />;
 }

@@ -10,6 +10,8 @@ const PUBLIC = ["/login", "/api/auth"];
 
 export const proxy = auth((req) => {
   const path = req.nextUrl.pathname;
+  // 本機測試用：只有在非 Vercel 環境且明確設定 SKIP_AUTH=1 時才跳過登入
+  if (process.env.SKIP_AUTH === "1" && !process.env.VERCEL) return NextResponse.next();
   if (PUBLIC.some((p) => path.startsWith(p))) return NextResponse.next();
   const user = req.auth?.user as { status?: string } | undefined;
   const isApi = path.startsWith("/api/");

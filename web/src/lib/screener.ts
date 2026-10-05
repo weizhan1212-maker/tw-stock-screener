@@ -4,7 +4,8 @@ import { FIELD_MAP, type Format, UNIT } from "./fields";
 export type Row = Record<string, string | number | null>;
 
 export interface Snapshot {
-  meta: { asof: string; generated_at: string; count: number; fin_complete: boolean };
+  meta: { asof: string; generated_at: string; count: number; fin_complete: boolean;
+    taiex?: number; taiex_ma200?: number; market_bull?: boolean };
   rows: Row[];
 }
 
@@ -13,6 +14,8 @@ export interface RawSnapshot {
   columns: string[];
   rows: (string | number | null)[][];
 }
+
+export const num = (v: unknown): number | null => (typeof v === "number" && !Number.isNaN(v) ? v : null);
 
 /** 欄位陣列轉物件，並補上衍生欄位（站上均線等）。 */
 export function decode(raw: RawSnapshot): Snapshot {
@@ -25,6 +28,11 @@ export function decode(raw: RawSnapshot): Snapshot {
       const ma = o[`ma${w}`] as number | null;
       o[`above_ma${w}`] = ac == null || ma == null ? null : ac > ma ? 1 : 0;
     }
+    // 衍生估值指標
+    const pe = num(o.pe), pb = num(o.pb), g = num(o.eps_cagr3), y = num(o.dividend_yield);
+    o.pe_pb = pe != null && pb != null && pe > 0 ? pe * pb : null;
+    o.peg = pe != null && g != null && pe > 0 && g > 0 ? pe / g : null;
+    o.neff_ratio = pe != null && g != null && pe > 0 ? (g + (y ?? 0)) / pe : null;
     return o;
   });
   return { meta: raw.meta, rows };
