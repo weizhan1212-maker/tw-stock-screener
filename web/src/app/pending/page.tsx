@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
 
-export const metadata = { title: "等待核准｜台股選股" };
+export const metadata = { title: "等待核准｜股見未來" };
 
 export default async function PendingPage() {
   const session = await auth();

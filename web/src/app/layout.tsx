@@ -6,7 +6,8 @@ import UserMenu from "@/components/UserMenu";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "台股選股",
+  title: "股見未來",
+  applicationName: "股見未來",
   description: "台股盤後選股：基本面、技術面、籌碼面篩選",
   robots: { index: false, follow: false },
 };
@@ -29,8 +30,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-dvh flex flex-col antialiased">
         <header className="border-b border-line bg-surface">
           <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
-            <Link href="/" className="whitespace-nowrap text-[17px] font-bold tracking-wide text-ink">
-              台股選股
+            <Link href="/" className="flex items-center gap-2 whitespace-nowrap text-[17px] font-bold tracking-wide text-ink">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt="" width={26} height={26} className="h-[26px] w-[26px]" />
+              股見未來
             </Link>
             <nav className="order-last -mx-2.5 flex w-full gap-1 overflow-x-auto whitespace-nowrap text-sm sm:order-none sm:mx-0 sm:w-auto">
               <Link href="/" className="rounded-md px-2.5 py-1 text-ink hover:bg-surface-2">

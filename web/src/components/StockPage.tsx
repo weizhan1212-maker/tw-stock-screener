@@ -71,7 +71,7 @@ export default function StockPage({ code }: { code: string }) {
   }, [snap, code]);
 
   useEffect(() => {
-    if (name) document.title = `${code} ${name}｜台股選股`;
+    if (name) document.title = `${code} ${name}｜股見未來`;
   }, [code, name]);
 
   return (

@@ -57,6 +57,7 @@ export default function IndexPage({ name: asked }: { name: string }) {
     return Object.keys(data.series).find((k) => label(k) === asked) ?? asked;
   }, [data, asked]);
   const s = data?.series[name];
+  useEffect(() => { document.title = `${label(name)}｜股見未來`; }, [name]);
   const names = useMemo(() => {
     if (!data) return [];
     const key = ["發行量加權股價指數", "櫃買指數", "台指期", "台指期盤後"];

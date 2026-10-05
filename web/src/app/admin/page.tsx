@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { adminEmails, isAdmin, readAllowlist, setStatus, type Status } from "@/lib/allowlist";
 
-export const metadata = { title: "成員管理｜台股選股" };
+export const metadata = { title: "成員管理｜股見未來" };
 
 const LABEL: Record<Status, string> = { approved: "已核准", pending: "待核准", rejected: "已拒絕" };
 

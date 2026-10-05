@@ -1,14 +1,14 @@
 import { redirect } from "next/navigation";
 import { auth, signIn } from "@/auth";
 
-export const metadata = { title: "登入｜台股選股" };
+export const metadata = { title: "登入｜股見未來" };
 
 export default async function LoginPage() {
   const session = await auth();
   if (session?.user) redirect("/");
   return (
     <div className="mx-auto mt-16 max-w-sm px-4">
-      <h1 className="text-2xl font-bold text-ink">登入台股選股</h1>
+      <h1 className="text-2xl font-bold text-ink">登入股見未來</h1>
       <p className="mt-3 text-sm leading-relaxed text-muted">
         這是邀請制網站。第一次登入後，需要等管理員核准才能使用。
       </p>
