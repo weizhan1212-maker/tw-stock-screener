@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 
 from . import util
+from .factors import finish, strategy_factors
 from .store import DataStore
 
 log = logging.getLogger(__name__)
@@ -342,13 +343,31 @@ def build_snapshot(store: DataStore, asof=None, lookback_days: int = 420) -> tup
             base["roa"] = base["_ni_ttm"] / base["_assets"] * 100
         if "eps_ttm" in base:
             base["pe_calc"] = (base["close"] / base["eps_ttm"]).where(base["eps_ttm"] > 0)
+    sf = strategy_factors(store)
+    if not sf.empty:
+        base = base.join(sf)
+    base = finish(base)
     base["sec_type"] = base.get("sec_type", pd.Series(index=base.index, dtype=object)).fillna(
         base.index.to_series().map(util.security_type))
     base = base.drop(columns=[c for c in base.columns if c.startswith("_")] + ["shares_issued"], errors="ignore")
     base = base.reset_index().rename(columns={"index": "code"})
     meta = {"asof": asof.strftime("%Y-%m-%d"), "generated_at": util.now_tw().isoformat(timespec="seconds"),
-            "count": int(len(base)), "fin_complete": bool(store.get_state("finmind_backfill", {}).get("_complete"))}
+            "count": int(len(base)), "fin_complete": bool(store.get_state("finmind_backfill", {}).get("_complete")),
+            **market_state(store, asof)}
     return base, meta
+
+
+def market_state(store: DataStore, asof: pd.Timestamp) -> dict:
+    """大盤狀態：加權指數與 200 日均線（CAN SLIM 的 M 條件）。"""
+    idx = store.read_daily("index", asof - pd.Timedelta(days=330), asof)
+    if idx.empty or "taiex" not in idx:
+        return {}
+    s = idx.sort_values("date")["taiex"].dropna()
+    out = {"taiex": round(float(s.iloc[-1]), 2)}
+    if len(s) >= 200:
+        ma = float(s.tail(200).mean())
+        out.update(taiex_ma200=round(ma, 2), market_bull=bool(s.iloc[-1] > ma))
+    return out
 
 
 def _clean(v):

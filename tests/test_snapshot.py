@@ -41,3 +41,35 @@ def test_build_snapshot_from_fixtures(fake, tmp_path):
     size = write_snapshot(s, df, meta)
     data = json.loads(gzip.decompress(s.st.get(SNAPSHOT_PATH)))
     assert size > 0 and data["meta"]["count"] == len(df) and len(data["rows"][0]) == len(data["columns"])
+
+
+def test_strategy_factors_synthetic(tmp_path):
+    """兩年 8 季的假資料：F-Score、EPS 成長、神奇公式指標都算得出來且合理。"""
+    from pipeline.factors import finish, strategy_factors
+    s = DataStore(LocalStorage(str(tmp_path)))
+    dates = pd.to_datetime(["2024-03-31", "2024-06-30", "2024-09-30", "2024-12-31",
+                            "2025-03-31", "2025-06-30", "2025-09-30", "2025-12-31"])
+    inc, bal, cf = [], [], []
+    for i, d in enumerate(dates):
+        g = 1.0 if i < 4 else 1.2           # 第二年成長 20%
+        for t, v in (("Revenue", 100 * g), ("GrossProfit", 40 * g * (1 if i < 4 else 1.05)), ("OperatingIncome", 20 * g),
+                     ("IncomeAfterTaxes", 15 * g), ("EquityAttributableToOwnersOfParent", 15 * g), ("EPS", 1.5 * g)):
+            inc.append({"code": "1234", "date": d, "type": t, "value": v})
+        for t, v in (("TotalAssets", 1000), ("CurrentAssets", 400), ("CurrentLiabilities", 200 - i * 5),
+                     ("PropertyPlantAndEquipment", 300), ("CashAndCashEquivalents", 100), ("OrdinaryShare", 100),
+                     ("LongtermBorrowings", 100 - i * 5), ("EquityAttributableToOwnersOfParent", 500), ("Equity", 500)):
+            bal.append({"code": "1234", "date": d, "type": t, "value": v})
+        q = (i % 4) + 1
+        cf.append({"code": "1234", "date": d, "type": "CashFlowsFromOperatingActivities", "value": 25 * g * q})
+    s.upsert_table("income", pd.DataFrame(inc))
+    s.upsert_table("balance", pd.DataFrame(bal))
+    s.upsert_table("cashflow", pd.DataFrame(cf))
+    f = strategy_factors(s)
+    r = f.loc["1234"]
+    assert r["f_score"] == 9                          # 各項都改善
+    assert abs(r["ebit_ttm"] - 96) < 1e-6 and abs(r["cfo_ttm"] - 120) < 1e-6
+    assert r["eps_up3y"] != r["eps_up3y"] or r["eps_up3y"] in (0, 1)
+    base = f.assign(market_cap=10.0, industry="半導體業")   # 10 億市值
+    out = finish(base)
+    assert out.loc["1234", "earnings_yield"] > 0 and out.loc["1234", "roc"] > 0 and out.loc["1234", "pcf"] > 0
+    assert out.loc["1234", "is_financial"] == 0
