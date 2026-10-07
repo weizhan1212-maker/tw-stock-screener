@@ -50,7 +50,7 @@ const GROUPS: { id: string; label: string; ranks: Rank[] }[] = [
   ] },
   { id: "risk", label: "進階", ranks: [
     { id: "pullback", label: "突破後回踩", key: "dist_high60", dir: -1,
-      cols: [...BASE, "dist_high60", "ret60", "dist_ma20", "volume_lots"],
+      cols: [...BASE, "dist_high60", "ret60", "ret20", "volume_lots"],
       keep: (r) => liquid(500)(r) && inr(r, "dist_high60", -10, -3) && (num(r.ret60) ?? 0) >= 10 && r.above_ma60 === 1,
       note: "近 60 日漲 10% 以上、仍在季線之上，但離 60 日高點回落 3～10%；成交量 500 張以上。依離高點由近到遠排序" },
     { id: "rs_calm", label: "相對強勢未過熱", key: "rs60", dir: -1,
