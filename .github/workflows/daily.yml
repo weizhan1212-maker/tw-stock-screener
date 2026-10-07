@@ -4,11 +4,8 @@ name: 每日資料更新
 #   18:43 傍晚場：行情、法人、本益比已公布 → 先更新網站（不跑季報補抓與檢查報告，省 Actions 分鐘數）
 #   23:27 夜間場：融資融券、外資持股也公布了 → 補齊當天資料，加跑季報補抓與檢查報告
 # 休市日沒有資料，任務會自動判斷；GitHub 排程可能延遲或漏跑，下一場會往回補 10 天。
-# 主要由 Supabase pg_cron 準時觸發（workflow_dispatch，mode=light/full，見 docs/資料管線.md）；下面的 GitHub 排程是備援。
+# 由 Supabase pg_cron 準時觸發（workflow_dispatch，mode=light/full）；GitHub 自己的排程常延遲數小時，已停用（D53）。
 on:
-  schedule:
-    - cron: "43 10 * * 1-5"
-    - cron: "27 15 * * 1-5"
   workflow_dispatch:
     inputs:
       lookback:
