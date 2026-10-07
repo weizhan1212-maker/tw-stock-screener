@@ -289,7 +289,7 @@ function fmtMetric(k: string, v: number | null) {
 // ---------------- ETF 資訊 ----------------
 
 export function EtfInfoCard({ row, s }: { row: Row; s?: StockFile | null }) {
-  const div = (s?.dividends ?? []).slice(0, 12);
+  const div = [...(s?.dividends ?? [])].sort((a, b) => (b.ex ?? b.period).localeCompare(a.ex ?? a.period));
   const items: [string, string][] = [
     ["類型", (row.etf_type as string) || "—"],
     ["追蹤指數", (row.etf_index as string) || "—"],
