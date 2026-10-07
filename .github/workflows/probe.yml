@@ -1,0 +1,26 @@
+name: 資料源探測
+
+# 手動執行：印出新資料源的欄位格式（不寫入任何資料）
+on:
+  workflow_dispatch:
+    inputs:
+      script:
+        description: "poc/ 底下的腳本檔名"
+        default: probe_sentiment.py
+
+permissions:
+  contents: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+      - run: python "poc/${{ github.event.inputs.script }}" 2>&1 | tee run.log
+      - if: always()
+        run: .github/scripts/save-log.sh probe
