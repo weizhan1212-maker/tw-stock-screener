@@ -4,6 +4,8 @@
  */
 import type { Metadata } from "next";
 import Link from "next/link";
+import { HeroParallax, Reveal, SpotCard } from "./LpClient";
+import "./lp.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://tw-stock-screener-willy1212.vercel.app"),
@@ -60,10 +62,9 @@ const FAQ: [string, string][] = [
   ["資料從哪裡來？", "臺灣證券交易所、證券櫃檯買賣中心、期貨交易所、集保結算所、國發會等官方公開資料，以及 FinMind 的歷史財報。"],
 ];
 
-function GoogleButton({ big = false }: { big?: boolean }) {
+function Cta({ big = false }: { big?: boolean }) {
   return (
-    <Link href="/login"
-      className={`inline-flex items-center justify-center gap-2 rounded-lg bg-accent font-bold text-white shadow-sm transition hover:opacity-90 ${big ? "px-6 py-3 text-base" : "px-5 py-2.5 text-sm"}`}>
+    <Link href="/login" className="lp-btn" style={big ? undefined : { padding: "9px 18px", fontSize: 14 }}>
       用 Google 登入申請
       <span aria-hidden>→</span>
     </Link>
@@ -75,162 +76,213 @@ function Mock() {
   const rows: [string, string, string][] = [["存股", "高殖利率、年年配息", "▲"], ["神奇公式", "好公司 × 便宜價", "▲"], ["創 52 週新高", "股價來到一年來最高", "▼"]];
   return (
     <div aria-hidden className="relative mx-auto w-full max-w-md select-none">
-      <div className="absolute -inset-4 -z-10 rounded-3xl bg-accent-soft blur-2xl" />
-      <div className="rounded-2xl border border-line bg-surface p-4 shadow-xl">
+      <div className="absolute -inset-6 -z-10 rounded-3xl blur-3xl" style={{ background: "rgba(94,106,210,0.22)" }} />
+      <SpotCard className="p-4">
         <div className="flex items-center justify-between text-xs text-muted">
-          <span className="font-bold text-ink">策略選股</span><span>畫面示意</span>
+          <span className="font-semibold text-ink">策略選股</span><span className="lp-label" style={{ fontSize: 10 }}>畫面示意</span>
         </div>
         <ul className="mt-3 space-y-2">
           {rows.map(([n, t, a], i) => (
-            <li key={n} className="flex items-center justify-between rounded-lg border border-line px-3 py-2.5">
-              <span><b className="block text-sm text-ink">{n}</b><span className="text-xs text-muted">{t}</span></span>
+            <li key={n} className="flex items-center justify-between rounded-lg px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)" }}>
+              <span><b className="block text-sm font-medium text-ink">{n}</b><span className="text-xs text-muted">{t}</span></span>
               <span className={`text-xs ${i === 2 ? "text-down" : "text-up"}`}>{a}</span>
             </li>
           ))}
         </ul>
         <div className="mt-3 grid grid-cols-3 gap-2 text-center">
           {[["條件公開", "每一條"], ["回測", "含交易成本"], ["警報", "Telegram"]].map(([k, v]) => (
-            <div key={k} className="rounded-lg bg-surface-2 px-2 py-2">
-              <div className="text-[11px] text-muted">{k}</div><div className="text-xs font-bold text-ink">{v}</div>
+            <div key={k} className="rounded-lg px-2 py-2" style={{ background: "rgba(255,255,255,0.04)" }}>
+              <div className="text-[11px] text-muted">{k}</div><div className="text-xs font-semibold text-ink">{v}</div>
             </div>
           ))}
         </div>
         <svg viewBox="0 0 300 60" className="mt-3 h-14 w-full">
-          <polyline points="0,48 30,44 60,46 90,36 120,38 150,28 180,30 210,20 240,24 270,12 300,14" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinejoin="round" />
-          <polyline points="0,50 30,49 60,48 90,45 120,46 150,41 180,42 210,38 240,39 270,34 300,35" fill="none" stroke="var(--muted)" strokeWidth="1.5" strokeDasharray="4 3" />
+          <defs><linearGradient id="lpg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#5e6ad2" stopOpacity="0.35" /><stop offset="1" stopColor="#5e6ad2" stopOpacity="0" /></linearGradient></defs>
+          <polygon points="0,48 30,44 60,46 90,36 120,38 150,28 180,30 210,20 240,24 270,12 300,14 300,60 0,60" fill="url(#lpg)" />
+          <polyline points="0,48 30,44 60,46 90,36 120,38 150,28 180,30 210,20 240,24 270,12 300,14" fill="none" stroke="#818cf8" strokeWidth="2.5" strokeLinejoin="round" />
+          <polyline points="0,50 30,49 60,48 90,45 120,46 150,41 180,42 210,38 240,39 270,34 300,35" fill="none" stroke="#8a8f98" strokeWidth="1.5" strokeDasharray="4 3" />
         </svg>
-      </div>
+      </SpotCard>
     </div>
   );
 }
 
+// 不對稱 bento：6 欄，卡片寬度不一
+const SPAN = ["lg:col-span-4", "lg:col-span-2", "lg:col-span-2", "lg:col-span-2", "lg:col-span-2", "lg:col-span-6"];
+
 export default function AboutPage() {
   return (
-    <div className="bg-paper">
+    <div className="lp">
+      {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" />
+      <div className="lp-bg" aria-hidden>
+        <div className="lp-noise" /><div className="lp-grid" />
+        <div className="lp-blob b1" /><div className="lp-blob b2" /><div className="lp-blob b3" /><div className="lp-blob b4" />
+      </div>
+
       {/* 簡單品牌列（落地頁不放站內選單） */}
-      <div className="mx-auto flex max-w-[1120px] items-center justify-between px-4 pt-5">
-        <span className="flex items-center gap-2 text-[17px] font-bold tracking-wide text-ink">
+      <header className="mx-auto flex max-w-[1120px] items-center justify-between px-4 pt-5">
+        <span className="flex items-center gap-2 text-[17px] font-semibold tracking-wide text-ink">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.png" alt="" width={26} height={26} className="h-[26px] w-[26px]" />
           股見未來
         </span>
-        <Link href="/login" className="text-sm text-accent hover:underline">登入</Link>
-      </div>
+        <Link href="/login" className="rounded-lg px-3 py-1.5 text-sm text-muted transition hover:bg-white/5 hover:text-ink">登入</Link>
+      </header>
+
       {/* 主視覺 */}
-      <section className="mx-auto grid max-w-[1120px] items-center gap-10 px-4 pb-14 pt-12 md:grid-cols-[1.1fr_1fr] md:pt-20">
-        <div>
-          <span className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-xs text-muted">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="" width={16} height={16} className="h-4 w-4" />
-            邀請制・免費・給朋友用
-          </span>
-          <h1 className="mt-5 text-[32px] font-bold leading-tight tracking-tight text-ink sm:text-[44px]">
-            台股盤後資料，<br />整理成<span className="text-accent">看得懂</span>的選股工具
-          </h1>
-          <p className="mt-5 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
-            38 套策略、100 多個篩選指標、回測、產業熱力圖、個股風險框架與警報通知。
-            每個數字都有白話說明，每套策略的條件都攤開給你看。
-          </p>
-          <div className="mt-8 flex flex-wrap items-center gap-3">
-            <GoogleButton big />
-            <a href="#features" className="rounded-lg border border-line bg-surface px-5 py-3 text-base text-ink hover:border-accent">看看有什麼功能</a>
+      <section className="mx-auto max-w-[1120px] px-4 pb-20 pt-14 md:pt-24">
+        <HeroParallax>
+          <div className="grid items-center gap-12 md:grid-cols-[1.1fr_1fr]">
+            <div>
+              <Reveal>
+                <span className="lp-pill">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/logo.png" alt="" width={16} height={16} className="h-4 w-4" />
+                  邀請制・免費・給朋友用
+                </span>
+              </Reveal>
+              <Reveal delay={80}>
+                <h1 className="mt-6 text-[32px] font-semibold leading-[1.15] tracking-[-0.03em] sm:text-[48px] lg:text-[56px]">
+                  <span className="lp-grad">台股盤後資料，<br />整理成</span><span className="lp-shimmer">看得懂</span><span className="lp-grad">的<wbr />選股工具</span>
+                </h1>
+              </Reveal>
+              <Reveal delay={160}>
+                <p className="mt-6 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
+                  38 套策略、100 多個篩選指標、回測、產業熱力圖、個股風險框架與警報通知。
+                  每個數字都有白話說明，每套策略的條件都攤開給你看。
+                </p>
+              </Reveal>
+              <Reveal delay={240}>
+                <div className="mt-9 flex flex-wrap items-center gap-3">
+                  <Cta big />
+                  <a href="#features" className="lp-btn2">看看有什麼功能</a>
+                </div>
+                <p className="mt-4 text-xs text-muted">第一次登入後送出申請，管理員核准後就能使用。</p>
+              </Reveal>
+            </div>
+            <Reveal delay={200}><Mock /></Reveal>
           </div>
-          <p className="mt-4 text-xs text-muted">第一次登入後送出申請，管理員核准後就能使用。</p>
-        </div>
-        <Mock />
+        </HeroParallax>
       </section>
 
       {/* 三個原則 */}
-      <section className="border-y border-line bg-surface">
-        <div className="mx-auto grid max-w-[1120px] gap-6 px-4 py-10 sm:grid-cols-3">
+      <div className="lp-hr" />
+      <section>
+        <div className="mx-auto grid max-w-[1120px] gap-8 px-4 py-14 sm:grid-cols-3">
           {[
-            ["看得懂", "每個指標都有白話解釋，紅漲綠跌、深淺色都好讀。"],
-            ["攤開來", "策略條件、資料期間、不適用情境全部公開，不是黑盒子。"],
-            ["不報牌", "只整理公開資料，結果是依條件算出的清單，不是買賣建議。"],
-          ].map(([t, b]) => (
-            <div key={t}>
-              <h2 className="text-lg font-bold text-ink">{t}</h2>
-              <p className="mt-1.5 text-sm leading-relaxed text-muted">{b}</p>
-            </div>
+            ["01", "看得懂", "每個指標都有白話解釋，紅漲綠跌、深淺色都好讀。"],
+            ["02", "攤開來", "策略條件、資料期間、不適用情境全部公開，不是黑盒子。"],
+            ["03", "不報牌", "只整理公開資料，結果是依條件算出的清單，不是買賣建議。"],
+          ].map(([n, t, b], i) => (
+            <Reveal key={t} delay={i * 80}>
+              <span className="lp-label">{n}</span>
+              <h2 className="mt-2 text-xl font-semibold tracking-tight text-ink">{t}</h2>
+              <p className="mt-2 text-sm leading-relaxed text-muted">{b}</p>
+            </Reveal>
           ))}
         </div>
       </section>
+      <div className="lp-hr" />
 
-      {/* 功能 */}
-      <section id="features" className="mx-auto max-w-[1120px] scroll-mt-6 px-4 py-16">
-        <h2 className="text-2xl font-bold text-ink sm:text-3xl">有什麼功能</h2>
-        <p className="mt-2 text-muted">從找股票、驗證想法，到持有後的追蹤，一個網站做完。</p>
-        <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map((x) => (
-            <article key={x.tag} className="flex flex-col rounded-2xl border border-line bg-surface p-5">
-              <span className="w-fit rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-accent">{x.tag}</span>
-              <h3 className="mt-3 text-lg font-bold leading-snug text-ink">{x.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted">{x.body}</p>
-              <ul className="mt-3 space-y-1.5 text-sm text-ink">
-                {x.points.map((p) => <li key={p} className="flex gap-2"><span aria-hidden className="text-accent">✓</span><span>{p}</span></li>)}
-              </ul>
-            </article>
+      {/* 功能（不對稱 bento） */}
+      <section id="features" className="mx-auto max-w-[1120px] scroll-mt-6 px-4 py-20">
+        <Reveal>
+          <span className="lp-label">Features</span>
+          <h2 className="lp-grad mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">有什麼功能</h2>
+          <p className="mt-3 text-muted">從找股票、驗證想法，到持有後的追蹤，一個網站做完。</p>
+        </Reveal>
+        <div className="mt-10 grid gap-4 lg:grid-cols-6">
+          {FEATURES.map((x, i) => (
+            <Reveal key={x.tag} delay={(i % 3) * 80} className={`flex ${SPAN[i]}`}>
+              <SpotCard className={`flex w-full flex-col ${i === 0 ? "p-7" : "p-6"}`}>
+                <span className="lp-pill w-fit">{x.tag}</span>
+                <h3 className={`mt-4 font-semibold leading-snug tracking-tight text-ink ${i === 0 ? "text-2xl" : "text-xl"}`}>{x.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted">{x.body}</p>
+                <ul className="mt-4 space-y-2 text-sm text-ink">
+                  {x.points.map((p) => <li key={p} className="flex gap-2"><span aria-hidden className="text-[#818cf8]">✓</span><span>{p}</span></li>)}
+                </ul>
+              </SpotCard>
+            </Reveal>
           ))}
         </div>
       </section>
 
       {/* 適合誰 */}
-      <section className="bg-surface">
-        <div className="mx-auto grid max-w-[1120px] gap-6 px-4 py-14 md:grid-cols-2">
-          <div className="rounded-2xl border border-line p-6">
-            <h3 className="text-lg font-bold text-ink">剛開始研究股票</h3>
-            <p className="mt-2 text-sm leading-relaxed text-muted">從現成策略開始，看懂每個條件在找什麼樣的公司；個股頁直接告訴你財務體質、風險在哪、過去除息多久填息。</p>
-          </div>
-          <div className="rounded-2xl border border-line p-6">
-            <h3 className="text-lg font-bold text-ink">已經有自己的方法</h3>
-            <p className="mt-2 text-sm leading-relaxed text-muted">用 100 多個指標自己組條件，馬上回測三年，比較 38 套策略的表現；條件存起來，有新股票符合時 Telegram 通知你。</p>
-          </div>
-        </div>
+      <section className="mx-auto grid max-w-[1120px] gap-4 px-4 pb-20 md:grid-cols-2">
+        {[
+          ["剛開始研究股票", "從現成策略開始，看懂每個條件在找什麼樣的公司；個股頁直接告訴你財務體質、風險在哪、過去除息多久填息。"],
+          ["已經有自己的方法", "用 100 多個指標自己組條件，馬上回測三年，比較 38 套策略的表現；條件存起來，有新股票符合時 Telegram 通知你。"],
+        ].map(([t, b], i) => (
+          <Reveal key={t} delay={i * 80} className="flex">
+            <SpotCard className="w-full p-7">
+              <h3 className="text-xl font-semibold tracking-tight text-ink">{t}</h3>
+              <p className="mt-3 text-sm leading-relaxed text-muted">{b}</p>
+            </SpotCard>
+          </Reveal>
+        ))}
       </section>
 
       {/* 怎麼加入 */}
-      <section className="mx-auto max-w-[1120px] px-4 py-16">
-        <h2 className="text-2xl font-bold text-ink sm:text-3xl">怎麼加入</h2>
-        <ol className="mt-8 grid gap-4 sm:grid-cols-3">
+      <div className="lp-hr" />
+      <section className="mx-auto max-w-[1120px] px-4 py-20">
+        <Reveal>
+          <span className="lp-label">How it works</span>
+          <h2 className="lp-grad mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">怎麼加入</h2>
+        </Reveal>
+        <ol className="mt-10 grid gap-4 sm:grid-cols-3">
           {[
             ["用 Google 登入", "點下面的按鈕，用你的 Google 帳號登入。"],
             ["等待核准", "第一次登入會自動送出申請，跟我說一聲，我核准後就能用。"],
             ["開始使用", "從「策略選股」開始逛，或直接到「自訂篩選」組條件。"],
           ].map(([t, b], i) => (
-            <li key={t} className="rounded-2xl border border-line bg-surface p-5">
-              <span className="num flex h-8 w-8 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">{i + 1}</span>
-              <h3 className="mt-3 font-bold text-ink">{t}</h3>
-              <p className="mt-1 text-sm leading-relaxed text-muted">{b}</p>
-            </li>
+            <Reveal key={t} delay={i * 80} className="flex">
+              <li className="flex w-full list-none">
+                <SpotCard className="w-full p-6">
+                  <span className="num flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold text-white" style={{ background: "#5e6ad2", boxShadow: "0 0 16px rgba(94,106,210,0.5)" }}>{i + 1}</span>
+                  <h3 className="mt-4 font-semibold text-ink">{t}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-muted">{b}</p>
+                </SpotCard>
+              </li>
+            </Reveal>
           ))}
         </ol>
-        <div className="mt-8"><GoogleButton big /></div>
+        <Reveal className="mt-10"><Cta big /></Reveal>
       </section>
 
       {/* 常見問題 */}
-      <section className="border-t border-line bg-surface">
-        <div className="mx-auto max-w-[820px] px-4 py-14">
-          <h2 className="text-2xl font-bold text-ink">常見問題</h2>
-          <div className="mt-6 divide-y divide-line rounded-2xl border border-line">
-            {FAQ.map(([q, a]) => (
-              <details key={q} className="group px-5 py-4">
-                <summary className="flex cursor-pointer list-none items-center justify-between font-medium text-ink">
-                  {q}<span aria-hidden className="text-muted transition group-open:rotate-45">＋</span>
-                </summary>
-                <p className="mt-2 text-sm leading-relaxed text-muted">{a}</p>
-              </details>
-            ))}
-          </div>
+      <div className="lp-hr" />
+      <section>
+        <div className="mx-auto max-w-[820px] px-4 py-20">
+          <Reveal>
+            <span className="lp-label">FAQ</span>
+            <h2 className="lp-grad mt-3 text-3xl font-semibold tracking-tight">常見問題</h2>
+          </Reveal>
+          <Reveal delay={80}>
+            <div className="mt-8 divide-y divide-white/[0.06] rounded-2xl" style={{ boxShadow: "0 0 0 1px rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
+              {FAQ.map(([q, a]) => (
+                <details key={q} className="group px-5 py-4">
+                  <summary className="flex cursor-pointer list-none items-center justify-between font-medium text-ink">
+                    {q}<span aria-hidden className="text-muted transition duration-300 group-open:rotate-45">＋</span>
+                  </summary>
+                  <p className="mt-2 text-sm leading-relaxed text-muted">{a}</p>
+                </details>
+              ))}
+            </div>
+          </Reveal>
         </div>
       </section>
 
-      <section className="mx-auto max-w-[820px] px-4 py-12 text-center">
-        <h2 className="text-xl font-bold text-ink">想一起用？</h2>
-        <p className="mt-2 text-sm text-muted">登入後送出申請，核准就能開始。</p>
-        <div className="mt-5"><GoogleButton big /></div>
-        <p className="mx-auto mt-8 max-w-xl text-xs leading-relaxed text-muted">
-          本網站為資料整理與篩選工具，所有內容僅供研究參考，不構成任何投資建議或買賣推薦；回測為歷史模擬，過去表現不代表未來報酬。投資有風險，請自行判斷。
-        </p>
+      <div className="lp-hr" />
+      <section className="mx-auto max-w-[820px] px-4 py-20 text-center">
+        <Reveal>
+          <h2 className="lp-grad text-3xl font-semibold tracking-tight">想一起用？</h2>
+          <p className="mt-3 text-sm text-muted">登入後送出申請，核准就能開始。</p>
+          <div className="mt-6"><Cta big /></div>
+          <p className="mx-auto mt-12 max-w-xl text-xs leading-relaxed text-muted">
+            本網站為資料整理與篩選工具，所有內容僅供研究參考，不構成任何投資建議或買賣推薦；回測為歷史模擬，過去表現不代表未來報酬。投資有風險，請自行判斷。
+          </p>
+        </Reveal>
       </section>
     </div>
   );
