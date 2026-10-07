@@ -7,6 +7,7 @@ import { type Condition, decodeConds, encodeConds, funnel, inUniverse, type Mark
 import { useSnapshot } from "@/hooks/useSnapshot";
 import DataStatus from "@/components/DataStatus";
 import SavedScreens from "@/components/SavedScreens";
+import { qualityCheck } from "@/lib/quality";
 import Results, { type Sort } from "@/components/Results";
 
 const BASE_COLS = ["close", "chg_pct", "volume_lots", "value", "market_cap"];
@@ -217,6 +218,7 @@ export default function Screener() {
   const pool = useMemo(() => (snap ? snap.rows.filter((r) => inUniverse(r, universe, market)) : []), [snap, universe, market]);
   const { result, steps } = useMemo(() => funnel(pool, conds), [pool, conds]);
   const stepMap = Object.fromEntries(steps.map((s) => [s.id, s]));
+  const checks = useMemo(() => qualityCheck(pool, conds, result), [pool, conds, result]);
   const cols = useMemo(() => {
     const keys = [...BASE_COLS, ...conds.map((c) => c.field), ...extra, ...TAIL_COLS];
     return keys.filter((k, i) => keys.indexOf(k) === i);
@@ -291,6 +293,16 @@ export default function Screener() {
               </div>
             )}
           </div>
+          {checks.length > 0 && (
+            <div className="rounded-lg border border-line bg-surface p-3">
+              <p className="mb-1.5 text-sm font-medium text-ink">篩選品質檢查</p>
+              <ul className="space-y-1 text-xs leading-relaxed">
+                {checks.map((c) => (
+                  <li key={c.text} className={c.level === "warn" ? "text-warn-ink" : "text-muted"}>{c.level === "warn" ? "⚠ " : "・"}{c.text}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           {conds.length > 0 && (
             <a href={`/backtest?${query}`} className="block rounded-lg border border-line bg-surface p-3 text-sm text-ink hover:border-accent">
               回測這組條件（依目前排序取前幾名）→

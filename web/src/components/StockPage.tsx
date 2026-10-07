@@ -2,8 +2,10 @@
 
 /** 個股頁：報價、焦點標籤、K 線、多空、支撐壓力、財務健康、籌碼、營收、財報、股利、大戶。 */
 import Link from "next/link";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import DataStatus from "@/components/DataStatus";
+import Section from "@/components/Section";
+import { HealthExplain, RiskCard } from "@/components/StockRisk";
 import KChart from "@/components/KChart";
 import LivePanel, { liveLabel } from "@/components/LivePanel";
 import NewsList from "@/components/NewsList";
@@ -12,7 +14,7 @@ import { useLiveQuotes } from "@/hooks/useLiveQuotes";
 import { useSnapshot } from "@/hooks/useSnapshot";
 import { num, type Row } from "@/lib/screener";
 import {
-  chipStamp, dailyBars, focusTags, grade, industryRank, outlooks, quarterStamp, revenueStamp, type Stamp, type StockFile, supportResistance,
+  chipStamp, dailyBars, focusTags, grade, industryRank, outlooks, quarterStamp, revenueStamp, type StockFile, supportResistance,
 } from "@/lib/stock";
 import { defaults, makeCtx, STRATEGIES } from "@/lib/strategies";
 
@@ -28,25 +30,6 @@ const tone = (v: unknown) => {
   const x = num(v);
   return x == null || x === 0 ? "text-muted" : x > 0 ? "text-up" : "text-down";
 };
-
-function Section({ id, title, note, stamp, children }: { id: string; title: string; note?: ReactNode; stamp?: Stamp | null; children: ReactNode }) {
-  return (
-    <section id={id} className="scroll-mt-4 rounded-lg border border-line bg-surface p-4">
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <h2 className="text-base font-bold text-ink">{title}</h2>
-        <div className="flex flex-wrap items-baseline justify-end gap-x-2 gap-y-1 text-xs">
-          {note && <span className="text-muted">{note}</span>}
-          {stamp && (
-            <span className={`num rounded px-1.5 py-0.5 ${stamp.late ? "bg-warn-bg text-warn-ink" : "text-muted"}`} title={stamp.late ? stamp.hint : undefined}>
-              {stamp.text}{stamp.late && stamp.hint ? `（${stamp.hint}）` : ""}
-            </span>
-          )}
-        </div>
-      </div>
-      {children}
-    </section>
-  );
-}
 
 function useStock(code: string) {
   const [data, setData] = useState<StockFile | null>(null);
@@ -185,7 +168,8 @@ export default function StockPage({ code }: { code: string }) {
           {data && <LevelsCard s={data} />}
         </div>
 
-        {isStock && snap && row && <HealthCard rows={snap.rows} row={row} code={code} />}
+        {data && <RiskCard s={data} row={row} />}
+        {isStock && snap && row && <HealthCard rows={snap.rows} row={row} code={code} s={data} />}
         {data && <ChipsCard s={data} row={row} />}
         {data?.revenue && data.revenue.length > 0 && <RevenueCard s={data} />}
         {data?.quarters && data.quarters.length > 0 && <QuartersCard s={data} />}
@@ -265,7 +249,7 @@ function LevelsCard({ s }: { s: StockFile }) {
 
 // ---------------- 財務健康 ----------------
 
-function HealthCard({ rows, row, code }: { rows: Row[]; row: Row; code: string }) {
+function HealthCard({ rows, row, code, s }: { rows: Row[]; row: Row; code: string; s: StockFile | null }) {
   const score = num(row.health_score);
   const ir = industryRank(rows, code);
   const parts: [string, string, unknown][] = [
@@ -276,12 +260,12 @@ function HealthCard({ rows, row, code }: { rows: Row[]; row: Row; code: string }
     ["成長性", "營收與 EPS 成長", row.hs_growth],
   ];
   return (
-    <Section id="health" title="財務健康評級" note="各項以全市場普通股百分位計分（0–100），金融股只計盈利與成長">
+    <Section id="health" title="財務健康評級" note="各項以全市場普通股百分位計分（0–100）">
       <div className="grid gap-4 sm:grid-cols-[180px_minmax(0,1fr)]">
         <div className="flex flex-col items-start justify-center rounded-md bg-surface-2 p-4">
           <span className="text-4xl font-bold text-ink">{grade(score)}</span>
           <span className="num mt-1 text-sm text-muted">健康度 {score == null ? "—" : Math.round(score)} 分</span>
-          {ir && <span className="num mt-1 text-xs text-muted">{row.industry as string} 第 {ir.rank} / {ir.total} 名</span>}
+          {ir && <span className="num mt-1 text-xs text-muted">{row.ind as string} 第 {ir.rank} / {ir.total} 名</span>}
         </div>
         <ul className="space-y-2.5">
           {parts.map(([label, hint, v]) => {
@@ -310,6 +294,7 @@ function HealthCard({ rows, row, code }: { rows: Row[]; row: Row; code: string }
           <div key={k}><dt className="text-xs text-muted">{k}</dt><dd className="text-ink">{v}</dd></div>
         ))}
       </dl>
+      <HealthExplain rows={rows} row={row} s={s} />
     </Section>
   );
 }

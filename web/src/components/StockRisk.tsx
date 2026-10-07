@@ -1,0 +1,287 @@
+"use client";
+
+/** 個股頁：風險框架（ATR、回撤、關鍵價、部位試算、事件日曆）與財務健康分數解釋。非買賣建議。 */
+import { useMemo, useState } from "react";
+import { NumInput } from "@/components/Screener";
+import Section from "@/components/Section";
+import { num, type Row } from "@/lib/screener";
+import { type Bar, dailyBars, type StockFile, supportResistance, todayStr } from "@/lib/stock";
+
+const f = (x: number | null | undefined, d = 2) =>
+  x == null || !Number.isFinite(x) ? "—" : x.toLocaleString("zh-TW", { minimumFractionDigits: d, maximumFractionDigits: d });
+
+// ---------------- 風險計算 ----------------
+
+function atr(bars: Bar[], n = 14): number | null {
+  if (bars.length < n + 1) return null;
+  let a: number | null = null;
+  for (let i = 1; i < bars.length; i++) {
+    const b = bars[i], pc = bars[i - 1].c;
+    const tr = Math.max(b.h - b.l, Math.abs(b.h - pc), Math.abs(b.l - pc));
+    a = a == null ? tr : a + (tr - a) / n;
+  }
+  return a;
+}
+
+function maxDrawdown(closes: number[]) {
+  let peak = closes[0], mdd = 0;
+  for (const c of closes) { peak = Math.max(peak, c); mdd = Math.min(mdd, c / peak - 1); }
+  return mdd * 100;
+}
+
+const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+
+export interface Ev { date: string; label: string; note?: string }
+
+/** 接下來的事件：除權息（已公告）、月營收公布期限、季報公布期限 */
+export function upcomingEvents(s: StockFile, today = todayStr()): Ev[] {
+  const out: Ev[] = [];
+  for (const d of s.dividends ?? []) {
+    if (d.ex && d.ex >= today) out.push({ date: d.ex, label: "除權息", note: `現金 ${f(d.cash)} 元${d.stock ? `、股票 ${f(d.stock)} 元` : ""}` });
+  }
+  const [y, m, day] = today.split("-").map(Number);
+  const rev = day <= 10 ? `${y}-${String(m).padStart(2, "0")}-10` : m === 12 ? `${y + 1}-01-10` : `${y}-${String(m + 1).padStart(2, "0")}-10`;
+  out.push({ date: rev, label: "月營收公布期限", note: "多數公司在 10 日前公布上個月營收" });
+  const fin = [[`${y}-03-31`, "年報"], [`${y}-05-15`, "第一季財報"], [`${y}-08-14`, "第二季財報"], [`${y}-11-14`, "第三季財報"], [`${y + 1}-03-31`, "年報"]]
+    .find(([d]) => d >= today)!;
+  out.push({ date: fin[0], label: `${fin[1]}公布期限`, note: "法定最後期限，公司可能提早公布" });
+  return out.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+const daysBetween = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000);
+
+type StopMode = "atr" | "support" | "custom";
+
+export function RiskCard({ s, row }: { s: StockFile; row?: Row }) {
+  const bars = useMemo(() => dailyBars(s, true), [s]);
+  const m = useMemo(() => {
+    if (bars.length < 30) return null;
+    const closes = bars.map((b) => b.c);
+    const last = closes[closes.length - 1];
+    const a = atr(bars.slice(-120));
+    const lv = supportResistance(bars);
+    const ma20 = closes.length >= 20 ? mean(closes.slice(-20)) : null;
+    const ma60 = closes.length >= 60 ? mean(closes.slice(-60)) : null;
+    const rets = closes.slice(-21).map((c, i, arr) => (i ? c / arr[i - 1] - 1 : 0)).slice(1);
+    const sd = Math.sqrt(mean(rets.map((r) => (r - mean(rets)) ** 2)));
+    return {
+      last, atr: a, atrPct: a ? (a / last) * 100 : null, mdd20: maxDrawdown(closes.slice(-20)), mdd60: maxDrawdown(closes.slice(-60)),
+      vol20: sd * Math.sqrt(252) * 100, support: lv.supports[0] ?? null, resistance: lv.resistances[0] ?? null, ma20, ma60,
+    };
+  }, [bars]);
+
+  const [capital, setCapital] = useState<number | undefined>(1_000_000);
+  const [riskPct, setRiskPct] = useState<number | undefined>(1);
+  const [entry, setEntry] = useState<number | undefined>(undefined);
+  const [mode, setMode] = useState<StopMode>("atr");
+  const [mult, setMult] = useState<number | undefined>(2);
+  const [custom, setCustom] = useState<number | undefined>(undefined);
+  const events = useMemo(() => upcomingEvents(s), [s]);
+
+  if (!m) return null;
+  const px = entry ?? m.last;
+  const stop = mode === "atr" ? (m.atr ? px - (mult ?? 2) * m.atr : null)
+    : mode === "support" ? (m.support ? m.support.lo * 0.99 : null) : custom ?? null;
+  const perShare = stop != null ? px - stop : null;
+  const budget = (capital ?? 0) * (riskPct ?? 0) / 100;
+  let shares = perShare && perShare > 0 ? Math.floor(budget / perShare) : 0;
+  if (capital && shares * px > capital) shares = Math.floor(capital / px);      // 不超過總資金
+  const lots = Math.floor(shares / 1000), odd = shares % 1000;
+  const today = todayStr();
+  const isEtf = s.info.sec_type === "etf";
+
+  return (
+    <Section id="risk" title="風險框架與部位試算" note="用自己的風險承受度估算，非買賣建議">
+      <dl className="num grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+        <Stat label="每日平均波動（ATR）" value={`${f(m.atr)} 元`} sub={`約股價 ${f(m.atrPct, 1)}%`} />
+        <Stat label="近 20 日最大回撤" value={`${f(m.mdd20, 1)}%`} sub={`近 60 日 ${f(m.mdd60, 1)}%`} />
+        <Stat label="近 20 日年化波動" value={`${f(m.vol20, 0)}%`} sub={num(row?.atr_pct) != null ? "大盤約 15～25%" : undefined} />
+        <Stat label="最近支撐／壓力" value={`${m.support ? f(m.support.lo) : "—"}／${m.resistance ? f(m.resistance.lo) : "—"}`} sub="還原價，見支撐與壓力" />
+      </dl>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <div className="rounded-md bg-surface-2 p-3 text-sm leading-relaxed text-ink">
+          <h3 className="font-bold">看法失效的訊號（參考）</h3>
+          <ul className="mt-1 space-y-1">
+            {m.support && <li>· 收盤跌破最近支撐區 {f(m.support.lo)}（距今 {f((m.support.lo / m.last - 1) * 100, 1)}%）：短線支撐失守</li>}
+            {m.ma20 && <li>· 收盤跌破月線 {f(m.ma20)}（{m.last >= m.ma20 ? "目前在上方" : "目前已在下方"}）：短線轉弱</li>}
+            {m.ma60 && <li>· 收盤跌破季線 {f(m.ma60)}（{m.last >= m.ma60 ? "目前在上方" : "目前已在下方"}）：中期趨勢轉弱</li>}
+            {m.atr && <li>· 一天跌超過 {f(2 * m.atr)} 元（2 倍 ATR）：波動明顯放大</li>}
+          </ul>
+          {m.resistance && <p className="mt-2 text-xs text-muted">上方最近壓力 {f(m.resistance.lo)}（距今 +{f((m.resistance.lo / m.last - 1) * 100, 1)}%），突破前可能遇到賣壓。</p>}
+        </div>
+
+        <div className="rounded-md bg-surface-2 p-3 text-sm text-ink">
+          <h3 className="font-bold">部位大小試算</h3>
+          <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2">
+            <Field label="總資金（元）"><NumInput value={capital} onChange={setCapital} label="總資金" /></Field>
+            <Field label="一筆最多虧損（%）"><NumInput value={riskPct} onChange={setRiskPct} label="一筆最多虧損" /></Field>
+            <Field label="進場價"><NumInput value={entry ?? Number(m.last.toFixed(2))} onChange={setEntry} label="進場價" /></Field>
+            <Field label="停損方式">
+              <select value={mode} onChange={(e) => setMode(e.target.value as StopMode)} className="rounded-md border border-line bg-surface px-1.5 py-1.5 text-sm text-ink" aria-label="停損方式">
+                <option value="atr">ATR 倍數</option><option value="support">支撐下緣</option><option value="custom">自己輸入</option>
+              </select>
+            </Field>
+            {mode === "atr" && <Field label="ATR 倍數"><NumInput value={mult} onChange={setMult} label="ATR 倍數" /></Field>}
+            {mode === "custom" && <Field label="停損價"><NumInput value={custom} onChange={setCustom} label="停損價" /></Field>}
+          </div>
+          <div className="num mt-3 space-y-1 border-t border-line pt-2">
+            <p>停損價 <b>{f(stop)}</b>（每股風險 {f(perShare)} 元，{perShare && px ? f((perShare / px) * 100, 1) : "—"}%）</p>
+            {perShare != null && perShare > 0 ? (
+              <p>最多可買 <b>{shares.toLocaleString()}</b> 股（{lots} 張{odd ? ` ＋ ${odd} 股零股` : ""}），約 {f(shares * px, 0)} 元，占資金 {capital ? f((shares * px / capital) * 100, 1) : "—"}%；停損時虧約 {f(shares * perShare, 0)} 元</p>
+            ) : <p className="text-warn-ink">停損價要低於進場價才能試算。</p>}
+          </div>
+          <p className="mt-2 text-xs text-muted">公式：可買股數 ＝ 總資金 × 一筆最多虧損 ÷ 每股風險（不超過總資金）。未計手續費、稅與跳空。</p>
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <h3 className="text-sm font-bold text-ink">接下來的事件</h3>
+        <ul className="mt-1 divide-y divide-line text-sm">
+          {events.map((e) => {
+            const d = daysBetween(today, e.date);
+            return (
+              <li key={e.label + e.date} className="flex flex-wrap items-baseline gap-x-3 py-1.5">
+                <span className={`num w-24 ${d <= 7 ? "font-bold text-warn-ink" : "text-ink"}`}>{e.date}</span>
+                <span className="text-ink">{e.label}</span>
+                <span className="text-xs text-muted">{d === 0 ? "今天" : `${d} 天後`}{e.note ? `・${e.note}` : ""}</span>
+              </li>
+            );
+          })}
+        </ul>
+        <p className="mt-1 text-xs text-muted">
+          除權息為已公告的日期；{isEtf ? "ETF 沒有月營收與財報，請以投信公告為準；" : ""}法說會與重大訊息目前沒有可合法自動取得的資料來源，請到公開資訊觀測站查詢。
+        </p>
+      </div>
+    </Section>
+  );
+}
+
+function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div className="rounded-md bg-surface-2 px-3 py-2">
+      <dt className="text-xs text-muted">{label}</dt>
+      <dd className="mt-0.5 font-bold text-ink">{value}</dd>
+      {sub && <dd className="text-xs text-muted">{sub}</dd>}
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return <label className="flex flex-col gap-1 text-xs text-muted">{label}{children}</label>;
+}
+
+// ---------------- 財務健康解釋 ----------------
+
+const PARTS: { key: string; label: string; metrics: [string, string, boolean, boolean][] }[] = [
+  // [欄位, 名稱, 越高越好, 金融股也算]
+  { key: "hs_profit", label: "盈利能力", metrics: [["roe", "ROE", true, true], ["roa", "ROA", true, true], ["gross_margin", "毛利率", true, false], ["op_margin", "營業利益率", true, false]] },
+  { key: "hs_liquid", label: "流動性", metrics: [["current_ratio", "流動比率", true, false], ["fcf_ttm", "近四季自由現金流", true, false]] },
+  { key: "hs_struct", label: "財務結構", metrics: [["debt_ratio", "負債比", false, false]] },
+  { key: "hs_eff", label: "營運效率", metrics: [["asset_turnover", "資產周轉率", true, false], ["f_score", "F-Score", true, false]] },
+  { key: "hs_growth", label: "成長性", metrics: [["rev_ttm_yoy", "近 12 月營收年增", true, true], ["eps_q_yoy", "單季 EPS 年增", true, true], ["eps_cagr3", "EPS 3 年年化成長", true, true]] },
+];
+const GRADES: [number, string][] = [[35, "C"], [45, "C+"], [55, "B"], [65, "B+"], [75, "A"], [85, "A+"]];
+
+function pctRank(rows: Row[], key: string, v: number, higher: boolean): number | null {
+  const xs = rows.map((r) => num(r[key])).filter((x): x is number => x != null);
+  if (!xs.length) return null;
+  const below = xs.filter((x) => (higher ? x < v : x > v)).length, eq = xs.filter((x) => x === v).length;
+  return ((below + eq / 2) / xs.length) * 100;
+}
+
+export function HealthExplain({ rows, row, s }: { rows: Row[]; row: Row; s?: StockFile | null }) {
+  const fin = row.is_financial === 1;
+  const stocks = useMemo(() => rows.filter((r) => r.sec_type === "stock"), [rows]);
+  const score = num(row.health_score);
+  const detail = useMemo(() => PARTS.map((p) => ({
+    ...p,
+    score: num(row[p.key]),
+    items: p.metrics.filter(([, , , okFin]) => !fin || okFin).map(([k, label, higher]) => {
+      const v = num(row[k]);
+      const peers = stocks.filter((r) => (r.is_financial === 1) === fin || okForAll(k));
+      return { k, label, v, pct: v == null ? null : pctRank(peers, k, v, higher) };
+    }),
+  })), [row, stocks, fin]);
+  const next = score == null ? null : GRADES.find(([t]) => t > score);
+  const peers = useMemo(() => stocks.filter((r) => r.ind && r.ind === row.ind && num(r.health_score) != null), [stocks, row.ind]);
+  const peerPct = score != null && peers.length > 2 ? pctRank(peers, "health_score", score, true) : null;
+  const weakest = detail.flatMap((d) => d.items).filter((x) => x.pct != null).sort((a, b) => a.pct! - b.pct!).slice(0, 3);
+  const warns: string[] = [];
+  for (const d of detail) if (d.score == null && !(fin && d.key !== "hs_profit" && d.key !== "hs_growth")) warns.push(`${d.label}資料不足，沒有計分`);
+  const eqy = num(row.eps_q_yoy);
+  if (eqy != null && Math.abs(eqy) > 300) warns.push(`單季 EPS 年增 ${f(eqy, 0)}%，去年同期基期很低或為虧損，成長分數可能被放大`);
+  if ((s?.quarters?.length ?? 0) < 4) warns.push("財報不足 4 季（新上市或資料補齊中）");
+  const q = s?.quarters ?? [];
+  const trend = (k: "gm" | "om" | "roe") => {
+    const xs = q.map((x) => x[k]).filter((x): x is number => x != null);
+    return xs.length >= 4 ? { first: xs[0], last: xs[xs.length - 1], n: xs.length } : null;
+  };
+
+  return (
+    <div className="mt-4 space-y-3 border-t border-line pt-3 text-sm text-ink">
+      {fin && <p className="rounded-md bg-warn-bg px-3 py-2 font-bold text-warn-ink">金融股：只計「盈利能力」與「成長性」兩項（流動比率、負債比、周轉率不適用），分數不宜跟一般產業直接比較。</p>}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-md bg-surface-2 p-3">
+          <div className="text-xs text-muted">距離下一級</div>
+          <div className="mt-0.5 font-bold">{score == null ? "—" : next ? `再 ${f(next[0] - score, 0)} 分升到 ${next[1]}` : "已是最高級 A+"}</div>
+          <div className="text-xs text-muted">分級：A+ ≥85、A ≥75、B+ ≥65、B ≥55、C+ ≥45、C ≥35</div>
+        </div>
+        <div className="rounded-md bg-surface-2 p-3">
+          <div className="text-xs text-muted">同產業比較{row.ind ? `（${row.ind as string}）` : ""}</div>
+          <div className="mt-0.5 font-bold">{peerPct == null ? "同業太少" : `贏過 ${f(peerPct, 0)}% 的同業`}</div>
+          <div className="text-xs text-muted">{peers.length} 家有分數</div>
+        </div>
+        <div className="rounded-md bg-surface-2 p-3">
+          <div className="text-xs text-muted">主要扣分來源（全市場百分位最低）</div>
+          <div className="mt-0.5 font-bold">{weakest.length ? weakest.map((w) => `${w.label} ${f(w.pct, 0)}`).join("、") : "—"}</div>
+        </div>
+      </div>
+
+      <details className="rounded-md border border-line">
+        <summary className="cursor-pointer px-3 py-2 text-sm">每一項怎麼算（數值與全市場百分位）</summary>
+        <div className="grid gap-3 border-t border-line p-3 sm:grid-cols-2 lg:grid-cols-3">
+          {detail.map((d) => (
+            <div key={d.key}>
+              <div className="flex justify-between font-bold"><span>{d.label}</span><span className="num">{d.score == null ? "不計" : f(d.score, 0)}</span></div>
+              <ul className="num mt-1 space-y-0.5 text-xs">
+                {d.items.map((x) => (
+                  <li key={x.k} className="flex justify-between gap-2">
+                    <span className="text-muted">{x.label} {fmtMetric(x.k, x.v)}</span>
+                    <span className={x.pct == null ? "text-muted" : x.pct < 30 ? "text-down" : x.pct > 70 ? "text-up" : "text-ink"}>{x.pct == null ? "—" : `${f(x.pct, 0)}`}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+        <p className="px-3 pb-3 text-xs text-muted">百分位 100 ＝ 全市場最好、0 ＝ 最差；每一面向取各項平均，總分取五個面向平均（至少要有 4 項，金融股 2 項）。</p>
+      </details>
+
+      {q.length >= 4 && (
+        <p className="text-xs text-muted">
+          近 {q.length} 季趨勢：
+          {(["gm", "om", "roe"] as const).map((k) => {
+            const t = trend(k);
+            if (!t) return null;
+            const up = t.last > t.first;
+            return <span key={k} className="mr-3">{{ gm: "毛利率", om: "營益率", roe: "ROE" }[k]} {f(t.first, 1)}% → {f(t.last, 1)}% <span className={up ? "text-up" : "text-down"}>{up ? "▲" : "▼"}</span></span>;
+          })}
+        </p>
+      )}
+      {warns.length > 0 && (
+        <ul className="space-y-0.5 text-xs text-warn-ink">{warns.map((w) => <li key={w}>⚠ {w}</li>)}</ul>
+      )}
+    </div>
+  );
+}
+
+const okForAll = (k: string) => ["roe", "roa", "rev_ttm_yoy", "eps_q_yoy", "eps_cagr3"].includes(k);
+
+function fmtMetric(k: string, v: number | null) {
+  if (v == null) return "—";
+  if (k === "fcf_ttm") return `${f(v / 1e8, 1)} 億`;
+  if (k === "current_ratio" || k === "asset_turnover") return `${f(v)} 倍`;
+  if (k === "f_score") return `${f(v, 0)} 分`;
+  return `${f(v, 1)}%`;
+}
