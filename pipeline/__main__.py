@@ -4,6 +4,7 @@
     python -m pipeline backfill-daily   [--years 4] [--budget-min 320] [--max-days N] [--chain]
     python -m pipeline backfill-finmind [--years 8] [--budget-min 320] [--max-codes N] [--chain]
     python -m pipeline fin-refresh      [--budget-min 40]
+    python -m pipeline backtest-data    [--budget-min 40] [--rebuild] [--chain]
 --chain：在 GitHub Actions 中，一次跑不完就自動重新觸發同一個 workflow 接力。
 """
 import argparse
@@ -41,6 +42,10 @@ def main(argv=None):
     bi.add_argument("--budget-min", type=float, default=320)
     r = sub.add_parser("fin-refresh")
     r.add_argument("--budget-min", type=float, default=40)
+    bt = sub.add_parser("backtest-data")
+    bt.add_argument("--budget-min", type=float, default=40)
+    bt.add_argument("--rebuild", action="store_true")
+    bt.add_argument("--chain", action="store_true")
     a = p.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s", stream=sys.stdout)
@@ -86,6 +91,13 @@ def main(argv=None):
         from .market import backfill_indices
         total, left = backfill_indices(store, fetcher, years=a.years, budget_min=a.budget_min)
         jobs.summary(f"## 指數歷史回補\n\n待補 {total} 天，剩 {left} 天")
+    elif a.cmd == "backtest-data":
+        from .backtest import run_backtest_data
+        res = run_backtest_data(store, budget_min=a.budget_min, rebuild=a.rebuild)
+        jobs.summary(f"## 回測資料\n\n本次新增 {len(res['built'])} 個月、失敗 {res['failed']}，"
+                     f"可回測 {res['ready']}/{res['total']} 個月，價格檔 {res['px_kb']} KB，{res['minutes']} 分鐘")
+        if a.chain and res["built"] and res["ready"] < res["total"]:
+            jobs.redispatch("backtest.yml", {"chain": "true"})
     elif a.cmd == "fin-refresh":
         jobs.run_fin_refresh(store, fetcher, budget_min=a.budget_min)
 

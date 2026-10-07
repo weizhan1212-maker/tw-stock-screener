@@ -59,6 +59,14 @@ jobs:
           python -m pipeline snapshot 2>&1 | tee -a run.log
           python -m pipeline market 2>&1 | tee -a run.log
           python -m pipeline stocks 2>&1 | tee -a run.log
+      - name: 回測資料（增量）
+        if: github.event.inputs.mode != 'light'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          set -o pipefail
+          python -m pipeline backtest-data --budget-min 10 2>&1 | tee -a run.log
       - name: 資料檢查報告
         if: always() && github.event.schedule != '43 10 * * 1-5' && github.event.inputs.mode != 'light'
         env:

@@ -1,0 +1,46 @@
+name: 回測資料
+
+# 產生回測用的每月「當時」快照與還原價格檔（pipeline/backtest.py）。
+# 第一次建置用這個 workflow（chain=true 跑不完會自動接力）；之後每天夜間場的每日任務會增量更新。
+on:
+  workflow_dispatch:
+    inputs:
+      chain:
+        description: "跑不完是否自動接力（true/false）"
+        default: "true"
+      rebuild:
+        description: "全部重做（true/false）"
+        default: "false"
+
+concurrency:
+  group: pipeline-days
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: 回測資料
+        run: |
+          set -o pipefail
+          python -m pipeline backtest-data --budget-min 45 \
+            ${{ github.event.inputs.chain == 'true' && '--chain' || '' }} \
+            ${{ github.event.inputs.rebuild == 'true' && '--rebuild' || '' }} 2>&1 | tee -a run.log
+      - name: 保存執行紀錄
+        if: always()
+        run: .github/scripts/save-log.sh backtest
