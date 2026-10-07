@@ -7,7 +7,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 
 // 這兩個由外部呼叫，各自用密鑰驗證：Telegram webhook、每日警報評估
-const PUBLIC = ["/login", "/api/auth", "/api/telegram/webhook", "/api/alerts/run"];
+const PUBLIC = ["/login", "/about", "/api/auth", "/api/telegram/webhook", "/api/alerts/run"];
 
 export const proxy = auth((req) => {
   const path = req.nextUrl.pathname;

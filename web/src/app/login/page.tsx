@@ -11,6 +11,7 @@ export default async function LoginPage() {
       <h1 className="text-2xl font-bold text-ink">登入股見未來</h1>
       <p className="mt-3 text-sm leading-relaxed text-muted">
         這是邀請制網站。第一次登入後，需要等管理員核准才能使用。
+        <a href="/about" className="ml-1 text-accent hover:underline">看看網站介紹 →</a>
       </p>
       <form
         className="mt-8"

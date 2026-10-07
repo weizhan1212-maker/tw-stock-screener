@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import { auth } from "@/auth";
 import StockSearch from "@/components/StockSearch";
 import ThemeToggle from "@/components/ThemeToggle";
 import UserMenu from "@/components/UserMenu";
@@ -17,7 +18,9 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1 };
 // 在畫面出現前套用深淺色，避免閃一下
 const themeScript = `try{var t=localStorage.getItem('theme');if(!t){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.dataset.theme=t}catch(e){}`;
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // 沒登入（例如看落地頁、登入頁）時只顯示品牌與登入，不顯示站內選單
+  const user = process.env.SKIP_AUTH === "1" && !process.env.VERCEL ? true : !!(await auth())?.user;
   return (
     <html lang="zh-Hant-TW" suppressHydrationWarning>
       <head>
@@ -30,11 +33,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-dvh flex flex-col antialiased">
         <header className="border-b border-line bg-surface">
           <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
-            <Link href="/" className="flex items-center gap-2 whitespace-nowrap text-[17px] font-bold tracking-wide text-ink">
+            <Link href={user ? "/" : "/about"} className="flex items-center gap-2 whitespace-nowrap text-[17px] font-bold tracking-wide text-ink">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo.png" alt="" width={26} height={26} className="h-[26px] w-[26px]" />
               股見未來
             </Link>
+            {user && (
             <nav className="order-last -mx-2.5 flex w-full gap-1 overflow-x-auto whitespace-nowrap text-sm sm:order-none sm:mx-0 sm:w-auto">
               <Link href="/" className="rounded-md px-2.5 py-1 text-ink hover:bg-surface-2">
                 策略選股
@@ -67,8 +71,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 警報
               </Link>
             </nav>
+            )}
             <div className="ml-auto flex items-center gap-3">
-              <StockSearch />
+              {user ? <StockSearch /> : <Link href="/login" className="text-sm text-accent hover:underline">登入</Link>}
               <UserMenu />
               <ThemeToggle />
             </div>
