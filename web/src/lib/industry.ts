@@ -54,7 +54,7 @@ export function statOf(name: string, rows: Row[]): IndustryStat {
   const pe = vals("pe", true);
   const sum = (k: string) => rows.reduce((a, r) => a + (num(r[k]) ?? 0), 0);
   return {
-    name, n: rows.length, cap: sum("market_cap") / 1e8,
+    name, n: rows.length, cap: sum("market_cap"),
     ret: { chg_pct: weighted(rows, "chg_pct"), ret5: weighted(rows, "ret5"), ret20: weighted(rows, "ret20"), ret60: weighted(rows, "ret60") },
     rs20: weighted(rows, "rs20"), rs60: weighted(rows, "rs60"),
     upRatio: ratio(rows, (r) => { const c = num(r.chg_pct); return c == null ? null : c > 0; }),
