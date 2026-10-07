@@ -9,7 +9,7 @@ import DataStatus from "@/components/DataStatus";
 import { Seg } from "@/components/Screener";
 import { useSnapshot } from "@/hooks/useSnapshot";
 import { FIELD_MAP } from "@/lib/fields";
-import { fmt, type Row } from "@/lib/screener";
+import { fmt, isSigned, type Row } from "@/lib/screener";
 import { type Bar, dailyBars, type StockFile } from "@/lib/stock";
 
 const MAX = 6;
@@ -166,7 +166,7 @@ function MetricTable({ codes, by }: { codes: string[]; by: Map<string, Row> }) {
             return (
               <tr key={k} className="border-t border-line">
                 <td className="px-3 py-1.5 text-ink">{f.label}</td>
-                {codes.map((c) => <td key={c} className="num px-3 py-1.5 text-right text-ink">{fmt(by.get(c)?.[k], f.format, f.format === "pct")}</td>)}
+                {codes.map((c) => <td key={c} className="num px-3 py-1.5 text-right text-ink">{fmt(by.get(c)?.[k], f.format, isSigned(k))}</td>)}
               </tr>
             );
           })}
