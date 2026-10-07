@@ -40,6 +40,11 @@ LATEST = {
     "tpex_block": f"{TP}/openapi/v1/tpex_daily_trading_block",
     "futures": "https://openapi.taifex.com.tw/v1/DailyMarketReportFut",
     "dca_rank": "https://openapi.twse.com.tw/v1/ETFReport/ETFRank",
+    # 市場情緒（期交所 OpenAPI，約保留最近 20 個交易日，每天累積）
+    "pcr": "https://openapi.taifex.com.tw/v1/PutCallRatio",
+    "fut_large": "https://openapi.taifex.com.tw/v1/OpenInterestOfLargeTradersFutures",
+    "fut_insti": "https://openapi.taifex.com.tw/v1/MarketDataOfMajorInstitutionalTradersDetailsOfFuturesContractsBytheDate",
+    "fx": "https://openapi.taifex.com.tw/v1/DailyForeignExchangeRates",
 }
 
 
@@ -217,3 +222,77 @@ def parse_futures(rows) -> pd.DataFrame:
         return df
     df = df.sort_values("month").groupby(["date", "session"], as_index=False).first()   # 近月
     return df
+
+
+# ---------- 市場情緒（期交所） ----------
+
+def _d(x):
+    return pd.to_datetime(str(x), format="%Y%m%d", errors="coerce")
+
+
+def parse_pcr(rows) -> pd.DataFrame:
+    """台指選擇權 Put/Call 比（成交量、未平倉，單位 %）。"""
+    return pd.DataFrame.from_records([{
+        "date": _d(r.get("Date")), "pcr_vol": to_num(r.get("PutCallVolumeRatio%")), "pcr_oi": to_num(r.get("PutCallOIRatio%")),
+        "put_oi": to_num(r.get("PutOI")), "call_oi": to_num(r.get("CallOI")),
+    } for r in rows or []]).dropna(subset=["date"]) if rows else pd.DataFrame()
+
+
+def parse_fut_large(rows) -> pd.DataFrame:
+    """台指期大額交易人未沖銷部位（全部月份合計）：前五大／前十大的買減賣（口），以及特定法人的前十大。"""
+    recs = {}
+    for r in rows or []:
+        if str(r.get("Contract", "")).strip() != "TX" or str(r.get("SettlementMonth", "")).strip() != "999912":
+            continue
+        d = _d(r.get("Date"))
+        x = recs.setdefault(d, {"date": d})
+        net5 = to_num(r.get("Top5Buy")) - to_num(r.get("Top5Sell"))
+        net10 = to_num(r.get("Top10Buy")) - to_num(r.get("Top10Sell"))
+        if str(r.get("TypeOfTraders", "")).strip() == "0":
+            x.update(top5_net=net5, top10_net=net10, oi=to_num(r.get("OIOfMarket")))
+        else:
+            x.update(top10_net_inst=net10)
+    return pd.DataFrame.from_records(list(recs.values()))
+
+
+def parse_fut_insti(rows) -> pd.DataFrame:
+    """三大法人台股期貨未平倉淨口數（外資、投信、自營商）。"""
+    key = {"外資及陸資": "foreign", "投信": "trust", "自營商": "dealer"}
+    recs = {}
+    for r in rows or []:
+        if str(r.get("ContractCode", "")).strip() != "臺股期貨":
+            continue
+        who = key.get(str(r.get("Item", "")).strip())
+        if not who:
+            continue
+        d = _d(r.get("Date"))
+        recs.setdefault(d, {"date": d})[f"{who}_oi_net"] = to_num(r.get("OpenInterest(Net)"))
+    return pd.DataFrame.from_records(list(recs.values()))
+
+
+def parse_fx(rows) -> pd.DataFrame:
+    """美元兌新台幣（期交所每日參考匯率）。"""
+    return pd.DataFrame.from_records([{"date": _d(r.get("Date")), "usd_twd": to_num(r.get("USD/NTD"))} for r in rows or []]
+                                     ).dropna(subset=["date"]) if rows else pd.DataFrame()
+
+
+# ---------- 國發會景氣對策信號（政府資料開放平臺 dataset 6099，每月） ----------
+
+NDC_DATASET = "https://data.gov.tw/api/v2/rest/dataset/6099"
+
+
+def parse_business_light(zip_bytes: bytes) -> list[dict]:
+    """從「景氣指標及燈號」ZIP 取出每月景氣對策信號綜合分數與燈號。"""
+    import csv
+    import io
+    import zipfile
+    z = zipfile.ZipFile(io.BytesIO(zip_bytes))
+    name = next(n for n in z.namelist() if n.endswith("景氣指標與燈號.csv") and not n.startswith("schema"))
+    rows = list(csv.DictReader(io.StringIO(z.read(name).decode("utf-8-sig"))))
+    out = []
+    for r in rows:
+        score = to_num(r.get("景氣對策信號綜合分數"))
+        if score != score:          # NaN
+            continue
+        out.append({"month": str(r.get("Date", "")).strip(), "score": score, "light": str(r.get("景氣對策信號", "")).strip()})
+    return out

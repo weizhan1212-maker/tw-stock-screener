@@ -420,3 +420,112 @@ function PeBar({ band, cur }: { band: { min: number; lo: number; mid: number; hi
     </div>
   );
 }
+
+// ---------------- 事件統計 ----------------
+
+interface EvStat { label: string; n: number; avg: number | null; win: number | null }
+function statOf(label: string, xs: number[]): EvStat {
+  return { label, n: xs.length, avg: xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null, win: xs.length ? (xs.filter((x) => x > 0).length / xs.length) * 100 : null };
+}
+
+export function eventStats(s: StockFile) {
+  const d = s.daily;
+  const adj = d.c.map((c, i) => (c == null ? null : c * (d.f[i] ?? 1)));
+  const idxOf = (date: string) => { let i = d.d.findIndex((x) => x >= date); if (i < 0) i = d.d.length; return i; };   // 第一個 ≥ date 的交易日
+  const ret = (i0: number, i1: number) => {
+    if (i0 < 0 || i1 >= d.d.length || i1 <= i0) return null;
+    const a = adj[i0], b = adj[i1];
+    return a && b ? (b / a - 1) * 100 : null;
+  };
+  // 除權息：填息天數、除息前 5 日、除息當天
+  const divs = (s.dividends ?? []).filter((x) => x.ex && x.ex >= d.d[0] && x.ex <= d.d[d.d.length - 1] && (x.cash ?? 0) + (x.stock ?? 0) > 0);
+  const fill: number[] = [], pre: number[] = [], day: number[] = [];
+  let notFilled = 0;
+  const rows: { ex: string; cash: number | null; days: number | null }[] = [];
+  for (const x of divs) {
+    const i = idxOf(x.ex!);
+    if (i <= 0 || i >= d.d.length) continue;
+    const prevClose = d.c[i - 1];
+    let k: number | null = null;
+    if (prevClose != null) for (let j = i; j < d.d.length; j++) if ((d.c[j] ?? 0) >= prevClose) { k = j - i + 1; break; }
+    if (k == null) notFilled++; else fill.push(k);
+    rows.push({ ex: x.ex!, cash: x.cash, days: k });
+    const r1 = ret(i - 6, i - 1); if (r1 != null) pre.push(r1);
+    const r2 = ret(i - 1, i); if (r2 != null) day.push(r2);
+  }
+  // 月營收：上個月底 → 公布期限（10 日）後 5 個交易日
+  const rev = s.revenue ?? [];
+  const revMap = new Map(rev.map(([m, v]) => [m, v]));
+  const grp: Record<string, number[]> = { up: [], flat: [], down: [] };
+  for (const [m, v] of rev) {
+    const [y, mo] = m.split("-").map(Number);
+    const ly = revMap.get(`${y - 1}-${String(mo).padStart(2, "0")}`);
+    if (v == null || ly == null || ly <= 0) continue;
+    const yoy = (v / ly - 1) * 100;
+    const ny = mo === 12 ? y + 1 : y, nm = mo === 12 ? 1 : mo + 1;
+    const start = idxOf(`${ny}-${String(nm).padStart(2, "0")}-01`) - 1;
+    const dl = idxOf(`${ny}-${String(nm).padStart(2, "0")}-11`);
+    const r = ret(start, dl + 4);
+    if (r == null) continue;
+    (yoy >= 20 ? grp.up : yoy >= 0 ? grp.flat : grp.down).push(r);
+  }
+  // 季報：公布期限前 5 日 → 後 5 日，依 EPS 年增分組
+  const q = s.quarters ?? [];
+  const qg: Record<string, number[]> = { up: [], down: [] };
+  q.forEach((x, i) => {
+    if (i < 4 || x.eps == null || q[i - 4].eps == null) return;
+    const dl = idxOf(availDate(x.p));
+    const r = ret(dl - 5, dl + 5);
+    if (r == null) return;
+    (x.eps > (q[i - 4].eps as number) ? qg.up : qg.down).push(r);
+  });
+  return {
+    div: { n: rows.length, filled: fill.length, notFilled, avgDays: fill.length ? fill.reduce((a, b) => a + b, 0) / fill.length : null,
+      medDays: fill.length ? [...fill].sort((a, b) => a - b)[Math.floor(fill.length / 2)] : null, pre: statOf("除息前 5 日", pre), day: statOf("除息當天", day), rows: rows.reverse() },
+    revenue: [statOf("營收年增 ≥ 20%", grp.up), statOf("年增 0～20%", grp.flat), statOf("營收衰退", grp.down)],
+    quarter: [statOf("EPS 比去年同季成長", qg.up), statOf("EPS 比去年同季衰退", qg.down)],
+  };
+}
+
+export function EventStatsCard({ s }: { s: StockFile }) {
+  const e = useMemo(() => eventStats(s), [s]);
+  const head = <thead className="text-xs text-muted"><tr><th className="py-1 text-left font-medium">情況</th><th className="text-right font-medium">次數</th><th className="text-right font-medium">平均報酬</th><th className="text-right font-medium">上漲機率</th></tr></thead>;
+  return (
+    <Section id="events" title="事件統計" note="這檔股票過去事件前後的股價表現（還原價），樣本少時參考性低">
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div>
+          <h3 className="text-sm font-bold text-ink">除權息與填息</h3>
+          {e.div.n === 0 ? <p className="mt-1 text-sm text-muted">資料期間內沒有除權息紀錄。</p> : (
+            <>
+              <p className="num mt-1 text-sm text-ink">近 {e.div.n} 次：{e.div.filled} 次已填息{e.div.notFilled ? `、${e.div.notFilled} 次尚未填息` : ""}；填息天數中位數 <b>{e.div.medDays ?? "—"}</b> 個交易日</p>
+              <table className="num mt-2 w-full text-sm">{head}<tbody><EvRow x={e.div.pre} /><EvRow x={e.div.day} /></tbody></table>
+              <p className="num mt-2 text-xs text-muted">{e.div.rows.slice(0, 6).map((r) => `${r.ex}（${r.days == null ? "未填息" : `${r.days} 天填息`}）`).join("、")}</p>
+            </>
+          )}
+        </div>
+        <div>
+          <h3 className="text-sm font-bold text-ink">月營收公布前後</h3>
+          <table className="num mt-1 w-full text-sm">{head}<tbody>{e.revenue.map((x) => <EvRow key={x.label} x={x} />)}</tbody></table>
+          <p className="mt-1 text-xs text-muted">期間：上個月底收盤 → 10 日公布期限後 5 個交易日。</p>
+        </div>
+        <div>
+          <h3 className="text-sm font-bold text-ink">季報公布前後</h3>
+          <table className="num mt-1 w-full text-sm">{head}<tbody>{e.quarter.map((x) => <EvRow key={x.label} x={x} />)}</tbody></table>
+          <p className="mt-1 text-xs text-muted">期間：法定公布期限前 5 日 → 後 5 日（公司可能提早公布）。</p>
+        </div>
+      </div>
+      <p className="mt-3 text-xs text-muted">過去的反應不代表下次一定一樣；法說會與重大訊息沒有合法的自動資料來源，沒有列入。</p>
+    </Section>
+  );
+}
+
+function EvRow({ x }: { x: EvStat }) {
+  return (
+    <tr className="border-t border-line">
+      <td className="py-1.5 text-ink">{x.label}</td>
+      <td className="text-right text-muted">{x.n}</td>
+      <td className={`text-right ${x.avg == null ? "" : x.avg >= 0 ? "text-up" : "text-down"}`}>{x.avg == null ? "—" : `${x.avg > 0 ? "+" : ""}${f(x.avg, 1)}%`}</td>
+      <td className="text-right text-ink">{x.win == null ? "—" : `${f(x.win, 0)}%`}</td>
+    </tr>
+  );
+}

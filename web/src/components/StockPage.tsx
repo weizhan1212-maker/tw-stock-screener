@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import DataStatus from "@/components/DataStatus";
 import Section from "@/components/Section";
-import { EtfInfoCard, HealthExplain, RiskCard, ValuationCard } from "@/components/StockRisk";
+import { EtfInfoCard, EventStatsCard, HealthExplain, RiskCard, ValuationCard } from "@/components/StockRisk";
 import KChart from "@/components/KChart";
 import LivePanel, { liveLabel } from "@/components/LivePanel";
 import NewsList from "@/components/NewsList";
@@ -178,6 +178,7 @@ export default function StockPage({ code }: { code: string }) {
         {data?.revenue && data.revenue.length > 0 && <RevenueCard s={data} />}
         {data?.quarters && data.quarters.length > 0 && <QuartersCard s={data} />}
         {data?.dividends && data.dividends.length > 0 && <DividendCard s={data} />}
+        {data && <EventStatsCard s={data} />}
         {name && (
           <Section id="news" title="相關新聞" note="來源：Google 新聞，點標題到原網站閱讀">
             <NewsList q={`${name} ${code}`} fallback={name} limit={10} />

@@ -96,3 +96,24 @@ def test_taiex_ohlc_and_indices_file(fake, tmp_path):
     s.upsert_daily("taiex_ohlc", oh)
     data = build_indices(s, asof="2026-10-02")
     assert data["series"]["發行量加權股價指數"]["o"][0] == 46177.11
+
+
+def test_sentiment_parsers():
+    from pipeline.sources import extras
+    pcr = extras.parse_pcr([{"Date": "20261006", "PutVolume": "174220", "CallVolume": "161456", "PutCallVolumeRatio%": "107.91",
+                             "PutOI": "87176", "CallOI": "91317", "PutCallOIRatio%": "95.47"}])
+    assert pcr.iloc[0]["pcr_oi"] == 95.47 and str(pcr.iloc[0]["date"].date()) == "2026-10-06"
+    fl = extras.parse_fut_large([
+        {"Date": "20261006", "Contract": "TX", "SettlementMonth": "999912", "TypeOfTraders": "0", "Top5Buy": "75582", "Top5Sell": "57108",
+         "Top10Buy": "83651", "Top10Sell": "79298", "OIOfMarket": "121509"},
+        {"Date": "20261006", "Contract": "TX", "SettlementMonth": "999912", "TypeOfTraders": "1", "Top5Buy": "75582", "Top5Sell": "57108",
+         "Top10Buy": "82375", "Top10Sell": "79298", "OIOfMarket": "121509"},
+        {"Date": "20261006", "Contract": "TX", "SettlementMonth": "202610", "TypeOfTraders": "0", "Top5Buy": "1", "Top5Sell": "2",
+         "Top10Buy": "1", "Top10Sell": "2", "OIOfMarket": "3"}])
+    r = fl.iloc[0]
+    assert len(fl) == 1 and r["top5_net"] == 18474 and r["top10_net"] == 4353 and r["top10_net_inst"] == 3077
+    fi = extras.parse_fut_insti([{"Date": "20261006", "ContractCode": "臺股期貨", "Item": "外資及陸資", "OpenInterest(Net)": "-79517"},
+                                 {"Date": "20261006", "ContractCode": "電子期貨", "Item": "外資及陸資", "OpenInterest(Net)": "5"}])
+    assert fi.iloc[0]["foreign_oi_net"] == -79517
+    fx = extras.parse_fx([{"Date": "20260901", "USD/NTD": "31.633"}])
+    assert fx.iloc[0]["usd_twd"] == 31.633

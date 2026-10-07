@@ -33,6 +33,10 @@ DAILY_KEYS = {
     "sbl": ["date", "code"],              # 借券賣出
     "block": ["date", "code"],            # 鉅額交易
     "futures": ["date", "session"],       # 台指期近月（一般／盤後）
+    "pcr": ["date"],                      # 台指選擇權 Put/Call 比
+    "fut_large": ["date"],                # 台指期大額交易人
+    "fut_insti": ["date"],                # 三大法人台指期未平倉
+    "fx": ["date"],                       # 美元兌新台幣
 }
 
 TABLE_KEYS = {

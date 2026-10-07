@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import NewsList from "@/components/NewsList";
+import Sentiment, { type SentimentData } from "@/components/Sentiment";
 import Sparkline from "@/components/Sparkline";
 import { Seg } from "@/components/Screener";
 import { useSnapshot } from "@/hooks/useSnapshot";
@@ -19,6 +20,7 @@ interface Market {
   margin?: { date: string; margin_amount: number; margin_amount_prev: number; short_lots: number; short_lots_prev: number };
   daytrade?: { date: string; TWSE?: number; TPEX?: number };
   industry_flow?: { days: number; items: { industry: string; amount: number | null }[] };
+  sentiment?: SentimentData;
 }
 
 const yi = (v: number | null | undefined, d = 2) => (v == null ? "—" : (v / 1e8).toLocaleString("zh-TW", { minimumFractionDigits: d, maximumFractionDigits: d }));
@@ -218,6 +220,8 @@ export default function MarketOverview() {
           <p className="mt-2 text-xs text-muted">用固定規則把數字翻成白話，只描述今天的狀態，不預測明天漲跌。</p>
         </section>
       )}
+
+      <Sentiment s={m.sentiment} asof={m.asof} />
 
       <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_420px]">
         <Panel title={`三大法人近 ${m.industry_flow?.days ?? 5} 日產業資金（估算）`} date={m.asof} asof={m.asof} freq="每日盤後・估算">

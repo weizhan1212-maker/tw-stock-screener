@@ -104,6 +104,28 @@ def fetch_latest_extras(fetcher: Fetcher, store: DataStore) -> dict:
         _put(store, "taiex_ohlc", df)
         return len(df)
 
+    def sentiment(name, parser):
+        def fn():
+            df = parser(fetcher.get_json(extras.LATEST[name], delay=1))
+            _put(store, name, df)
+            return len(df)
+        return fn
+
+    def business_light():
+        meta = fetcher.get_json(extras.NDC_DATASET, delay=1)
+        url = meta["result"]["distribution"][0]["resourceDownloadUrl"]
+        r = fetcher.session.get(url, timeout=60)
+        r.raise_for_status()
+        rows = extras.parse_business_light(r.content)
+        if rows:
+            store.put_state("business_light", {"latest": rows[-1], "series": rows[-24:], "fetched": util.today_tw().isoformat(),
+                                               "source": "國家發展委員會（政府資料開放平臺）"})
+        return len(rows)
+
+    safe("business_light", business_light)
+    for name, parser in (("pcr", extras.parse_pcr), ("fut_large", extras.parse_fut_large),
+                         ("fut_insti", extras.parse_fut_insti), ("fx", extras.parse_fx)):
+        safe(name, sentiment(name, parser))
     for name, fn in (("taiex_ohlc", taiex_ohlc), ("dca_rank", dca_rank), ("tpex_insti", tpex_insti), ("tpex_daytrade", tpex_daytrade), ("tpex_sbl", tpex_sbl),
                      ("tpex_block", tpex_block), ("futures", futures), ("tpex_index", tpex_index)):
         safe(name, fn)
@@ -355,8 +377,10 @@ def build_market(store: DataStore, asof=None) -> dict:
         it = it[it["date"].isin(last5)].merge(px[["date", "code", "close"]], on=["date", "code"], how="left")
         it["amt"] = it["total"] * it["close"]
         it = it.merge(sec[["code", "industry", "sec_type"]], on="code", how="left")
-        it = it[(it["sec_type"] == "stock") & it["industry"].notna() & (it["industry"] != "")]
-        it["industry"] = it["industry"].str.split("、").str[0]
+        comp = store.read_table("company")
+        icode = comp.set_index("code")["industry_code"] if not comp.empty and "industry_code" in comp else pd.Series(dtype=object)
+        it["industry"] = [util.main_industry(icode.get(c), raw) for c, raw in zip(it["code"], it["industry"])]
+        it = it[(it["sec_type"] == "stock") & it["industry"].notna()]
         g = it.groupby("industry")["amt"].sum().sort_values()
         out["industry_flow"] = {"days": len(last5), "items": [{"industry": k, "amount": _num(v)} for k, v in g.items()]}
 
@@ -364,6 +388,98 @@ def build_market(store: DataStore, asof=None) -> dict:
     dca = store.get_state("dca_rank", {})
     if dca.get("stocks") or dca.get("etfs"):
         out["dca"] = dca
+    try:
+        out["sentiment"] = sentiment(store, asof)
+    except Exception as e:  # noqa: BLE001 — 情緒指標失敗不影響其他區塊
+        log.warning("市場情緒失敗：%s", e)
+    return out
+
+
+# ---------------- 市場情緒 ----------------
+
+def _pctile(series: pd.Series, value) -> float | None:
+    s = series.dropna()
+    if len(s) < 60 or value is None or pd.isna(value):
+        return None
+    return float((s < value).mean() * 100)
+
+
+def _clamp(x):
+    return None if x is None else max(0.0, min(100.0, float(x)))
+
+
+def sentiment(store: DataStore, asof: pd.Timestamp) -> dict:
+    """
+    本站自算的「恐懼與貪婪指數」（0＝極度恐懼、100＝極度貪婪），各項分數取平均：
+      大盤動能：加權指數相對 125 日均線（近兩年百分位）
+      市場波動：加權指數 20 日年化波動（越高越恐懼，反向百分位）
+      上漲家數：近 10 日平均上漲家數比例（近一年百分位）
+      融資水位：上市融資餘額 20 日變化（近一年百分位）
+      選擇權 Put/Call 比（未平倉）：140% 以上＝0 分、70% 以下＝100 分（線性）
+    另附：期貨大額交易人、三大法人台指期未平倉、美元兌新台幣。
+    """
+    out: dict = {}
+    comps = []
+    idx = store.read_daily("index", asof - pd.Timedelta(days=1100), asof).sort_values("date")
+    if not idx.empty and "taiex" in idx:
+        t = idx.set_index("date")["taiex"].dropna()
+        mom = (t / t.rolling(125).mean() - 1) * 100
+        vol = t.pct_change().rolling(20).std() * np.sqrt(252) * 100
+        m, v = mom.iloc[-1], vol.iloc[-1]
+        comps.append({"key": "momentum", "label": "大盤動能", "value": _num(m), "unit": "% 相對 125 日均線",
+                      "score": _clamp(_pctile(mom.tail(500), m))})
+        p = _pctile(vol.tail(500), v)
+        comps.append({"key": "volatility", "label": "市場波動", "value": _num(v), "unit": "% 年化波動",
+                      "score": _clamp(None if p is None else 100 - p)})
+    px = store.read_daily("prices", asof - pd.Timedelta(days=400), asof)
+    if not px.empty:
+        px = px[px["code"].map(util.security_type) == "stock"].sort_values(["code", "date"])
+        px["up"] = px.groupby("code")["close"].diff() > 0
+        px["has"] = px.groupby("code")["close"].diff().notna()
+        daily = px.groupby("date").apply(lambda g: g["up"].sum() / max(g["has"].sum(), 1) * 100, include_groups=False)
+        up10 = daily.rolling(10).mean()
+        comps.append({"key": "breadth", "label": "上漲家數", "value": _num(up10.iloc[-1]), "unit": "% 近 10 日平均上漲比例",
+                      "score": _clamp(_pctile(up10, up10.iloc[-1]))})
+    mt = store.read_daily("margin_total", asof - pd.Timedelta(days=400), asof)
+    if not mt.empty and "margin_amount" in mt:
+        s = mt[mt.get("market", "TWSE") == "TWSE"] if "market" in mt else mt
+        s = s.sort_values("date").set_index("date")["margin_amount"].dropna()
+        ch = (s / s.shift(20) - 1) * 100
+        if ch.notna().any():
+            comps.append({"key": "margin", "label": "融資水位", "value": _num(ch.iloc[-1]), "unit": "% 融資餘額 20 日變化",
+                          "score": _clamp(_pctile(ch, ch.iloc[-1]))})
+    pcr = store.read_daily("pcr", asof - pd.Timedelta(days=400), asof).sort_values("date")
+    if not pcr.empty:
+        last = pcr.iloc[-1]
+        x = last["pcr_oi"]
+        comps.append({"key": "pcr", "label": "選擇權 Put/Call 比", "value": _num(x), "unit": "% 未平倉",
+                      "score": _clamp(None if pd.isna(x) else (140 - x) / 70 * 100)})
+        out["pcr"] = {"date": last["date"].strftime("%Y-%m-%d"), "oi": _num(x), "vol": _num(last["pcr_vol"]),
+                      "series": [_num(v) for v in pcr["pcr_oi"].tail(60)]}
+    scored = [c for c in comps if c["score"] is not None]
+    if scored:
+        score = sum(c["score"] for c in scored) / len(scored)
+        label = "極度恐懼" if score < 25 else "恐懼" if score < 45 else "中性" if score <= 55 else "貪婪" if score <= 75 else "極度貪婪"
+        out["fear_greed"] = {"score": round(score, 1), "label": label, "components": comps}
+    fl = store.read_daily("fut_large", asof - pd.Timedelta(days=400), asof).sort_values("date")
+    if not fl.empty:
+        last = fl.iloc[-1]
+        out["fut_large"] = {"date": last["date"].strftime("%Y-%m-%d"), **{k: _num(last.get(k)) for k in ("top5_net", "top10_net", "top10_net_inst", "oi")},
+                            "series": [_num(v) for v in fl["top10_net"].tail(60)]}
+    fi = store.read_daily("fut_insti", asof - pd.Timedelta(days=400), asof).sort_values("date")
+    if not fi.empty:
+        last = fi.iloc[-1]
+        out["fut_insti"] = {"date": last["date"].strftime("%Y-%m-%d"), **{k: _num(last.get(k)) for k in ("foreign_oi_net", "trust_oi_net", "dealer_oi_net")},
+                            "series": [_num(v) for v in fi["foreign_oi_net"].tail(60)]}
+    fx = store.read_daily("fx", asof - pd.Timedelta(days=400), asof).sort_values("date")
+    if not fx.empty:
+        s = fx.set_index("date")["usd_twd"].dropna()
+        out["fx"] = {"date": s.index[-1].strftime("%Y-%m-%d"), "usd_twd": _num(s.iloc[-1]),
+                     "chg20": _num((s.iloc[-1] / s.iloc[max(0, len(s) - 21)] - 1) * 100) if len(s) > 1 else None,
+                     "series": [_num(v) for v in s.tail(60)]}
+    biz = store.get_state("business_light", {})
+    if biz.get("latest"):
+        out["business_light"] = biz
     return out
 
 
