@@ -73,3 +73,30 @@ def test_strategy_factors_synthetic(tmp_path):
     out = finish(base)
     assert out.loc["1234", "earnings_yield"] > 0 and out.loc["1234", "roc"] > 0 and out.loc["1234", "pcf"] > 0
     assert out.loc["1234", "is_financial"] == 0
+
+
+def test_new_technical_columns_synthetic():
+    """距年線、距 60 日高、20 日均成交值、ATR%：用等差上漲的假資料驗算。"""
+    from pipeline.snapshot import technicals
+    n = 300
+    c = pd.Series([100 + i * 0.5 for i in range(n)])
+    px = pd.DataFrame({"code": "9999", "date": pd.date_range("2025-01-01", periods=n, freq="B"),
+                       "close": c, "aclose": c, "ahigh": c + 1, "alow": c - 1, "volume": 1000.0,
+                       "value": 2e8})
+    last = technicals(px).loc["9999"]
+    assert abs(last["avg_value20"] - 2.0) < 1e-9                              # 2 億
+    assert abs(last["dist_high60"]) < 1e-9                                    # 一路創高
+    ma240 = c.iloc[-240:].mean()
+    assert abs(last["dist_ma240"] - (c.iloc[-1] / ma240 - 1) * 100) < 1e-9
+    assert abs(last["atr_pct"] - 2.0 / c.iloc[-1] * 100) < 1e-6               # 真實波幅 = max(2, 1.5, 0.5) = 2
+
+
+def test_trading_columns_industry_rank_and_inst_amount(tmp_path):
+    from pipeline.snapshot import trading_columns
+    s = DataStore(LocalStorage(str(tmp_path)))
+    base = pd.DataFrame({"industry": ["半導體業", "半導體業", "半導體業", "ETF"], "ret20": [10.0, 5.0, -5.0, 3.0],
+                         "ret60": [0.0] * 4, "close": [100.0] * 4, "total_net5": [1000.0] * 4,
+                         "total_net20": [0.0] * 4}, index=["a", "b", "c", "d"])
+    out = trading_columns(s, pd.Timestamp("2026-10-02"), base)
+    assert out["industry_rank"].round(0).tolist()[:3] == [100.0, 67.0, 33.0] and pd.isna(out.loc["d", "industry_rank"])
+    assert abs(out.loc["a", "inst_amt5"] - 1000 * 1000 * 100 / 1e8) < 1e-9     # 10 億

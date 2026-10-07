@@ -6,6 +6,7 @@ import { FIELD_MAP, FIELDS, GROUPS, QUICK, UNIT, type Field } from "@/lib/fields
 import { type Condition, decodeConds, encodeConds, funnel, inUniverse, type Market, type Op, type Universe } from "@/lib/screener";
 import { useSnapshot } from "@/hooks/useSnapshot";
 import DataStatus from "@/components/DataStatus";
+import SavedScreens from "@/components/SavedScreens";
 import Results, { type Sort } from "@/components/Results";
 
 const BASE_COLS = ["close", "chg_pct", "volume_lots", "value", "market_cap"];
@@ -190,22 +191,36 @@ export default function Screener() {
     return FIELD_MAP[key] || key === "code" ? { key, dir: d === "asc" ? 1 : -1 } : { key: "market_cap", dir: -1 };
   });
   const [adding, setAdding] = useState("");
-  useEffect(() => {
+  const [extra, setExtra] = useState<string[]>(() => (params.get("x") ?? "").split(",").filter((k) => FIELD_MAP[k]));
+  const query = useMemo(() => {
     const q = new URLSearchParams();
+    if (extra.length) q.set("x", extra.join(","));
     if (conds.length) q.set("c", encodeConds(conds));
     if (universe !== "all") q.set("u", universe);
     if (market !== "all") q.set("m", market);
     q.set("s", `${sort.key}:${sort.dir === 1 ? "asc" : "desc"}`);
-    window.history.replaceState(null, "", `?${q.toString()}`);
-  }, [conds, universe, market, sort]);
+    return q.toString();
+  }, [conds, universe, market, sort, extra]);
+  useEffect(() => { window.history.replaceState(null, "", `?${query}`); }, [query]);
+
+  function applyQuery(qs: string) {
+    const q = new URLSearchParams(qs);
+    setConds(decodeConds(q.get("c")));
+    const u = q.get("u"), m = q.get("m");
+    setUniverse(u === "stock" || u === "etf" ? u : "all");
+    setMarket(m === "TWSE" || m === "TPEX" ? m : "all");
+    const [key, d] = (q.get("s") ?? "").split(":");
+    setSort(FIELD_MAP[key] || key === "code" ? { key, dir: d === "asc" ? 1 : -1 } : { key: "market_cap", dir: -1 });
+    setExtra((q.get("x") ?? "").split(",").filter((k) => FIELD_MAP[k]));
+  }
 
   const pool = useMemo(() => (snap ? snap.rows.filter((r) => inUniverse(r, universe, market)) : []), [snap, universe, market]);
   const { result, steps } = useMemo(() => funnel(pool, conds), [pool, conds]);
   const stepMap = Object.fromEntries(steps.map((s) => [s.id, s]));
   const cols = useMemo(() => {
-    const keys = [...BASE_COLS, ...conds.map((c) => c.field), ...TAIL_COLS];
+    const keys = [...BASE_COLS, ...conds.map((c) => c.field), ...extra, ...TAIL_COLS];
     return keys.filter((k, i) => keys.indexOf(k) === i);
-  }, [conds]);
+  }, [conds, extra]);
 
   function add(field: string, op?: Op, a?: number) {
     const f = FIELD_MAP[field];
@@ -259,6 +274,24 @@ export default function Screener() {
               </div>
             )}
           </div>
+          <div className="rounded-lg border border-line bg-surface p-3">
+            <label className="mb-1.5 block text-sm font-medium text-ink" htmlFor="add-col">結果表額外欄位</label>
+            <div id="add-col">
+              <FieldSelect value="" placeholder="加一個欄位…" onChange={(k) => { if (k && !extra.includes(k)) setExtra((x) => [...x, k]); }} />
+            </div>
+            {extra.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {extra.map((k) => (
+                  <button key={k} type="button" onClick={() => setExtra((x) => x.filter((y) => y !== k))}
+                    aria-label={`移除欄位：${FIELD_MAP[k].label}`}
+                    className="rounded-full border border-line px-2 py-0.5 text-xs text-ink hover:border-up hover:text-up">
+                    {FIELD_MAP[k].label} ×
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <SavedScreens currentQuery={query} onLoad={applyQuery} />
           {conds.length > 0 && (
             <button type="button" onClick={() => setConds([])} className="text-sm text-muted underline-offset-2 hover:text-ink hover:underline">
               清除所有條件

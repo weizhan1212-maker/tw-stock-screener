@@ -99,6 +99,13 @@ def technicals(px: pd.DataFrame) -> pd.DataFrame:
     # 布林通道(20,2) %b
     sd20 = g["aclose"].transform(lambda s: s.rolling(20, min_periods=20).std())
     px["boll_pctb"] = (c - (px["ma20"] - 2 * sd20)) / (4 * sd20) * 100
+    px["dist_ma240"] = (c / px["ma240"] - 1) * 100
+    px["dist_high60"] = (c / px["high60"] - 1) * 100
+    px["avg_value20"] = g["value"].transform(lambda s: s.rolling(20, min_periods=10).mean()) / 1e8   # 億元
+    pc = g["aclose"].shift(1)
+    tr = pd.concat([px["ahigh"] - px["alow"], (px["ahigh"] - pc).abs(), (px["alow"] - pc).abs()], axis=1).max(axis=1)
+    atr = tr.groupby(px["code"]).transform(lambda s: s.ewm(alpha=1 / 14, adjust=False, min_periods=14).mean())
+    px["atr_pct"] = atr / c * 100
     px["n_days"] = g.cumcount() + 1
     # 前一天的 K、D、DIF、DEA（用來判斷黃金交叉）
     for col in ("k", "d", "dif", "dea"):
@@ -252,6 +259,7 @@ def fundamentals(store: DataStore, asof: pd.Timestamp) -> pd.DataFrame:
         out.append(pd.DataFrame({
             "rev_month": lr["year"].astype(str) + "-" + lr["month"].astype(str).str.zfill(2),
             "rev_yoy": lr["yoy"], "rev_mom": lr["mom"],
+            "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
             "rev_yoy_min3": last3.groupby("code")["yoy"].min().where(last3.groupby("code").size() == 3),
             "_rev_ttm": last12.groupby("code")["revenue"].sum().where(n12 == 12),
         }))
@@ -309,7 +317,7 @@ def build_snapshot(store: DataStore, asof=None, lookback_days: int = 420) -> tup
     base = tech[["date", "market", "name", "close", "prev_close", "chg_pct", "volume", "value", "adj_close",
                  "ma5", "ma10", "ma20", "ma60", "ma120", "ma240", "ret5", "ret20", "ret60", "ret120",
                  "dist_high52", "dist_low52", "new_high20", "new_high60", "vol_ratio", "k", "d", "kd_golden",
-                 "dif", "dea", "macd_hist", "macd_golden", "rsi14", "boll_pctb", "bull_align", "n_days",
+                 "dist_ma240", "dist_high60", "avg_value20", "atr_pct", "dif", "dea", "macd_hist", "macd_golden", "rsi14", "boll_pctb", "bull_align", "n_days",
                  *(["shares_issued"] if "shares_issued" in tech else [])]].copy()
     base["volume_lots"] = base.pop("volume") / 1000
     base["stale"] = (base["date"] < asof).astype(int)              # 今天沒交易（停牌等）
@@ -351,6 +359,7 @@ def build_snapshot(store: DataStore, asof=None, lookback_days: int = 420) -> tup
     if not sf.empty:
         base = base.join(sf)
     base = finish(base)
+    base = trading_columns(store, asof, base)
     base = health_scores(base)
     base["sec_type"] = base.get("sec_type", pd.Series(index=base.index, dtype=object)).fillna(
         base.index.to_series().map(util.security_type))
@@ -360,6 +369,24 @@ def build_snapshot(store: DataStore, asof=None, lookback_days: int = 420) -> tup
             "count": int(len(base)), "fin_complete": bool(store.get_state("finmind_backfill", {}).get("_complete")),
             **market_state(store, asof)}
     return base, meta
+
+
+def trading_columns(store: DataStore, asof: pd.Timestamp, base: pd.DataFrame) -> pd.DataFrame:
+    """交易決策欄位：相對大盤強弱、法人 5／20 日金額（估算）、產業內強弱百分位。"""
+    idx = store.read_daily("index", asof - pd.Timedelta(days=200), asof)
+    if not idx.empty and "taiex" in idx:
+        s = idx.sort_values("date")["taiex"].dropna()
+        for n in (20, 60):
+            if len(s) > n:
+                base[f"rs{n}"] = base[f"ret{n}"] - (s.iloc[-1] / s.iloc[-1 - n] - 1) * 100
+    for n in (5, 20):
+        if f"total_net{n}" in base:
+            base[f"inst_amt{n}"] = base[f"total_net{n}"] * 1000 * base["close"] / 1e8        # 張 → 股 × 收盤價，億元
+    if "industry" in base and "ret20" in base:
+        stock = base["industry"].notna() & ~base["industry"].astype(str).str.contains("ETF|指數股票型|^$", regex=True)
+        base["industry_rank"] = np.nan
+        base.loc[stock, "industry_rank"] = base[stock].groupby("industry")["ret20"].rank(pct=True) * 100
+    return base
 
 
 def holder_stats(store: DataStore, asof: pd.Timestamp) -> pd.DataFrame:
