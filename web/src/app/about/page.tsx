@@ -107,6 +107,15 @@ function Mock() {
 export default function AboutPage() {
   return (
     <div className="bg-paper">
+      {/* 簡單品牌列（落地頁不放站內選單） */}
+      <div className="mx-auto flex max-w-[1120px] items-center justify-between px-4 pt-5">
+        <span className="flex items-center gap-2 text-[17px] font-bold tracking-wide text-ink">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="" width={26} height={26} className="h-[26px] w-[26px]" />
+          股見未來
+        </span>
+        <Link href="/login" className="text-sm text-accent hover:underline">登入</Link>
+      </div>
       {/* 主視覺 */}
       <section className="mx-auto grid max-w-[1120px] items-center gap-10 px-4 pb-14 pt-12 md:grid-cols-[1.1fr_1fr] md:pt-20">
         <div>
