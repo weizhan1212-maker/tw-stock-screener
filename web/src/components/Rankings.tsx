@@ -20,6 +20,7 @@ const pos = (k: string) => (r: Row) => (num(r[k]) ?? 0) > 0;
 const neg = (k: string) => (r: Row) => (num(r[k]) ?? 0) < 0;
 const liquid = (lots: number) => (r: Row) => (num(r.volume_lots) ?? 0) >= lots;
 const BASE = ["close", "chg_pct"];
+const inr = (r: Row, k: string, lo: number, hi: number) => { const v = num(r[k]); return v != null && v >= lo && v <= hi; };
 
 const GROUPS: { id: string; label: string; ranks: Rank[] }[] = [
   { id: "hot", label: "熱門", ranks: [
@@ -46,6 +47,25 @@ const GROUPS: { id: string; label: string; ranks: Rank[] }[] = [
   { id: "sbl", label: "借券", ranks: [
     { id: "sbl_sell", label: "借券賣出", key: "sbl_sell_lots", dir: -1, cols: [...BASE, "sbl_sell_lots", "sbl_balance_lots", "volume_lots"], keep: pos("sbl_sell_lots") },
     { id: "sbl_bal", label: "借券賣出餘額", key: "sbl_balance_lots", dir: -1, cols: [...BASE, "sbl_balance_lots", "sbl_sell_lots", "short_balance"], keep: pos("sbl_balance_lots") },
+  ] },
+  { id: "risk", label: "進階", ranks: [
+    { id: "pullback", label: "突破後回踩", key: "dist_high60", dir: -1,
+      cols: [...BASE, "dist_high60", "ret60", "dist_ma20", "volume_lots"],
+      keep: (r) => liquid(500)(r) && inr(r, "dist_high60", -10, -3) && (num(r.ret60) ?? 0) >= 10 && r.above_ma60 === 1,
+      note: "近 60 日漲 10% 以上、仍在季線之上，但離 60 日高點回落 3～10%；成交量 500 張以上。依離高點由近到遠排序" },
+    { id: "rs_calm", label: "相對強勢未過熱", key: "rs60", dir: -1,
+      cols: [...BASE, "rs60", "rs20", "dist_high52", "dist_ma240"],
+      keep: (r) => liquid(500)(r) && (num(r.rs60) ?? -1) > 0 && (num(r.dist_high52) ?? -99) >= -5 && (num(r.ret20) ?? 99) <= 15 && (num(r.dist_ma240) ?? 99) <= 40,
+      note: "近 60 日強過大盤、離 52 週高點 5% 以內，但 20 日漲幅 ≤ 15%、離年線 ≤ 40%；成交量 500 張以上" },
+    { id: "rev_value", label: "營收加速＋估值合理", key: "rev_yoy_chg", dir: -1,
+      cols: [...BASE, "rev_yoy", "rev_yoy_chg", "pe", "peg"],
+      keep: (r) => liquid(300)(r) && (num(r.rev_yoy) ?? -99) >= 15 && (num(r.rev_yoy_chg) ?? -99) > 0 && inr(r, "pe", 0.01, 20),
+      note: "月營收年增 15% 以上且比 3 個月前更高、本益比 20 倍以下；成交量 300 張以上" },
+    { id: "inst_quiet", label: "法人連買但價格未漲", key: "inst_amt5", dir: -1,
+      cols: [...BASE, "inst_amt5", "ret5", "ret20", "foreign_buy_streak", "trust_buy_streak"],
+      keep: (r) => liquid(300)(r) && (num(r.inst_amt5) ?? 0) > 0 && ((num(r.foreign_buy_streak) ?? 0) >= 3 || (num(r.trust_buy_streak) ?? 0) >= 3)
+        && (num(r.ret5) ?? 99) <= 2 && (num(r.ret20) ?? 99) <= 5,
+      note: "外資或投信連買 3 天以上、5 日漲幅 ≤ 2%、20 日漲幅 ≤ 5%；金額為估算；成交量 300 張以上" },
   ] },
   { id: "block", label: "鉅額", ranks: [
     { id: "block", label: "鉅額交易", key: "block_value", dir: -1, cols: [...BASE, "block_value", "value", "volume_lots"], keep: pos("block_value") },
