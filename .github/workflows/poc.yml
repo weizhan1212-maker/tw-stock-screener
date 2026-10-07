@@ -10,6 +10,7 @@ on:
     branches: [main]
     paths:
       - "poc/*.py"
+      - "!poc/probe_*.py"
       - "poc/requirements.txt"
       - ".github/workflows/poc.yml"
 
