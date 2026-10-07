@@ -190,7 +190,6 @@ def fundamentals(store: DataStore, asof: pd.Timestamp) -> pd.DataFrame:
         ttm = last4.groupby("code")[["Revenue", "IncomeAfterTaxes", "EquityAttributableToOwnersOfParent", "EPS"]].sum()
         ttm = ttm.where(n4 == 4)
         lastq = g.tail(1).set_index("code")
-        yago = g.apply(lambda s: s.iloc[-5] if len(s) >= 5 else pd.Series(dtype=float), include_groups=False)
         f = pd.DataFrame({
             "fin_period": lastq["date"].dt.strftime("%Y") + "Q" + ((lastq["date"].dt.month - 1) // 3 + 1).astype(str),
             "eps_q": lastq["EPS"],
@@ -202,8 +201,10 @@ def fundamentals(store: DataStore, asof: pd.Timestamp) -> pd.DataFrame:
             "_ni_owner_ttm": ttm["EquityAttributableToOwnersOfParent"],
             "_rev_q_ttm": ttm["Revenue"],
         })
-        if isinstance(yago, pd.DataFrame) and "EPS" in yago:
-            f["eps_q_yoy"] = (lastq["EPS"] - yago["EPS"]) / yago["EPS"].abs() * 100
+        # 單季 EPS 年增率：跟 4 季前（去年同季）比，日期需相差約一年
+        ly = q.assign(_eps_ly=g["EPS"].shift(4), _d_ly=g["date"].shift(4)).groupby("code").tail(1).set_index("code")
+        same_q = (ly["date"] - ly["_d_ly"]).dt.days.between(350, 380)
+        f["eps_q_yoy"] = ((ly["EPS"] - ly["_eps_ly"]) / ly["_eps_ly"].abs() * 100).where(same_q & (ly["_eps_ly"] != 0))
         # 近 5 年每年 ROE、毛利率穩定度等「長期」條件：近 20 季
         yearly = q.assign(year=q["date"].dt.year).groupby(["code", "year"]).agg(
             eps_y=("EPS", "sum"), n=("EPS", "size"), gp=("GrossProfit", "sum"), rev=("Revenue", "sum"))

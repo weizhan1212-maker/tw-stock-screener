@@ -73,6 +73,9 @@ def test_strategy_factors_synthetic(tmp_path):
     out = finish(base)
     assert out.loc["1234", "earnings_yield"] > 0 and out.loc["1234", "roc"] > 0 and out.loc["1234", "pcf"] > 0
     assert out.loc["1234", "is_financial"] == 0
+    from pipeline.snapshot import fundamentals
+    fu = fundamentals(s, pd.Timestamp("2026-03-01"))
+    assert abs(fu.loc["1234", "eps_q_yoy"] - 20) < 1e-6        # 1.8 vs 1.5 → +20%
 
 
 def test_new_technical_columns_synthetic():

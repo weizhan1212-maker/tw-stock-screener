@@ -158,7 +158,7 @@ export const SINGLE: Strategy[] = [
     conds: (p) => [{ field: "big_pct_chg", op: "ge", a: p.chg }, vol(p)],
     rules: (p) => [`千張大戶持股比例比上週增加 ≥ ${p.chg} 個百分點`, volRule(p)],
     cols: [...B, "big_pct", "big_pct_chg", "ret20", "volume_lots"], sort: { key: "big_pct_chg", dir: -1 },
-    period: "集保結算所每週公布的股權分散表（每週五資料）。", notFor: ["ETF 與受益憑證不適用", "大戶可能是公司派、法人或信託，不一定是看好"],
+    period: "集保結算所每週公布的股權分散表（每週五資料）；本站從 2026 年 10 月開始累積，滿兩週才有增減資料。", notFor: ["ETF 與受益憑證不適用", "大戶可能是公司派、法人或信託，不一定是看好"],
   }),
   single({
     id: "margin_clean", name: "融資減、股價漲", category: "籌碼面", tagline: "散戶下車、股價反而上漲",
