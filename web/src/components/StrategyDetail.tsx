@@ -90,6 +90,9 @@ export default function StrategyDetail({ id }: { id: string }) {
             className="block rounded-lg bg-accent px-3 py-2.5 text-center text-sm font-bold text-white hover:opacity-90">
             一鍵回測這套策略（用目前的數字）
           </Link>
+          <Link href={`/alerts?strategy=${s.id}`} className="block rounded-lg border border-line px-3 py-2 text-center text-sm text-ink hover:border-accent">
+            有新股票入選時通知我
+          </Link>
 
           {template && (
             <Link href={template} className="block rounded-lg border border-dashed border-line p-3 text-sm text-ink hover:border-accent">

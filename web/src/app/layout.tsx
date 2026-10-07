@@ -63,6 +63,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <Link href="/portfolio" className="rounded-md px-2.5 py-1 text-ink hover:bg-surface-2">
                 投資組合
               </Link>
+              <Link href="/alerts" className="rounded-md px-2.5 py-1 text-ink hover:bg-surface-2">
+                警報
+              </Link>
             </nav>
             <div className="ml-auto flex items-center gap-3">
               <StockSearch />

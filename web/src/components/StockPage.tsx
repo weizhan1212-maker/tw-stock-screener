@@ -82,6 +82,7 @@ export default function StockPage({ code }: { code: string }) {
             <span className="num text-lg text-muted">{code}</span>
             <span className="self-center"><WatchStar code={code} name={name} size="md" /></span>
             <Link href={`/compare?codes=${code}`} className="self-center rounded-md border border-line px-2 py-0.5 text-xs text-muted hover:border-accent hover:text-accent">比較</Link>
+            <Link href={`/alerts?code=${code}`} className="self-center rounded-md border border-line px-2 py-0.5 text-xs text-muted hover:border-accent hover:text-accent">警報</Link>
           </div>
           <div className="mt-1 flex flex-wrap gap-1.5 text-xs">
             {(row?.market ?? data?.info.market) && (
