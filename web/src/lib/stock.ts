@@ -270,3 +270,47 @@ export function industryRank(rows: Row[], code: string): { rank: number; total: 
   const peers = rows.filter((r) => r.industry === ind && num(r.health_score) != null);
   return { rank: 1 + peers.filter((r) => (num(r.health_score) as number) > score).length, total: peers.length };
 }
+
+// ---------------- 資料時點（每個區塊顯示資料到哪一天、是否落後） ----------------
+
+export interface Stamp { text: string; late: boolean; hint?: string }
+
+const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+function twNow() { return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Taipei" })); }
+
+/** 月營收：每月 10 日前公布上月；落後＝比應有的最新月份還舊。 */
+export function revenueStamp(s: StockFile): Stamp | null {
+  const last = s.revenue?.at(-1)?.[0];
+  if (!last) return null;
+  const n = twNow();
+  const e = new Date(n.getFullYear(), n.getMonth() - (n.getDate() > 10 ? 1 : 2), 1);
+  const expected = `${e.getFullYear()}-${String(e.getMonth() + 1).padStart(2, "0")}`;
+  return { text: `資料至 ${last.replace("-", "/")}・每月 10 日前更新`, late: last < expected, hint: `應該已公布到 ${expected.replace("-", "/")}` };
+}
+
+/** 季財報：Q1 5/15、Q2 8/14、Q3 11/14、年報 3/31 前公布。 */
+export function quarterStamp(s: StockFile): Stamp | null {
+  const last = s.quarters?.at(-1)?.p;
+  if (!last) return null;
+  const n = twNow();
+  const y = n.getFullYear(), md = (n.getMonth() + 1) * 100 + n.getDate();
+  const expected = md > 1114 ? `${y}Q3` : md > 814 ? `${y}Q2` : md > 515 ? `${y}Q1` : md > 331 ? `${y - 1}Q4` : `${y - 1}Q3`;
+  return { text: `資料至 ${last.replace("Q", " 年第 ")} 季・每季公布後更新`, late: last < expected, hint: `應該已公布到 ${expected.replace("Q", " 年第 ")} 季` };
+}
+
+/** 籌碼：法人、融資券每日更新；集保大戶每週更新。 */
+export function chipStamp(s: StockFile, asof: string): Stamp | null {
+  const d = s.daily;
+  let i = d.d.length - 1;
+  while (i >= 0 && d.fi[i] == null) i--;
+  if (i < 0) return null;
+  const hd = s.holders?.at(-1)?.d;
+  const age = hd ? (Date.parse(asof) - Date.parse(hd)) / 86400000 : 0;
+  return {
+    text: `法人、融資至 ${d.d[i].slice(5).replace("-", "/")}・每日盤後${hd ? `；集保至 ${hd.slice(5).replace("-", "/")}・每週` : ""}`,
+    late: d.d[i] < asof || age > 9,
+    hint: d.d[i] < asof ? "法人或融資資料比價格慢（融資券晚間才公布）" : age > 9 ? "集保資料超過 9 天沒更新" : undefined,
+  };
+}
+
+export const todayStr = () => ymd(twNow());

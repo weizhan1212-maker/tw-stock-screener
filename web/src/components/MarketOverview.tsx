@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import NewsList from "@/components/NewsList";
 import Sparkline from "@/components/Sparkline";
 import { Seg } from "@/components/Screener";
+import { useSnapshot } from "@/hooks/useSnapshot";
+import { breadthNotes, computeBreadth } from "@/lib/breadth";
 import { fmt } from "@/lib/screener";
 
 type Card = { label: string; name?: string; date: string; close: number | null; chg: number | null; chg_pct: number | null; spark: (number | null)[] };
@@ -23,12 +25,26 @@ const yi = (v: number | null | undefined, d = 2) => (v == null ? "—" : (v / 1e
 const toneCls = (v: number | null | undefined) => (v == null || v === 0 ? "text-muted" : v > 0 ? "text-up" : "text-down");
 const sign = (v: number | null | undefined) => (v != null && v > 0 ? "+" : "");
 
-function Panel({ title, date, children }: { title: string; date?: string; children: React.ReactNode }) {
+const md = (d: string) => d.slice(5).replace("-", "/");
+
+/** 資料日期標籤：比整頁資料日舊就用黃色，並附上更新頻率說明。 */
+function DateTag({ date, asof, freq }: { date?: string; asof: string; freq?: string }) {
+  if (!date) return freq ? <span className="text-xs text-muted">{freq}</span> : null;
+  const old = date < asof;
+  return (
+    <span className={`num text-xs ${old ? "rounded bg-warn-bg px-1.5 py-0.5 text-warn-ink" : "text-muted"}`}
+      title={old ? `這項資料是 ${date.replaceAll("-", "/")} 的，比整頁資料日（${asof.replaceAll("-", "/")}）舊` : undefined}>
+      {md(date)}{freq ? `・${freq}` : ""}{old ? "（較舊）" : ""}
+    </span>
+  );
+}
+
+function Panel({ title, date, asof, freq, children }: { title: string; date?: string; asof: string; freq?: string; children: React.ReactNode }) {
   return (
     <section className="rounded-lg border border-line bg-surface p-4">
       <div className="mb-3 flex items-baseline justify-between gap-2">
         <h2 className="text-sm font-bold text-ink">{title}</h2>
-        {date && <span className="num text-xs text-muted">{date.slice(5).replace("-", "/")}</span>}
+        <DateTag date={date} asof={asof} freq={freq} />
       </div>
       {children}
     </section>
@@ -61,6 +77,16 @@ export default function MarketOverview() {
     }).catch((e) => setError(String(e.message ?? e)));
   }, []);
 
+  const { snap } = useSnapshot();
+  const structure = useMemo(() => {
+    if (!snap || !m) return null;
+    const b = computeBreadth(snap.rows, scope);
+    const idx = m.indices.find((c) => c.label.includes("加權") || c.name === "發行量加權股價指數");
+    const otc = m.indices.find((c) => c.label.includes("櫃買"));
+    const pct = scope === "TPEX" ? otc?.chg_pct : idx?.chg_pct;
+    return { b, notes: breadthNotes(b, pct ?? null, m.turnover?.value_ratio), late: snap.meta.asof < m.asof, snapAsof: snap.meta.asof };
+  }, [snap, m, scope]);
+
   if (error) return <div className="mx-auto max-w-[1440px] px-4 py-5"><p className="rounded-lg border border-up/40 bg-surface p-3 text-sm text-up">無法載入市場資料：{error}</p></div>;
   if (!m) return <div className="mx-auto max-w-[1440px] px-4 py-5 text-sm text-muted">載入市場資料中…</div>;
   const b = m.breadth?.[scope];
@@ -85,7 +111,10 @@ export default function MarketOverview() {
               className="block h-full rounded-lg border border-line bg-surface p-3 transition-colors hover:border-accent">
             <div className="flex items-baseline justify-between gap-2">
               <span className="truncate text-sm text-ink">{c.label}</span>
-              {c.date !== m.asof && <span className="num shrink-0 text-[11px] text-muted">{c.date.slice(5).replace("-", "/")}</span>}
+              {c.date !== m.asof && (
+                <span className="num shrink-0 rounded bg-warn-bg px-1 text-[11px] text-warn-ink"
+                  title={c.date < m.asof ? "這個指數的資料比整頁舊（期交所的公開資料隔一個交易日才更新）" : undefined}>{md(c.date)}</span>
+              )}
             </div>
             <div className={`num mt-1 text-lg font-bold ${toneCls(c.chg)}`}>{fmt(c.close, "price")}</div>
             <div className={`num text-xs ${toneCls(c.chg)}`}>{sign(c.chg)}{fmt(c.chg, "price")}（{sign(c.chg_pct)}{fmt(c.chg_pct, "num")}%）</div>
@@ -96,7 +125,7 @@ export default function MarketOverview() {
       </ul>
 
       <div className="mt-4 grid gap-3 lg:grid-cols-4">
-        <Panel title="漲跌家數" date={m.asof}>
+        <Panel title="漲跌家數" date={m.asof} asof={m.asof} freq="每日盤後">
           <Seg label="市場" value={scope} onChange={setScope} options={[["all", "全部"], ["TWSE", "上市"], ["TPEX", "上櫃"]]} />
           {b && (
             <>
@@ -114,7 +143,7 @@ export default function MarketOverview() {
           )}
         </Panel>
 
-        <Panel title="成交值（股票＋ETF）" date={m.asof}>
+        <Panel title="成交值（股票＋ETF）" date={m.asof} asof={m.asof} freq="每日盤後">
           {m.turnover && (
             <>
               <div className="num text-2xl font-bold text-ink">{yi(m.turnover.value, 0)}<span className="ml-1 text-sm font-normal text-muted">億</span></div>
@@ -124,7 +153,7 @@ export default function MarketOverview() {
           )}
         </Panel>
 
-        <Panel title={`三大法人買賣超（${m.insti?.markets.length === 2 ? "上市＋上櫃" : "上市"}）`} date={m.insti?.date}>
+        <Panel title={`三大法人買賣超（${m.insti?.markets.length === 2 ? "上市＋上櫃" : "上市"}）`} date={m.insti?.date} asof={m.asof} freq="每日盤後">
           {m.insti && (
             <>
               <div className={`num text-2xl font-bold ${toneCls(m.insti.total)}`}>{sign(m.insti.total)}{yi(m.insti.total)}<span className="ml-1 text-sm font-normal text-muted">億</span></div>
@@ -139,7 +168,7 @@ export default function MarketOverview() {
           )}
         </Panel>
 
-        <Panel title="融資融券（上市）" date={m.margin?.date}>
+        <Panel title="融資融券（上市）" date={m.margin?.date} asof={m.asof} freq="晚間公布">
           {m.margin && (
             <dl className="num space-y-2 text-sm">
               <div>
@@ -159,8 +188,39 @@ export default function MarketOverview() {
         </Panel>
       </div>
 
+      {structure && (
+        <section className="mt-3 rounded-lg border border-line bg-surface p-4">
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <h2 className="text-sm font-bold text-ink">市場結構（{scope === "all" ? "上市＋上櫃" : scope === "TWSE" ? "上市" : "上櫃"}普通股 {structure.b.n} 檔）</h2>
+            <DateTag date={structure.snapAsof} asof={m.asof} freq="每日盤後" />
+          </div>
+          <ul className="space-y-1.5">
+            {structure.notes.map((n, i) => (
+              <li key={i} className={`rounded-md px-3 py-2 text-sm leading-relaxed ${n.tone === "warn" ? "bg-warn-bg text-warn-ink" : "bg-surface-2 text-ink"}`}>
+                {n.tone === "warn" ? "⚠ " : n.tone === "good" ? "✓ " : ""}{n.text}
+              </li>
+            ))}
+          </ul>
+          <dl className="num mt-3 grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-4 lg:grid-cols-8">
+            {([
+              ["上漲家數比例", `${structure.b.upRatio.toFixed(0)}%`, "上漲 ÷（上漲＋下跌）"],
+              ["站上 20 日線", `${structure.b.above20.toFixed(0)}%`, "收盤高於 20 日均線的個股比例"],
+              ["站上 60 日線", `${structure.b.above60.toFixed(0)}%`, "收盤高於 60 日均線的個股比例"],
+              ["站上 240 日線", `${structure.b.above240.toFixed(0)}%`, "收盤高於年線的個股比例"],
+              ["創 20 日新高", `${structure.b.newHigh20} 檔`, "收盤創近 20 日新高"],
+              ["創 52 週新高／新低", `${structure.b.newHigh52}／${structure.b.newLow52}`, "收盤創近 52 週新高／新低的檔數"],
+              ["成交值量比", m.turnover?.value_ratio != null ? `${fmt(m.turnover.value_ratio, "num")} 倍` : "—", "今日成交值 ÷ 20 日平均"],
+              ["漲停／跌停（約）", `${structure.b.limitUp}／${structure.b.limitDown}`, "漲跌幅達 ±9.5% 以上，為近似值"],
+            ] as const).map(([k, val, tip]) => (
+              <div key={k} title={tip}><dt className="text-xs text-muted">{k}</dt><dd className="text-ink">{val}</dd></div>
+            ))}
+          </dl>
+          <p className="mt-2 text-xs text-muted">用固定規則把數字翻成白話，只描述今天的狀態，不預測明天漲跌。</p>
+        </section>
+      )}
+
       <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_420px]">
-        <Panel title={`三大法人近 ${m.industry_flow?.days ?? 5} 日產業資金（估算）`} date={m.asof}>
+        <Panel title={`三大法人近 ${m.industry_flow?.days ?? 5} 日產業資金（估算）`} date={m.asof} asof={m.asof} freq="每日盤後・估算">
           <div className="grid gap-4 sm:grid-cols-2">
             {[["買超", inflow], ["賣超", outflow]].map(([title, rows]) => (
               <div key={title as string}>
@@ -181,7 +241,7 @@ export default function MarketOverview() {
           </div>
           <p className="mt-3 text-xs text-muted">以每天各股三大法人買賣超股數 × 收盤價估算，再依產業加總。</p>
         </Panel>
-        <Panel title="台股新聞">
+        <Panel title="台股新聞" asof={m.asof} freq="即時">
           <NewsList q="台股" />
         </Panel>
       </div>

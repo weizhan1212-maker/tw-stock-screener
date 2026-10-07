@@ -12,7 +12,7 @@ import { useLiveQuotes } from "@/hooks/useLiveQuotes";
 import { useSnapshot } from "@/hooks/useSnapshot";
 import { num, type Row } from "@/lib/screener";
 import {
-  dailyBars, focusTags, grade, industryRank, outlooks, type StockFile, supportResistance,
+  chipStamp, dailyBars, focusTags, grade, industryRank, outlooks, quarterStamp, revenueStamp, type Stamp, type StockFile, supportResistance,
 } from "@/lib/stock";
 import { defaults, makeCtx, STRATEGIES } from "@/lib/strategies";
 
@@ -29,12 +29,19 @@ const tone = (v: unknown) => {
   return x == null || x === 0 ? "text-muted" : x > 0 ? "text-up" : "text-down";
 };
 
-function Section({ id, title, note, children }: { id: string; title: string; note?: ReactNode; children: ReactNode }) {
+function Section({ id, title, note, stamp, children }: { id: string; title: string; note?: ReactNode; stamp?: Stamp | null; children: ReactNode }) {
   return (
     <section id={id} className="scroll-mt-4 rounded-lg border border-line bg-surface p-4">
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h2 className="text-base font-bold text-ink">{title}</h2>
-        {note && <span className="text-xs text-muted">{note}</span>}
+        <div className="flex flex-wrap items-baseline justify-end gap-x-2 gap-y-1 text-xs">
+          {note && <span className="text-muted">{note}</span>}
+          {stamp && (
+            <span className={`num rounded px-1.5 py-0.5 ${stamp.late ? "bg-warn-bg text-warn-ink" : "text-muted"}`} title={stamp.late ? stamp.hint : undefined}>
+              {stamp.text}{stamp.late && stamp.hint ? `（${stamp.hint}）` : ""}
+            </span>
+          )}
+        </div>
       </div>
       {children}
     </section>
@@ -315,7 +322,7 @@ function ChipsCard({ s, row }: { s: StockFile; row?: Row }) {
   const h = s.holders ?? [];
   const hl = h[h.length - 1], hp = h[h.length - 2];
   return (
-    <Section id="chips" title="籌碼" note="單位：張">
+    <Section id="chips" title="籌碼" note="單位：張" stamp={chipStamp(s, s.asof)}>
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
         <div className="overflow-x-auto">
           <table className="num w-full min-w-[520px] text-sm">
@@ -382,7 +389,7 @@ function RevenueCard({ s }: { s: StockFile }) {
   const hi = hover ?? last.length - 1;
   const [hm, hv] = last[hi] ?? ["", null];
   return (
-    <Section id="revenue" title="月營收" note="近 24 個月，單位：億元">
+    <Section id="revenue" title="月營收" note="近 24 個月，單位：億元" stamp={revenueStamp(s)}>
       <p className="num mb-2 text-sm text-ink">
         {hm} 營收 <b>{hv != null ? n(hv / 1e8) : "—"}</b> 億，年增 <span className={tone(yoy(hm, hv))}>{signed(yoy(hm, hv))}%</span>
       </p>
@@ -430,7 +437,7 @@ function RevenueCard({ s }: { s: StockFile }) {
 function QuartersCard({ s }: { s: StockFile }) {
   const q = [...(s.quarters ?? [])].reverse().slice(0, 8);
   return (
-    <Section id="quarters" title="季財報" note="近 8 季；ROE 為單季年化">
+    <Section id="quarters" title="季財報" note="近 8 季；ROE 為單季年化" stamp={quarterStamp(s)}>
       <div className="overflow-x-auto">
         <table className="num w-full min-w-[560px] text-sm">
           <thead className="text-xs text-muted">
