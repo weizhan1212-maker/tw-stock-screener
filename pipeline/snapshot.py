@@ -333,6 +333,11 @@ def build_snapshot(store: DataStore, asof=None, lookback_days: int = 420) -> tup
     if not sec.empty:
         base = base.join(sec.set_index("code")[["industry", "sec_type"]])
     comp = store.read_table("company")
+    # 主要產業（產業頁、產業內排名用）：官方產業別優先
+    icode = comp.set_index("code")["industry_code"] if not comp.empty and "industry_code" in comp else pd.Series(dtype=object)
+    raw = base["industry"] if "industry" in base else pd.Series(None, index=base.index, dtype=object)
+    base["ind"] = [util.main_industry(icode.get(c), raw.get(c)) if util.security_type(c) == "stock" else None
+                   for c in base.index]
     shares = pd.Series(dtype=float)
     if not comp.empty:
         shares = comp.set_index("code")["shares_issued"]
@@ -382,10 +387,10 @@ def trading_columns(store: DataStore, asof: pd.Timestamp, base: pd.DataFrame) ->
     for n in (5, 20):
         if f"total_net{n}" in base:
             base[f"inst_amt{n}"] = base[f"total_net{n}"] * 1000 * base["close"] / 1e8        # 張 → 股 × 收盤價，億元
-    if "industry" in base and "ret20" in base:
-        stock = base["industry"].notna() & ~base["industry"].astype(str).str.contains("ETF|指數股票型|^$", regex=True)
+    if "ind" in base and "ret20" in base:
+        stock = base["ind"].notna()
         base["industry_rank"] = np.nan
-        base.loc[stock, "industry_rank"] = base[stock].groupby("industry")["ret20"].rank(pct=True) * 100
+        base.loc[stock, "industry_rank"] = base[stock].groupby("ind")["ret20"].rank(pct=True) * 100
     return base
 
 

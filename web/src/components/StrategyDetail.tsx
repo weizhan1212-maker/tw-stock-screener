@@ -33,6 +33,7 @@ export default function StrategyDetail({ id }: { id: string }) {
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h1 className="text-2xl font-bold text-ink">{s.name}</h1>
         {s.author && <span className="text-sm text-muted">{s.author}</span>}
+        {s.category && <span className="text-sm text-muted">單一條件・{s.category}</span>}
         <DataStatus snap={snap} error={error} />
       </div>
       <p className="mt-3 max-w-3xl text-[15px] leading-relaxed text-ink">{s.plain}</p>
@@ -67,6 +68,23 @@ export default function StrategyDetail({ id }: { id: string }) {
               ))}
             </div>
           </div>
+
+          {(s.period || s.finance || s.notFor) && (
+            <div className="rounded-lg border border-line bg-surface p-4 text-sm leading-relaxed text-ink">
+              {s.period && (<><h2 className="font-bold">資料期間</h2><p className="mt-1">{s.period}</p></>)}
+              {s.finance && (<><h2 className="mt-3 font-bold">金融股處理</h2><p className="mt-1">{s.finance}</p></>)}
+              {s.notFor && s.notFor.length > 0 && (
+                <>
+                  <h2 className="mt-3 font-bold text-warn-ink">不適用情境</h2>
+                  <ul className="mt-1 space-y-1">
+                    {s.notFor.map((x) => (
+                      <li key={x} className="flex gap-2"><span aria-hidden className="text-muted">·</span><span>{x}</span></li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </div>
+          )}
 
           {template && (
             <Link href={template} className="block rounded-lg border border-dashed border-line p-3 text-sm text-ink hover:border-accent">

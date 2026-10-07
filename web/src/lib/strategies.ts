@@ -1,10 +1,11 @@
 /**
- * 14 套預設策略：5 套基本策略＋9 套大師策略。
+ * 預設策略：5 套基本策略＋9 套大師策略＋單一條件策略（strategies-single.ts）。
  * 大師策略是依公開著作整理的台股量化近似版，非原作者背書；所有數字都可在頁面上調整。
  */
 import type { Condition } from "./screener";
 import { num, type Row } from "./screener";
 import type { Sort } from "@/components/Results";
+import { SINGLE } from "./strategies-single";
 
 export interface Param {
   key: string;
@@ -27,7 +28,9 @@ export interface Ctx {
 export interface Strategy {
   id: string;
   name: string;
-  group: "基本策略" | "大師策略";
+  group: "基本策略" | "大師策略" | "單一條件";
+  /** 單一條件策略的分類 */
+  category?: "技術面" | "籌碼面" | "基本面";
   author?: string;
   tagline: string;
   plain: string;
@@ -38,6 +41,12 @@ export interface Strategy {
   run: (ctx: Ctx, p: Params) => Row[];
   /** 可以轉成自訂篩選條件的策略才有 */
   toConditions?: (p: Params) => Omit<Condition, "id">[];
+  /** 用到的資料期間 */
+  period?: string;
+  /** 金融股怎麼處理 */
+  finance?: string;
+  /** 不適用情境 */
+  notFor?: string[];
   /** 額外提醒（例如 CAN SLIM 的大盤狀態） */
   notice?: (ctx: Ctx) => string | null;
 }
@@ -81,7 +90,7 @@ export function makeCtx(rows: Row[], marketBull?: boolean): Ctx {
 
 export const defaults = (s: Strategy): Params => Object.fromEntries(s.params.map((p) => [p.key, p.value]));
 
-export const STRATEGIES: Strategy[] = [
+const BASE_LIST: Strategy[] = [
   // ---------------- 基本策略 ----------------
   {
     id: "dividend",
@@ -392,5 +401,42 @@ export const STRATEGIES: Strategy[] = [
     },
   },
 ];
+
+const FIN_ALL = "金融股與一般股票一起計算。";
+const FIN_OUT = "排除金融股（銀行、保險、證券的財報結構不同，這些指標不適用）。";
+
+/** 公開每套策略的資料期間、金融股處理與不適用情境 */
+const DISCLOSE: Record<string, Pick<Strategy, "period" | "finance" | "notFor">> = {
+  dividend: { period: "殖利率＝最近一年度現金股利 ÷ 最新收盤價；配息年數依歷年股利資料；EPS 為近四季合計。", finance: FIN_ALL,
+    notFor: ["獲利正在衰退、未來股利可能縮水的公司", "想賺短期價差的人：高殖利率股通常漲得慢", "除息後殖利率會依新股利重新計算，數字可能跳動"] },
+  value: { period: "本益比用近四季 EPS、股價淨值比用最新一季淨值。", finance: FIN_ALL,
+    notFor: ["產業長期衰退的公司（便宜是有原因的，即價值陷阱）", "景氣循環股在景氣高點時本益比最低，反而是賣點"] },
+  growth: { period: "最近 3 個月月營收、最新一季 EPS。", finance: FIN_ALL,
+    notFor: ["去年同期基期很低時，年增率會被放大", "營收成長但毛利下滑、賺不到錢的公司", "成長股估值通常偏高，成長一放緩股價就大跌"] },
+  momentum: { period: "近 60 個交易日的還原收盤價與近 20 日成交量。", finance: FIN_ALL,
+    notFor: ["盤整盤：突破後常常又跌回來", "大盤轉空時，動能股通常跌最兇", "沒有看公司基本面，題材股也會入選"] },
+  chips: { period: "證交所／櫃買中心每日三大法人買賣超（投信連買天數、外資近 5 日）。", finance: FIN_ALL,
+    notFor: ["季底投信作帳、或 ETF 成分股調整造成的被動買超", "法人也會停損，連買中斷後可能反向賣超"] },
+  graham: { period: "市值用最新收盤價；流動比率用最新一季；EPS 與配息看近 5～6 年年報。", finance: FIN_OUT,
+    notFor: ["高成長科技股：條件偏保守，幾乎選不到", "近年才上市、財報不滿 5 年的公司", "原著還有質化判斷（產業地位、管理層），這裡沒有"] },
+  buffett: { period: "ROE 看近 5 年年報；負債比用最新一季；自由現金流看近 3 年；毛利率穩定度看近 5 年。", finance: "金融股沒有毛利率與自由現金流資料，實際上不會入選。",
+    notFor: ["護城河是質化判斷（品牌、專利、轉換成本），數字只能近似", "剛轉型或景氣循環股：過去 5 年的數字無法代表未來", "本書作者沒有公開固定選股公式，這是依其公開談話整理的近似條件"] },
+  magic: { period: "營業利益用近四季；企業價值與資本用最新一季資產負債表。", finance: "排除金融與公用事業（原著做法）。",
+    notFor: ["原著建議一次買 20～30 檔、持有一年再換，單挑幾檔效果差很多", "獲利剛衰退但還沒反映在近四季數字的公司"] },
+  lynch: { period: "本益比用近四季 EPS；EPS 成長率為近 3 年年化；負債比用最新一季。", finance: FIN_ALL,
+    notFor: ["景氣循環股：EPS 成長率起伏大，PEG 失真", "原著強調要懂公司在做什麼，數字只是第一步", "成長率是過去的，不代表未來"] },
+  canslim: { period: "當季 EPS、近 3 年年度 EPS、近 250 日股價、近 20 日法人買賣超。", finance: FIN_ALL,
+    notFor: ["大盤空頭（M 條件不成立）：原策略建議觀望", "原著搭配嚴格停損（約 7～8%），只選股不停損風險很大", "台股沒有公開的「新產品、新管理層」（N 的另一半）資料"] },
+  piotroski: { period: "9 項檢查用最近兩個年度的財報比較；股價淨值比用最新一季。", finance: FIN_OUT,
+    notFor: ["高估值成長股：本策略只在便宜股裡挑", "原研究是美國市場、持有一年的平均結果，個別股票差異很大"] },
+  fisher: { period: "股價營收比用近 12 個月營收；營收成長看近 12 個月對前 12 個月；負債比用最新一季。", finance: FIN_ALL,
+    notFor: ["毛利很低的產業（通路、代工）：營收大但賺很少，PSR 天生低", "營收成長但持續虧損的公司"] },
+  neff: { period: "本益比用近四季 EPS；EPS 成長率為近 3 年年化；殖利率用最近一年度現金股利。", finance: FIN_ALL,
+    notFor: ["市場追逐熱門成長股的階段：低本益比股可能長期落後", "獲利正在衰退的公司（過去的成長率會高估）"] },
+  dreman: { period: "本益比、股價淨值比、股價現金流比都用最新收盤價與最近財報；殖利率用最近一年度現金股利。", finance: FIN_ALL,
+    notFor: ["真的出問題的公司（逆向投資最怕接到掉下來的刀子）", "原著建議分散持有且耐心等待，短期可能繼續下跌"] },
+};
+
+export const STRATEGIES: Strategy[] = [...BASE_LIST.map((s) => ({ ...s, ...DISCLOSE[s.id] })), ...SINGLE];
 
 export const STRATEGY_MAP = Object.fromEntries(STRATEGIES.map((s) => [s.id, s]));

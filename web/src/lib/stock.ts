@@ -264,10 +264,10 @@ export function grade(score: number | null): string {
 /** 同產業排名（依健康分數，1 = 最好）。 */
 export function industryRank(rows: Row[], code: string): { rank: number; total: number } | null {
   const me = rows.find((r) => r.code === code);
-  const ind = me?.industry;
+  const ind = me?.ind;
   const score = num(me?.health_score);
   if (!ind || score == null) return null;
-  const peers = rows.filter((r) => r.industry === ind && num(r.health_score) != null);
+  const peers = rows.filter((r) => r.ind === ind && num(r.health_score) != null);
   return { rank: 1 + peers.filter((r) => (num(r.health_score) as number) > score).length, total: peers.length };
 }
 

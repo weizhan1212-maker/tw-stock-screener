@@ -104,8 +104,10 @@ export default function StockPage({ code }: { code: string }) {
               <span className="rounded bg-surface-2 px-1.5 py-0.5 text-muted">{(row?.market ?? data?.info.market) === "TPEX" ? "上櫃" : "上市"}</span>
             )}
             {!isStock && <span className="rounded bg-surface-2 px-1.5 py-0.5 text-muted">ETF</span>}
-            {(row?.industry as string) && !/ETF|指數股票型/.test(row?.industry as string) && (
-              <span className="rounded bg-surface-2 px-1.5 py-0.5 text-muted">{row?.industry as string}</span>
+            {typeof row?.ind === "string" && row.ind && (
+              <Link href={`/industry/${encodeURIComponent(row.ind)}`} className="rounded bg-surface-2 px-1.5 py-0.5 text-muted hover:text-accent">
+                {row.ind}
+              </Link>
             )}
           </div>
         </div>

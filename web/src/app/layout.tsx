@@ -45,6 +45,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <Link href="/market" className="rounded-md px-2.5 py-1 text-ink hover:bg-surface-2">
                 市場總覽
               </Link>
+              <Link href="/industry" className="rounded-md px-2.5 py-1 text-ink hover:bg-surface-2">
+                產業
+              </Link>
               <Link href="/ranking" className="rounded-md px-2.5 py-1 text-ink hover:bg-surface-2">
                 排行榜
               </Link>

@@ -40,7 +40,7 @@ export default function StrategyHome() {
         <section key={g} className="mt-6">
           <h2 className="mb-1 text-base font-bold text-ink">{g}</h2>
           <p className="mb-3 text-sm text-muted">
-            {g === "基本策略" ? "最常見的五種選股思路，條件簡單、好理解。" : "依大師公開著作整理的台股量化版本（非原作者背書），條件數字都可以調整。"}
+            {g === "基本策略" ? "最常見的五種選股思路，條件簡單、好理解。" : "依大師公開著作整理的台股量化版本（非原作者背書），條件數字都可以調整；每套都公開完整條件與不適用情境。"}
           </p>
           <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {STRATEGIES.filter((s) => s.group === g).map((s) => (
@@ -49,6 +49,21 @@ export default function StrategyHome() {
           </ul>
         </section>
       ))}
+
+      <section className="mt-6">
+        <h2 className="mb-1 text-base font-bold text-ink">單一條件</h2>
+        <p className="mb-3 text-sm text-muted">只看一個重點訊號，適合當作篩選的起點，再到自訂篩選加其他條件。</p>
+        {(["技術面", "籌碼面", "基本面"] as const).map((cat) => (
+          <div key={cat} className="mb-4">
+            <h3 className="mb-2 text-sm font-medium text-muted">{cat}</h3>
+            <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {STRATEGIES.filter((s) => s.group === "單一條件" && s.category === cat).map((s) => (
+                <SmallCard key={s.id} s={s} rows={results?.[s.id] ?? null} />
+              ))}
+            </ul>
+          </div>
+        ))}
+      </section>
 
       <p className="mt-8 text-sm text-muted">
         想自己組條件？到 <Link href="/screener" className="text-accent underline underline-offset-2">自訂篩選</Link>。
@@ -75,6 +90,20 @@ function StrategyCard({ s, rows }: { s: Strategy; rows: ReturnType<Strategy["run
         <p className="mt-auto truncate pt-3 text-xs text-muted">
           {rows == null ? "計算中…" : rows.length === 0 ? "目前沒有符合的股票" : rows.slice(0, 4).map((r) => `${r.code} ${r.name}`).join("、")}
         </p>
+      </Link>
+    </li>
+  );
+}
+
+function SmallCard({ s, rows }: { s: Strategy; rows: ReturnType<Strategy["run"]> | null }) {
+  return (
+    <li>
+      <Link href={`/strategy/${s.id}`} className="flex h-full items-center justify-between gap-3 rounded-lg border border-line bg-surface px-3 py-2.5 transition-colors hover:border-accent">
+        <span className="min-w-0">
+          <span className="block text-sm font-bold text-ink">{s.name}</span>
+          <span className="block truncate text-xs text-muted">{s.tagline}</span>
+        </span>
+        <span className="num shrink-0 text-sm text-muted">{rows == null ? "…" : <><b className="text-ink">{rows.length}</b> 檔</>}</span>
       </Link>
     </li>
   );
