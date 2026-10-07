@@ -86,6 +86,11 @@ export default function StrategyDetail({ id }: { id: string }) {
             </div>
           )}
 
+          <Link href={`/backtest?st=${s.id}&p=${encodeURIComponent(JSON.stringify(p))}`}
+            className="block rounded-lg bg-accent px-3 py-2.5 text-center text-sm font-bold text-white hover:opacity-90">
+            一鍵回測這套策略（用目前的數字）
+          </Link>
+
           {template && (
             <Link href={template} className="block rounded-lg border border-dashed border-line p-3 text-sm text-ink hover:border-accent">
               以這套策略為範本，到自訂篩選繼續加條件

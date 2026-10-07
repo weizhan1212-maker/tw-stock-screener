@@ -291,6 +291,11 @@ export default function Screener() {
               </div>
             )}
           </div>
+          {conds.length > 0 && (
+            <a href={`/backtest?${query}`} className="block rounded-lg border border-line bg-surface p-3 text-sm text-ink hover:border-accent">
+              回測這組條件（依目前排序取前幾名）→
+            </a>
+          )}
           <SavedScreens currentQuery={query} onLoad={applyQuery} />
           {conds.length > 0 && (
             <button type="button" onClick={() => setConds([])} className="text-sm text-muted underline-offset-2 hover:text-ink hover:underline">
