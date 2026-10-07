@@ -4,6 +4,7 @@ name: 每日資料更新
 #   18:43 傍晚場：行情、法人、本益比已公布 → 先更新網站（不跑季報補抓與檢查報告，省 Actions 分鐘數）
 #   23:27 夜間場：融資融券、外資持股也公布了 → 補齊當天資料，加跑季報補抓與檢查報告
 # 休市日沒有資料，任務會自動判斷；GitHub 排程可能延遲或漏跑，下一場會往回補 10 天。
+# 主要由 Supabase pg_cron 準時觸發（workflow_dispatch，mode=light/full，見 docs/資料管線.md）；下面的 GitHub 排程是備援。
 on:
   schedule:
     - cron: "43 10 * * 1-5"
@@ -13,6 +14,9 @@ on:
       lookback:
         description: "往回檢查幾天"
         default: "10"
+      mode:
+        description: "full = 完整（含季報補抓、檢查報告）；light = 傍晚場只更新行情"
+        default: full
 
 concurrency:
   group: pipeline-days
@@ -41,7 +45,7 @@ jobs:
           set -o pipefail
           python -m pipeline daily --lookback "${{ github.event.inputs.lookback || '10' }}" 2>&1 | tee -a run.log
       - name: 季報補抓
-        if: github.event.schedule != '43 10 * * 1-5'
+        if: github.event.schedule != '43 10 * * 1-5' && github.event.inputs.mode != 'light'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
@@ -59,7 +63,7 @@ jobs:
           python -m pipeline market 2>&1 | tee -a run.log
           python -m pipeline stocks 2>&1 | tee -a run.log
       - name: 資料檢查報告
-        if: always() && github.event.schedule != '43 10 * * 1-5'
+        if: always() && github.event.schedule != '43 10 * * 1-5' && github.event.inputs.mode != 'light'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
