@@ -5,8 +5,10 @@ import Link from "next/link";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import DataStatus from "@/components/DataStatus";
 import KChart from "@/components/KChart";
+import LivePanel, { liveLabel } from "@/components/LivePanel";
 import NewsList from "@/components/NewsList";
 import WatchStar from "@/components/WatchStar";
+import { useLiveQuotes } from "@/hooks/useLiveQuotes";
 import { useSnapshot } from "@/hooks/useSnapshot";
 import { num, type Row } from "@/lib/screener";
 import {
@@ -62,6 +64,10 @@ export default function StockPage({ code }: { code: string }) {
   const row: Row | undefined = useMemo(() => snap?.rows.find((r) => r.code === code), [snap, code]);
   const name = (row?.name as string) || data?.info.name || "";
   const isStock = (row?.sec_type ?? data?.info.sec_type) === "stock";
+  // 盤中即時（富果，試用中只有管理員拿得到）；比盤後快照新或同一天才顯示
+  const liveAll = useLiveQuotes([code], 10_000);
+  const live = liveAll?.[code];
+  const showLive = !!live && live.price != null && (!snap || live.date >= snap.meta.asof);
 
   const tags = useMemo(() => (snap ? focusTags(snap.rows, code) : []), [snap, code]);
   const matched = useMemo(() => {
@@ -96,7 +102,13 @@ export default function StockPage({ code }: { code: string }) {
             )}
           </div>
         </div>
-        {row && (
+        {showLive && live ? (
+          <div className="num flex flex-wrap items-baseline gap-x-3">
+            <span className="text-3xl font-bold text-ink">{n(live.price, live.price! >= 1000 ? 0 : 2)}</span>
+            <span className={`text-lg ${tone(live.change)}`}>{signed(live.change)}（{signed(live.pct)}%）</span>
+            <span className="rounded bg-accent-soft px-1.5 py-0.5 text-xs text-accent">{liveLabel(live)}</span>
+          </div>
+        ) : row && (
           <div className="num flex items-baseline gap-3">
             <span className="text-3xl font-bold text-ink">{n(row.close, num(row.close)! >= 1000 ? 0 : 2)}</span>
             {num(row.prev_close) != null && num(row.chg_pct) != null && (
@@ -107,8 +119,11 @@ export default function StockPage({ code }: { code: string }) {
         <div className="flex flex-wrap items-center gap-2"><DataStatus snap={snap} error={snapErr} /></div>
       </div>
 
+      {showLive && live && <LivePanel q={live} />}
+
+      {showLive && snap && <p className="mt-4 text-xs text-muted">以下為 {snap.meta.asof.replaceAll("-", "/")} 盤後資料</p>}
       {row && (
-        <dl className="num mt-4 grid grid-cols-2 gap-x-6 gap-y-2 rounded-lg border border-line bg-surface p-4 text-sm sm:grid-cols-4 lg:grid-cols-8">
+        <dl className={`num ${showLive ? "mt-1" : "mt-4"} grid grid-cols-2 gap-x-6 gap-y-2 rounded-lg border border-line bg-surface p-4 text-sm sm:grid-cols-4 lg:grid-cols-8`}>
           {[
             ["成交量", `${n(row.volume_lots, 0)} 張`],
             ["成交金額", `${n((num(row.value) ?? 0) / 1e8)} 億`],
