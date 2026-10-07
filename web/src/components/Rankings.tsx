@@ -59,8 +59,8 @@ const GROUPS: { id: string; label: string; ranks: Rank[] }[] = [
       note: "近 60 日強過大盤、離 52 週高點 5% 以內，但 20 日漲幅 ≤ 15%、離年線 ≤ 40%；成交量 500 張以上" },
     { id: "rev_value", label: "營收加速＋估值合理", key: "rev_yoy_chg", dir: -1,
       cols: [...BASE, "rev_yoy", "rev_yoy_chg", "pe", "peg"],
-      keep: (r) => liquid(300)(r) && (num(r.rev_yoy) ?? -99) >= 15 && (num(r.rev_yoy_chg) ?? -99) > 0 && inr(r, "pe", 0.01, 20),
-      note: "月營收年增 15% 以上且比 3 個月前更高、本益比 20 倍以下；成交量 300 張以上" },
+      keep: (r) => liquid(300)(r) && inr(r, "rev_yoy", 15, 300) && (num(r.rev_yoy_chg) ?? -99) > 0 && inr(r, "pe", 0.01, 20),
+      note: "月營收年增 15～300%（排除低基期暴增）且比 3 個月前更高、本益比 20 倍以下；成交量 300 張以上" },
     { id: "inst_quiet", label: "法人連買但價格未漲", key: "inst_amt5", dir: -1,
       cols: [...BASE, "inst_amt5", "ret5", "ret20", "foreign_buy_streak", "trust_buy_streak"],
       keep: (r) => liquid(300)(r) && (num(r.inst_amt5) ?? 0) > 0 && ((num(r.foreign_buy_streak) ?? 0) >= 3 || (num(r.trust_buy_streak) ?? 0) >= 3)
