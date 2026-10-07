@@ -1,0 +1,84 @@
+2026-10-07 12:17:55,183 WARNING 抓取失敗 https://www.tpex.org.tw/www/zh-tw/afterTrading/dailyQuotes（第 1 次）：Response ended prematurely，10 秒後重試
+2026-10-07 12:21:00,609 INFO 2026-10-07 → {'twse_quotes': 'ok', 'tpex_quotes': 'ok', 'twse_insti': 'ok', 'tpex_insti': 'ok', 'twse_margin': 'pending', 'tpex_margin': 'pending', 'twse_valuation': 'ok', 'tpex_valuation': 'ok', 'twse_qfii': 'pending'}
+2026-10-07 12:22:59,579 INFO ## 每日任務 2026-10-07
+
+| 日期 | 狀態 |
+|---|---|
+| 2026-09-28 | 休市 |
+| 2026-09-29 | 完成 |
+| 2026-09-30 | 完成 |
+| 2026-10-01 | 完成 |
+| 2026-10-02 | 完成 |
+| 2026-10-05 | 完成 |
+| 2026-10-06 | 完成 |
+| 2026-10-07 | {'twse_quotes': 'ok', 'tpex_quotes': 'ok', 'twse_insti': 'ok', 'tpex_insti': 'ok', 'twse_margin': 'pending', 'tpex_margin': 'pending', 'twse_valuation': 'ok', 'tpex_valuation': 'ok', 'twse_qfii': 'pending'} |
+
+寫入筆數：prices=2330, index=1, indices=56, insti=2209, valuation=1968, exright_twse=14, exright_tpex=12, holders=3323, revenue=1977, income_periods=1934, qfii_tpex=887, securities=2419, company=1982, delisting=706, extras_taiex_ohlc=5, extras_dca_rank=40, extras_tpex_insti=1, extras_tpex_daytrade=4, extras_tpex_sbl=931, extras_tpex_block=4, extras_futures=2, extras_tpex_index=5, extras_twse_extra_days=0
+2026-10-07 12:23:02,775 INFO ## 季報補抓
+
+完成 0 檔，佇列剩 0 檔
+2026-10-07 12:24:03,228 INFO 快照：2354 檔、117 欄，壓縮後 679 KB
+2026-10-07 12:24:03,234 INFO ## 篩選快照
+
+資料日 2026-10-07，2354 檔，117 欄
+2026-10-07 12:24:50,138 INFO ## 市場總覽
+
+資料日 2026-10-07，指數 10 項，5 KB，指數歷史 192 KB
+2026-10-07 12:27:38,003 INFO 個股檔：{'asof': '2026-10-07', 'count': 2340, 'failed': [], 'n_failed': 0, 'avg_kb': 15.0, 'total_mb': 34.2}
+2026-10-07 12:27:38,052 INFO ## 個股檔
+
+2340 檔，平均 15.0 KB，合計 34.2 MB，失敗 0 檔
+2026-10-07 12:30:51,779 INFO ## 資料檢查報告
+
+### 日資料
+
+| 資料集 | 月份數 | 總筆數 | 日期範圍 | 近 20 日每日檔數（最少/中位/最多） | 缺值比例 |
+|---|---|---|---|---|---|
+| prices | 50 | 2,084,070 | 2022-09-28 ~ 2026-10-07 | 2328/2332/2336 | close=0.9%, volume=0.0% |
+| insti | 50 | 1,949,498 | 2022-09-28 ~ 2026-10-07 | 2188/2210/2231 | foreign=0.0%, trust=0.0%, dealer=0.0% |
+| margin | 50 | 1,937,363 | 2022-09-28 ~ 2026-10-06 | 2211/2212/2213 | margin_balance=0.0%, short_balance=0.0% |
+| valuation | 50 | 1,810,291 | 2022-09-28 ~ 2026-10-07 | 1965/1969/1973 | pe=23.5%, pb=0.0%, dividend_yield=0.0% |
+| qfii | 50 | 1,178,718 | 2022-09-28 ~ 2026-10-07 | 887/1328/2222 | foreign_ratio=0.0% |
+| exright | 50 | 9,301 | 2022-09-01 ~ 2026-10-07 | 1/7/54 | prev_close=0.0%, ref_price=0.0% |
+| index | 50 | 975 | 2022-09-28 ~ 2026-10-07 | 1/1/1 | taiex=0.0%, taiex_tr=0.0% |
+| holders | 1 | 3,323 | 2026-10-02 ~ 2026-10-02 | 3323/3323/3323 |  |
+| taiex_ohlc | 49 | 972 | 2022-10-03 ~ 2026-10-07 | 1/1/1 |  |
+| indices | 49 | 54,592 | 2022-10-03 ~ 2026-10-07 | 57/57/57 |  |
+| margin_total | 5 | 72 | 2026-06-24 ~ 2026-10-06 | 1/1/1 |  |
+| market_insti | 5 | 75 | 2026-06-24 ~ 2026-10-07 | 1/1/2 |  |
+| daytrade | 5 | 87,668 | 2026-06-24 ~ 2026-10-06 | 1225/1230/1233 |  |
+| daytrade_total | 5 | 76 | 2026-06-24 ~ 2026-10-06 | 1/1/2 |  |
+| sbl | 5 | 95,701 | 2026-06-24 ~ 2026-10-06 | 1296/1296/2228 |  |
+| block | 5 | 1,322 | 2026-06-24 ~ 2026-10-07 | 4/19/30 |  |
+| futures | 1 | 6 | 2026-10-02 ~ 2026-10-06 | 2/2/2 |  |
+
+### 其他表
+
+| 表 | 筆數 | 檔數 |
+|---|---|---|
+| income | 883,196 | 2055 |
+| balance | 2,326,405 | 2065 |
+| cashflow | 1,352,829 | 2057 |
+| revenue | 171,349 | 1891 |
+| revenue_latest | 1,977 | 1977 |
+| dividend | 12,448 | 1860 |
+| securities | 2,419 | 2419 |
+| company | 1,982 | 1982 |
+| delisting | 706 | 706 |
+| income_periods | 1,934 | 1934 |
+
+### 回補進度
+
+- 日資料：完成 974 個交易日、休市 76 天、未完成 1 天、有缺漏端點 0 天
+- FinMind：完成 1997 檔（全部完成：True）
+- 季報補抓佇列：0 檔
+- 未完成範例：2026-10-07: {'twse_quotes': 'ok', 'tpex_quotes': 'ok', 'twse_insti': 'ok', 'tpex_insti': 'ok', 'twse_margin': 'pending', 'tpex_margin': 'pending', 'twse_valuation': 'ok', 'tpex_valuation': 'ok', 'twse_qfii': 'pending'}
+
+### 抽樣：台積電最近 3 天
+
+```
+      date code market name   open   high    low  close     volume        value   trades  shares_issued  ref_next
+2026-10-05 2330   TWSE  台積電 2550.0 2580.0 2545.0 2575.0 26800187.0 6.879915e+10 105264.0            NaN       NaN
+2026-10-06 2330   TWSE  台積電 2575.0 2590.0 2565.0 2585.0 20801802.0 5.363915e+10  83438.0            NaN       NaN
+2026-10-07 2330   TWSE  台積電 2565.0 2585.0 2560.0 2585.0 16941183.0 4.364360e+10  70880.0            NaN       NaN
+```
