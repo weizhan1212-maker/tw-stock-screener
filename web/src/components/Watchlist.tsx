@@ -64,6 +64,9 @@ export default function Watchlist() {
       <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
         <h1 className="text-xl font-bold text-ink">自選股</h1>
         <DataStatus snap={snap} error={error} />
+        {(w.codes?.length ?? 0) >= 2 && (
+          <Link href={`/compare?codes=${w.codes!.slice(0, 6).join(",")}`} className="text-sm text-accent hover:underline">比較前 6 檔 →</Link>
+        )}
         {liveTime && (
           <span className="rounded bg-accent-soft px-1.5 py-0.5 text-xs text-accent">
             收盤價、漲跌、量、金額為即時資料（{liveTime}，前 30 檔，每分鐘更新）

@@ -15,6 +15,7 @@ URLS = {
     "tpex_income": f"{TPEX_OA}/mopsfin_t187ap06_O_ci",
     "tpex_qfii": f"{TPEX_OA}/tpex_3insti_qfii",
     "twse_holiday": f"{TWSE_OA}/holidaySchedule/holidaySchedule",
+    "twse_etf": f"{TWSE_OA}/opendata/t187ap47_L",          # 基金（ETF）基本資料彙總表
 }
 
 
@@ -39,6 +40,26 @@ def parse_company(rows, market: str) -> pd.DataFrame:
             "listed_date": pd.to_datetime(listed, format="%Y%m%d", errors="coerce"),
             "shares_issued": to_num(_g(r, "已發行普通股數或TDR原股發行股數", "IssueShares")),
             "capital": to_num(_g(r, "實收資本額", "Paidin.Capital.NTDollars")),
+        })
+    return pd.DataFrame.from_records(recs)
+
+
+def parse_etf_info(rows) -> pd.DataFrame:
+    """上市 ETF 基本資料：類型、追蹤指數、上市日、發行單位數。"""
+    recs = []
+    for r in rows or []:
+        code = clean_code(_g(r, "基金代號"))
+        if security_type(code) != "etf":
+            continue
+        listed = str(_g(r, "上市日期") or "").strip()
+        recs.append({
+            "code": code,
+            "etf_type": str(_g(r, "基金類型") or "").strip(),
+            "etf_index": str(_g(r, "標的指數/追蹤指數名稱") or "").strip(),
+            "etf_fullname": str(_g(r, "基金中文名稱") or "").strip(),
+            "etf_foreign": str(_g(r, "是否包含國外成分股") or "").strip(),
+            "etf_listed": listed,
+            "etf_units": to_num(_g(r, "發行單位數/轉換數")),
         })
     return pd.DataFrame.from_records(recs)
 

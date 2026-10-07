@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import DataStatus from "@/components/DataStatus";
 import Section from "@/components/Section";
-import { HealthExplain, RiskCard } from "@/components/StockRisk";
+import { EtfInfoCard, HealthExplain, RiskCard, ValuationCard } from "@/components/StockRisk";
 import KChart from "@/components/KChart";
 import LivePanel, { liveLabel } from "@/components/LivePanel";
 import NewsList from "@/components/NewsList";
@@ -81,6 +81,7 @@ export default function StockPage({ code }: { code: string }) {
             <h1 className="text-2xl font-bold text-ink">{name || code}</h1>
             <span className="num text-lg text-muted">{code}</span>
             <span className="self-center"><WatchStar code={code} name={name} size="md" /></span>
+            <Link href={`/compare?codes=${code}`} className="self-center rounded-md border border-line px-2 py-0.5 text-xs text-muted hover:border-accent hover:text-accent">比較</Link>
           </div>
           <div className="mt-1 flex flex-wrap gap-1.5 text-xs">
             {(row?.market ?? data?.info.market) && (
@@ -168,7 +169,9 @@ export default function StockPage({ code }: { code: string }) {
           {data && <LevelsCard s={data} />}
         </div>
 
+        {!isStock && row && <EtfInfoCard row={row} s={data} />}
         {data && <RiskCard s={data} row={row} />}
+        {isStock && data && row && <ValuationCard s={data} row={row} />}
         {isStock && snap && row && <HealthCard rows={snap.rows} row={row} code={code} s={data} />}
         {data && <ChipsCard s={data} row={row} />}
         {data?.revenue && data.revenue.length > 0 && <RevenueCard s={data} />}

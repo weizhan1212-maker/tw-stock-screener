@@ -67,7 +67,7 @@ def technicals(px: pd.DataFrame) -> pd.DataFrame:
     c = px["aclose"]
     for w in (5, 10, 20, 60, 120, 240):
         px[f"ma{w}"] = g["aclose"].transform(lambda s, w=w: s.rolling(w, min_periods=w).mean())
-    for n in (5, 20, 60, 120):
+    for n in (5, 20, 60, 120, 240):
         px[f"ret{n}"] = (c / g["aclose"].shift(n) - 1) * 100
     px["high52"] = g["ahigh"].transform(lambda s: s.rolling(240, min_periods=120).max())
     px["low52"] = g["alow"].transform(lambda s: s.rolling(240, min_periods=120).min())
@@ -316,7 +316,7 @@ def build_snapshot(store: DataStore, asof=None, lookback_days: int = 420) -> tup
     tech = technicals(prices)
     tech = tech.rename(columns={"aclose": "adj_close"})
     base = tech[["date", "market", "name", "close", "prev_close", "chg_pct", "volume", "value", "adj_close",
-                 "ma5", "ma10", "ma20", "ma60", "ma120", "ma240", "ret5", "ret20", "ret60", "ret120",
+                 "ma5", "ma10", "ma20", "ma60", "ma120", "ma240", "ret5", "ret20", "ret60", "ret120", "ret240",
                  "dist_high52", "dist_low52", "new_high20", "new_high60", "vol_ratio", "k", "d", "kd_golden",
                  "dist_ma240", "dist_high60", "avg_value20", "atr_pct", "dif", "dea", "macd_hist", "macd_golden", "rsi14", "boll_pctb", "bull_align", "n_days",
                  *(["shares_issued"] if "shares_issued" in tech else [])]].copy()
@@ -366,6 +366,7 @@ def build_snapshot(store: DataStore, asof=None, lookback_days: int = 420) -> tup
         base = base.join(sf)
     base = finish(base)
     base = trading_columns(store, asof, base)
+    base = etf_columns(store, asof, base)
     base = health_scores(base)
     base["sec_type"] = base.get("sec_type", pd.Series(index=base.index, dtype=object)).fillna(
         base.index.to_series().map(util.security_type))
@@ -392,6 +393,26 @@ def trading_columns(store: DataStore, asof: pd.Timestamp, base: pd.DataFrame) ->
         stock = base["ind"].notna()
         base["industry_rank"] = np.nan
         base.loc[stock, "industry_rank"] = base[stock].groupby("ind")["ret20"].rank(pct=True) * 100
+    return base
+
+
+def etf_columns(store: DataStore, asof: pd.Timestamp, base: pd.DataFrame) -> pd.DataFrame:
+    """ETF：類型、追蹤指數、規模（估算＝發行單位數 × 收盤價）、近一年配息與殖利率。"""
+    is_etf = base.index.to_series().map(util.security_type) == "etf"
+    info = store.read_table("etf_info")
+    if not info.empty:
+        info = info.set_index("code")
+        for c in ("etf_type", "etf_index", "etf_listed"):
+            base[c] = info[c].reindex(base.index).where(is_etf)
+        base["etf_aum"] = (info["etf_units"].reindex(base.index) * base["close"] / 1e8).where(is_etf)
+    ex = store.read_daily("exright", asof - pd.Timedelta(days=365), asof)
+    if not ex.empty and "value" in ex:
+        ex = ex[ex["code"].map(util.security_type) == "etf"]
+        g = ex.groupby("code")["value"]
+        base["etf_div12m"] = g.sum().reindex(base.index).where(is_etf)
+        base["etf_div_count"] = g.size().reindex(base.index).where(is_etf).fillna(0).where(is_etf)
+        y = (base["etf_div12m"].fillna(0) / base["close"] * 100).where(is_etf)
+        base["dividend_yield"] = base.get("dividend_yield", pd.Series(np.nan, index=base.index)).where(~is_etf, y)
     return base
 
 

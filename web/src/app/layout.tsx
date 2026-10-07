@@ -48,6 +48,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <Link href="/industry" className="rounded-md px-2.5 py-1 text-ink hover:bg-surface-2">
                 產業
               </Link>
+              <Link href="/etf" className="rounded-md px-2.5 py-1 text-ink hover:bg-surface-2">
+                ETF
+              </Link>
               <Link href="/ranking" className="rounded-md px-2.5 py-1 text-ink hover:bg-surface-2">
                 排行榜
               </Link>
@@ -56,6 +59,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               </Link>
               <Link href="/watchlist" className="rounded-md px-2.5 py-1 text-ink hover:bg-surface-2">
                 自選股
+              </Link>
+              <Link href="/portfolio" className="rounded-md px-2.5 py-1 text-ink hover:bg-surface-2">
+                投資組合
               </Link>
             </nav>
             <div className="ml-auto flex items-center gap-3">

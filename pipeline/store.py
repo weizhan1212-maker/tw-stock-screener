@@ -44,6 +44,7 @@ TABLE_KEYS = {
     "dividend": ["code", "date", "period"],
     "securities": ["code"],
     "company": ["code"],
+    "etf_info": ["code"],
     "delisting": ["code"],
     "income_periods": ["code", "year", "quarter"],
 }

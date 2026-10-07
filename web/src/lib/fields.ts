@@ -2,8 +2,8 @@
  * 篩選欄位定義：名稱、分類、單位、白話說明。
  * key 必須對應 pipeline/snapshot.py 輸出的欄位（或下方 derived 欄位）。
  */
-export type Format = "price" | "pct" | "lots" | "yi" | "yiRaw" | "times" | "days" | "num" | "bool" | "years";
-export type Group = "價量" | "技術面" | "估值" | "籌碼面" | "基本面";
+export type Format = "price" | "pct" | "lots" | "yi" | "yiRaw" | "times" | "days" | "num" | "bool" | "years" | "count";
+export type Group = "價量" | "技術面" | "估值" | "籌碼面" | "基本面" | "ETF";
 
 export interface Field {
   key: string;
@@ -30,6 +30,7 @@ export const FIELDS: Field[] = [
   { key: "ret20", label: "近 20 日漲幅", group: "技術面", format: "pct", help: "最近 20 個交易日（約一個月）漲跌幅。" },
   { key: "ret60", label: "近 60 日漲幅", group: "技術面", format: "pct", help: "最近 60 個交易日（約一季）漲跌幅。" },
   { key: "ret120", label: "近 120 日漲幅", group: "技術面", format: "pct", help: "最近 120 個交易日（約半年）漲跌幅。" },
+  { key: "ret240", label: "近 240 日漲幅", group: "技術面", format: "pct", help: "最近 240 個交易日（約一年）漲跌幅（還原股價，含股利）。" },
   { key: "dist_high52", label: "距 52 週高點", group: "技術面", format: "pct", help: "目前股價比一年內最高價低多少 %。-5% 代表離高點只差 5%。" },
   { key: "dist_high60", label: "距 60 日高點", group: "技術面", format: "pct", help: "目前股價比最近 60 個交易日最高價低多少 %。0% 代表正在創季新高。" },
   { key: "dist_ma240", label: "距年線", group: "技術面", format: "pct", help: "股價比 240 日均線（年線）高或低幾 %。正值代表在年線之上，數字太大代表短線漲多、離成本區遠。" },
@@ -118,6 +119,10 @@ export const FIELDS: Field[] = [
   { key: "health_score", label: "財務健康度", group: "基本面", format: "num", help: "盈利能力、流動性、財務結構、營運效率、成長性五項的平均分數（0–100），用全市場百分位計算。85 分以上為 A+。" },
   { key: "div_years", label: "連續配息年數", group: "基本面", format: "years", help: "連續幾年都有發現金股利。" },
   { key: "cash_div_last", label: "最近一年現金股利", group: "基本面", format: "price", help: "最近一個年度合計發多少現金股利（元）。" },
+  { key: "etf_aum", label: "ETF 規模（估算）", group: "ETF", format: "yiRaw", help: "發行單位數 × 收盤價（億元）。用市價估算，跟投信公布的淨資產會有些微差距。目前只有上市 ETF。" },
+  { key: "holders", label: "股東／受益人數", group: "ETF", format: "count", help: "集保結算所每週公布的持有人數。ETF 就是受益人數，人數越多代表越熱門。" },
+  { key: "etf_div12m", label: "ETF 近一年配息", group: "ETF", format: "price", help: "近 12 個月每單位配息合計（元），依除息紀錄計算。" },
+  { key: "etf_div_count", label: "ETF 近一年配息次數", group: "ETF", format: "count", help: "近 12 個月配息幾次：12 次為月配、4 次為季配。" },
 ];
 
 /** 只在策略結果裡出現、不放進自訂篩選選單的欄位 */
@@ -127,7 +132,7 @@ const HIDDEN: Field[] = [
 ];
 
 export const FIELD_MAP: Record<string, Field> = Object.fromEntries([...FIELDS, ...HIDDEN].map((f) => [f.key, f]));
-export const GROUPS: Group[] = ["價量", "技術面", "估值", "籌碼面", "基本面"];
+export const GROUPS: Group[] = ["價量", "技術面", "估值", "籌碼面", "基本面", "ETF"];
 
 export const UNIT: Partial<Record<Format, string>> = {
   price: "元", pct: "%", lots: "張", yi: "億", yiRaw: "億", times: "倍", days: "天", years: "年",

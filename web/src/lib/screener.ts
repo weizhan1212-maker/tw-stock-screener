@@ -112,6 +112,7 @@ export function fmt(v: unknown, format: Format, signed = false): string {
       return v >= 100 ? N0.format(v) : N1.format(v);
     case "days":
     case "years":
+    case "count":
       return N0.format(v);
     default:
       return N2.format(v);

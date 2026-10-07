@@ -285,3 +285,138 @@ function fmtMetric(k: string, v: number | null) {
   if (k === "f_score") return `${f(v, 0)} 分`;
   return `${f(v, 1)}%`;
 }
+
+// ---------------- ETF 資訊 ----------------
+
+export function EtfInfoCard({ row, s }: { row: Row; s?: StockFile | null }) {
+  const div = (s?.dividends ?? []).slice(0, 12);
+  const items: [string, string][] = [
+    ["類型", (row.etf_type as string) || "—"],
+    ["追蹤指數", (row.etf_index as string) || "—"],
+    ["上市日", (row.etf_listed as string) || "—"],
+    ["規模（估算）", num(row.etf_aum) == null ? "—（上櫃 ETF 無資料）" : `${f(num(row.etf_aum), 0)} 億`],
+    ["受益人數", num(row.holders) == null ? "—" : `${Math.round(num(row.holders)!).toLocaleString()} 人`],
+    ["近一年配息", num(row.etf_div12m) == null ? "—" : `${f(num(row.etf_div12m))} 元（${f(num(row.etf_div_count), 0)} 次）`],
+    ["殖利率（近一年）", num(row.dividend_yield) == null ? "—" : `${f(num(row.dividend_yield))}%`],
+    ["近一年報酬（含息）", num(row.ret240) == null ? "—" : `${f(num(row.ret240), 1)}%`],
+  ];
+  return (
+    <Section id="etf" title="ETF 資訊" note="規模＝發行單位數 × 收盤價（估算）；受益人數每週更新">
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-4">
+        {items.map(([k, v]) => <div key={k}><dt className="text-xs text-muted">{k}</dt><dd className="text-ink">{v}</dd></div>)}
+      </dl>
+      {div.length > 0 && <p className="num mt-3 text-xs text-muted">最近配息：{div.slice(0, 6).map((d) => `${d.ex ?? d.period} ${f(d.cash, 3)} 元`).join("、")}</p>}
+      <p className="mt-2 text-xs text-muted">折溢價、即時淨值與持股明細沒有可合法自動取得的開放資料，請到發行投信官網查詢。</p>
+    </Section>
+  );
+}
+
+// ---------------- 估值情境 ----------------
+
+/** 每季財報的法定公布期限（之後才算「已知」的 EPS） */
+function availDate(p: string) {
+  const y = Number(p.slice(0, 4)), q = Number(p.slice(5));
+  return q === 1 ? `${y}-05-15` : q === 2 ? `${y}-08-14` : q === 3 ? `${y}-11-14` : `${y + 1}-03-31`;
+}
+
+function quantile(xs: number[], q: number) {
+  const s = [...xs].sort((a, b) => a - b);
+  const i = (s.length - 1) * q, lo = Math.floor(i), hi = Math.ceil(i);
+  return s[lo] + (s[hi] - s[lo]) * (i - lo);
+}
+
+/** 近 3 年每天的本益比（收盤價 ÷ 當時已公布的近四季 EPS） */
+export function peHistory(s: StockFile, years = 3): number[] {
+  const q = (s.quarters ?? []).filter((x) => x.eps != null);
+  if (q.length < 4) return [];
+  const ttm = q.slice(3).map((x, i) => ({ from: availDate(x.p), eps: q.slice(i, i + 4).reduce((a, b) => a + (b.eps ?? 0), 0) }));
+  const d = s.daily, start = `${Number(d.d[d.d.length - 1].slice(0, 4)) - years}${d.d[d.d.length - 1].slice(4)}`;
+  const out: number[] = [];
+  let k = -1;
+  for (let i = 0; i < d.d.length; i++) {
+    const t = d.d[i], c = d.c[i];
+    while (k + 1 < ttm.length && ttm[k + 1].from <= t) k++;
+    if (t < start || c == null || k < 0 || ttm[k].eps <= 0) continue;
+    out.push(c / ttm[k].eps);
+  }
+  return out;
+}
+
+export function ValuationCard({ s, row }: { s: StockFile; row: Row }) {
+  const pes = useMemo(() => peHistory(s), [s]);
+  const close = num(row.close);
+  const epsTtm = num(row.eps_ttm);
+  const [eps, setEps] = useState<number | undefined>(undefined);
+  const [yields, setYields] = useState<[number, number, number]>([4, 5, 6]);
+  const div = num(row.cash_div_last);
+  if (close == null) return null;
+  const E = eps ?? epsTtm ?? undefined;
+  const band = pes.length >= 120 ? { lo: quantile(pes, 0.25), mid: quantile(pes, 0.5), hi: quantile(pes, 0.75), min: quantile(pes, 0.05), max: quantile(pes, 0.95) } : null;
+  const curPe = epsTtm && epsTtm > 0 ? close / epsTtm : null;
+  const row3 = (label: string, pe: number) => {
+    const p = E != null ? E * pe : null;
+    return { label, pe, p, up: p != null ? (p / close - 1) * 100 : null };
+  };
+  const scen = band ? [row3("偏低（25%）", band.lo), row3("中間（50%）", band.mid), row3("偏高（75%）", band.hi)] : [];
+  const where = band && curPe != null ? (curPe <= band.lo ? "偏低區" : curPe >= band.hi ? "偏高區" : "中間區") : null;
+
+  return (
+    <Section id="valuation" title="估值情境" note="用歷史本益比區間換算價格，只是情境推算，不是目標價">
+      {!band ? (
+        <p className="text-sm text-muted">{epsTtm != null && epsTtm <= 0 ? "近四季虧損，本益比不適用。" : "獲利資料不足 3 年，無法計算本益比區間。"}</p>
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="text-sm text-ink">
+            <p>近 3 年本益比區間：<span className="num">{f(band.min, 1)}～{f(band.max, 1)} 倍</span>（中位數 <span className="num">{f(band.mid, 1)}</span> 倍）</p>
+            <p className="mt-1">目前本益比 <b className="num">{f(curPe, 1)}</b> 倍，位於歷史<b>{where}</b>。</p>
+            <PeBar band={band} cur={curPe} />
+            <label className="mt-3 flex items-center gap-2 text-sm">
+              <span>假設未來四季 EPS</span>
+              <NumInput value={E} onChange={setEps} label="假設 EPS" />
+              <span className="text-muted">元（預設＝近四季 {f(epsTtm)}）</span>
+            </label>
+          </div>
+          <table className="num w-full self-start text-sm">
+            <thead className="text-xs text-muted"><tr><th className="py-1 text-left font-medium">情境</th><th className="text-right font-medium">本益比</th><th className="text-right font-medium">推算價格</th><th className="text-right font-medium">相對現價</th></tr></thead>
+            <tbody>
+              {scen.map((x) => (
+                <tr key={x.label} className="border-t border-line">
+                  <td className="py-1.5 text-ink">{x.label}</td>
+                  <td className="text-right text-ink">{f(x.pe, 1)}</td>
+                  <td className="text-right text-ink">{f(x.p)}</td>
+                  <td className={`text-right ${x.up == null ? "" : x.up >= 0 ? "text-up" : "text-down"}`}>{x.up == null ? "—" : `${x.up > 0 ? "+" : ""}${f(x.up, 1)}%`}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {div != null && div > 0 && (
+        <div className="mt-4 border-t border-line pt-3 text-sm text-ink">
+          <p className="font-bold">殖利率法（存股族常用）</p>
+          <p className="num mt-1">最近一年現金股利 {f(div)} 元；想要的殖利率：
+            {yields.map((y, i) => (
+              <span key={i} className="mx-1 inline-flex items-center gap-1">
+                <NumInput value={y} label={`殖利率 ${i + 1}`} onChange={(n) => n != null && n > 0 && setYields((ys) => ys.map((v, j) => (j === i ? n : v)) as [number, number, number])} />%
+              </span>
+            ))}
+          </p>
+          <p className="num mt-1">對應價格：{yields.map((y) => `${f(y, 1)}% → ${f(div / (y / 100))} 元`).join("；")}（現價 {f(close)}）</p>
+        </div>
+      )}
+      <p className="mt-3 text-xs text-muted">本益比用「當時已公布」的近四季 EPS 計算；推算價格＝假設 EPS × 歷史本益比。景氣循環股在獲利高峰時本益比最低，用這個方法容易誤判。</p>
+    </Section>
+  );
+}
+
+function PeBar({ band, cur }: { band: { min: number; lo: number; mid: number; hi: number; max: number }; cur: number | null }) {
+  const span = band.max - band.min || 1;
+  const x = (v: number) => `${Math.min(100, Math.max(0, ((v - band.min) / span) * 100))}%`;
+  return (
+    <div className="relative mt-3 h-6" aria-hidden>
+      <div className="absolute top-2.5 h-1.5 w-full rounded-full bg-surface-2" />
+      <div className="absolute top-2.5 h-1.5 rounded-full bg-accent-soft" style={{ left: x(band.lo), width: `calc(${x(band.hi)} - ${x(band.lo)})` }} />
+      {cur != null && <div className="absolute top-0.5 h-5 w-0.5 bg-accent" style={{ left: x(cur) }} />}
+    </div>
+  );
+}

@@ -248,11 +248,14 @@ def refresh_reference(store: DataStore, fetcher: Fetcher) -> dict:
         d = finmind.parse_delisting(finmind.check(fetcher.get_json(finmind.URL, finmind.params("TaiwanStockDelisting"), delay=1)))
         return store.upsert_table("delisting", d, replace=True)
 
+    def etf_info():
+        return store.upsert_table("etf_info", openapi.parse_etf_info(fetcher.get_json(openapi.URLS["twse_etf"])), replace=True)
+
     def holders():
         return store.upsert_daily("holders", tdcc.parse(fetcher.get_text(tdcc.URL, delay=1)))
 
     for name, fn in (("holders", holders), ("revenue", revenue), ("income_periods", income_periods), ("qfii_tpex", tpex_qfii),
-                     ("securities", securities), ("company", company), ("delisting", delisting)):
+                     ("securities", securities), ("company", company), ("delisting", delisting), ("etf_info", etf_info)):
         safe(name, fn)
     return counts
 
