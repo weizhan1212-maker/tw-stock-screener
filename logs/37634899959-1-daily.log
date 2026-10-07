@@ -1,0 +1,25 @@
+2026-10-07 14:16:27,732 INFO ## 每日任務 2026-10-07
+
+| 日期 | 狀態 |
+|---|---|
+| 2026-09-28 | 休市 |
+| 2026-09-29 | 完成 |
+| 2026-09-30 | 完成 |
+| 2026-10-01 | 完成 |
+| 2026-10-02 | 完成 |
+| 2026-10-05 | 完成 |
+| 2026-10-06 | 完成 |
+| 2026-10-07 | 完成 |
+
+寫入筆數：holders=3323, revenue=1977, income_periods=1934, qfii_tpex=893, securities=2419, company=1982, delisting=706, extras_taiex_ohlc=5, extras_dca_rank=40, extras_tpex_insti=1, extras_tpex_daytrade=5, extras_tpex_sbl=932, extras_tpex_block=4, extras_futures=2, extras_tpex_index=5, extras_twse_extra_days=0
+2026-10-07 14:17:17,971 INFO 快照：2354 檔、129 欄，壓縮後 766 KB
+2026-10-07 14:17:17,975 INFO ## 篩選快照
+
+資料日 2026-10-07，2354 檔，129 欄
+2026-10-07 14:17:58,867 INFO ## 市場總覽
+
+資料日 2026-10-07，指數 10 項，5 KB，指數歷史 192 KB
+2026-10-07 14:20:51,205 INFO 個股檔：{'asof': '2026-10-07', 'count': 2340, 'failed': [], 'n_failed': 0, 'avg_kb': 15.0, 'total_mb': 34.2}
+2026-10-07 14:20:51,248 INFO ## 個股檔
+
+2340 檔，平均 15.0 KB，合計 34.2 MB，失敗 0 檔
