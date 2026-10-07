@@ -36,7 +36,7 @@ export function qualityCheck(pool: Row[], conds: Condition[], result: Row[]): Ch
   // 資料缺漏
   for (const c of conds) {
     const miss = pool.filter((r) => num(r[c.field]) == null).length;
-    if (miss / pool.length > 0.1) out.push({ level: "info", text: `「${label(c.field)}」有 ${miss} 檔沒有資料（例如 ETF、新上市或金融股），這些會直接被排除。` });
+    if (miss / pool.length > 0.1) out.push({ level: "info", text: `「${label(c.field)}」有 ${miss} 檔沒有數字（例如虧損公司沒有本益比、ETF 沒有財報、新上市資料不足），這些會直接被排除。` });
   }
   if (n >= 5) {
     // 產業集中
