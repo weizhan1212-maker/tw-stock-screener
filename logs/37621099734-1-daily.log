@@ -1,0 +1,33 @@
+2026-10-07 12:32:08,641 WARNING 抓取失敗 https://www.tpex.org.tw/www/zh-tw/margin/balance（第 1 次）：HTTP 520，10 秒後重試
+2026-10-07 12:32:23,271 WARNING 抓取失敗 https://www.tpex.org.tw/www/zh-tw/margin/balance（第 2 次）：HTTP 520，30 秒後重試
+2026-10-07 12:33:01,185 WARNING 抓取失敗 https://www.tpex.org.tw/www/zh-tw/margin/balance（第 3 次）：HTTP 520，60 秒後重試
+2026-10-07 12:34:02,648 INFO 2026-10-07 → {'twse_quotes': 'ok', 'tpex_quotes': 'ok', 'twse_insti': 'ok', 'tpex_insti': 'ok', 'twse_margin': 'pending', 'tpex_margin': 'pending', 'twse_valuation': 'ok', 'tpex_valuation': 'ok', 'twse_qfii': 'pending'}
+2026-10-07 12:34:14,350 WARNING 抓取失敗 https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap05_O（第 1 次）：HTTP 520，10 秒後重試
+2026-10-07 12:34:28,967 WARNING 抓取失敗 https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap05_O（第 2 次）：HTTP 520，30 秒後重試
+2026-10-07 12:35:09,865 WARNING 抓取失敗 https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap06_O_ci（第 1 次）：Response ended prematurely，10 秒後重試
+2026-10-07 12:36:47,243 WARNING 抓取失敗 https://www.tpex.org.tw/openapi/v1/tpex_margin_sbl（第 1 次）：Response ended prematurely，10 秒後重試
+2026-10-07 12:37:04,796 INFO ## 每日任務 2026-10-07
+
+| 日期 | 狀態 |
+|---|---|
+| 2026-09-28 | 休市 |
+| 2026-09-29 | 完成 |
+| 2026-09-30 | 完成 |
+| 2026-10-01 | 完成 |
+| 2026-10-02 | 完成 |
+| 2026-10-05 | 完成 |
+| 2026-10-06 | 完成 |
+| 2026-10-07 | {'twse_quotes': 'ok', 'tpex_quotes': 'ok', 'twse_insti': 'ok', 'tpex_insti': 'ok', 'twse_margin': 'pending', 'tpex_margin': 'pending', 'twse_valuation': 'ok', 'tpex_valuation': 'ok', 'twse_qfii': 'pending'} |
+
+寫入筆數：holders=3323, revenue=1977, income_periods=1934, qfii_tpex=887, securities=2419, company=1982, delisting=706, extras_taiex_ohlc=5, extras_dca_rank=40, extras_tpex_insti=1, extras_tpex_daytrade=4, extras_tpex_sbl=931, extras_tpex_block=4, extras_futures=2, extras_tpex_index=5, extras_twse_extra_days=0
+2026-10-07 12:37:51,510 INFO 快照：2354 檔、117 欄，壓縮後 679 KB
+2026-10-07 12:37:51,514 INFO ## 篩選快照
+
+資料日 2026-10-07，2354 檔，117 欄
+2026-10-07 12:38:33,336 INFO ## 市場總覽
+
+資料日 2026-10-07，指數 10 項，5 KB，指數歷史 192 KB
+2026-10-07 12:41:27,519 INFO 個股檔：{'asof': '2026-10-07', 'count': 2340, 'failed': [], 'n_failed': 0, 'avg_kb': 15.0, 'total_mb': 34.2}
+2026-10-07 12:41:27,565 INFO ## 個股檔
+
+2340 檔，平均 15.0 KB，合計 34.2 MB，失敗 0 檔
