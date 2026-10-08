@@ -113,7 +113,10 @@ export interface BtResult {
   stats: Stats; benchStats: Stats;
   yearly: { year: string; ret: number; bench: number | null }[];
   turnover: number; avgHold: number; costPct: number;
+  /** 其他比較基準（全市場等權重、0050），由 benchmarks() 另外算好再掛上來 */
+  extra?: Bench[];
 }
+export interface Bench { name: string; note: string; curve: number[]; stats: Stats; yearly: Record<string, number> }
 export interface Stats { total: number; cagr: number; mdd: number; vol: number; sharpe: number | null; winMonth: number | null }
 
 /** select：給某一期的快照列，回傳依優先順序排好的股票（引擎會取前 maxHold 檔有成交價的） */
@@ -142,10 +145,11 @@ export function simulate(data: BtData, months: BtMonth[], s: BtSettings, select:
       const px = (i: number) => openMap.get(i) ?? lastPx(P.close[i], t - 1);
       const ranked = snap ? select(snap.rows, snap.meta) : [];
       const pick: number[] = [];
+      const picked = new Set<number>();
       for (const r of ranked) {
         const i = P.codeIdx.get(r.code as string);
         if (i == null || !openMap.has(i)) continue;     // 成交日沒開盤價（停牌）就跳過
-        if (!pick.includes(i)) { pick.push(i); names.set(i, r.name as string); }
+        if (!picked.has(i)) { pick.push(i); picked.add(i); names.set(i, r.name as string); }
         if (pick.length >= s.maxHold) break;
       }
       const V = cash + [...pos].reduce((a, [i, q]) => a + q * px(i), 0);
@@ -154,7 +158,7 @@ export function simulate(data: BtData, months: BtMonth[], s: BtSettings, select:
       for (let k = 0; k < 2 && pick.length; k++) {
         let cost = 0;
         for (const i of new Set([...pos.keys(), ...pick])) {
-          const cur = (pos.get(i) ?? 0) * px(i), tgt = pick.includes(i) ? T : 0, d = tgt - cur;
+          const cur = (pos.get(i) ?? 0) * px(i), tgt = picked.has(i) ? T : 0, d = tgt - cur;
           cost += d > 0 ? d * buyCost : -d * sellCost;
         }
         T = (V - cost) / pick.length;
@@ -162,7 +166,7 @@ export function simulate(data: BtData, months: BtMonth[], s: BtSettings, select:
       const next = new Map<number, number>();
       let traded = 0, cost = 0;
       for (const i of new Set([...pos.keys(), ...pick])) {
-        const p = px(i), cur = (pos.get(i) ?? 0) * p, tgt = pick.includes(i) ? T : 0, d = tgt - cur;
+        const p = px(i), cur = (pos.get(i) ?? 0) * p, tgt = picked.has(i) ? T : 0, d = tgt - cur;
         if (tgt > 0) next.set(i, tgt / p);
         traded += Math.abs(d);
         cost += d > 0 ? d * buyCost : -d * sellCost;
@@ -247,4 +251,44 @@ function yearly(dates: string[], eq: number[], bench: number[]) {
     }
   }
   return out;
+}
+
+
+// ---------------- 其他比較基準 ----------------
+
+const benchCache = new WeakMap<BtData, Map<string, Bench[]>>();
+
+/**
+ * 加權報酬指數依市值加權（台積電占比很高），跟「等權重持有多檔」的策略比較不公平，所以另外算：
+ * - 全市場等權重：每次換股日把當時所有普通股等金額買進，同樣扣手續費、證交稅、滑價（等於「什麼都不挑」的策略）
+ * - 0050：還原權值（含息）走勢
+ */
+export function benchmarks(data: BtData, months: BtMonth[], s: BtSettings): Bench[] {
+  const key = `${months[0]?.exec}|${months.length}|${s.freq}|${s.feeDiscount}`;
+  let m = benchCache.get(data);
+  if (!m) { m = new Map(); benchCache.set(data, m); }
+  if (m.has(key)) return m.get(key)!;
+  const out: Bench[] = [];
+  const ew = simulate(data, months, { ...s, maxHold: 1e6 }, (rows) => rows);
+  out.push({ name: "全市場等權重", note: "每期把所有普通股等金額買進，含交易成本", curve: ew.equity, stats: ew.stats, yearly: yearMap(ew.dates, ew.equity) });
+  const P = data.prices, i = P.codeIdx.get("0050");
+  if (i != null) {
+    const dayIdx = new Map(P.dates.map((d, k) => [d, k]));
+    const start = dayIdx.get(months[0].exec)!;
+    const c = P.close[i];
+    const base = Number.isFinite(c[start - 1]) ? c[start - 1] : c[start];
+    if (Number.isFinite(base) && base > 0) {
+      const curve = ew.dates.map((_, k) => (Number.isFinite(c[start + k]) ? c[start + k] / base : NaN));
+      for (let k = 1; k < curve.length; k++) if (Number.isNaN(curve[k])) curve[k] = curve[k - 1];
+      if (curve.every(Number.isFinite)) out.push({ name: "0050", note: "元大台灣50，還原權值（含息），不含交易成本", curve, stats: stats(ew.dates, curve), yearly: yearMap(ew.dates, curve) });
+    }
+  }
+  m.set(key, out);
+  return out;
+}
+
+function yearMap(dates: string[], curve: number[]): Record<string, number> {
+  const r: Record<string, number> = {};
+  for (const y of yearly(dates, curve, curve)) r[y.year] = y.ret;
+  return r;
 }

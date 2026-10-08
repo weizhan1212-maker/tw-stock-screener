@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { NumInput, Seg } from "@/components/Screener";
 import { sortRows, type Sort } from "@/components/Results";
-import { type BtData, type BtIndex, type BtResult, type BtSettings, DEFAULT_SETTINGS, loadData, loadIndex, pickMonths, simulate } from "@/lib/backtest";
+import { type Bench, benchmarks, type BtData, type BtIndex, type BtResult, type BtSettings, DEFAULT_SETTINGS, loadData, loadIndex, pickMonths, simulate } from "@/lib/backtest";
 import { FIELD_MAP } from "@/lib/fields";
 import { type Condition, decodeConds, funnel, inUniverse, type Market, type Row, type Universe } from "@/lib/screener";
 import { defaults, makeCtx, type Params, STRATEGIES, STRATEGY_MAP } from "@/lib/strategies";
@@ -63,7 +63,7 @@ export default function Backtest() {
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState<string>("");
   const [res, setRes] = useState<{ r: BtResult; name: string; set: BtSettings } | null>(null);
-  const [table, setTable] = useState<{ id: string; name: string; r: BtResult }[] | null>(null);
+  const [table, setTable] = useState<{ rows: { id: string; name: string; r: BtResult }[]; bms: Bench[] } | null>(null);
 
   useEffect(() => { document.title = "回測｜股見未來"; }, []);
   useEffect(() => { loadIndex().then(setIndex).catch((e) => setErr(String(e.message ?? e))); }, []);
@@ -82,7 +82,11 @@ export default function Backtest() {
       const { data, months } = await prepare(set);
       setBusy("計算中…");
       await new Promise((r) => setTimeout(r, 20));
-      setRes({ r: simulate(data, months, set, selector(source)), name: sourceName(source), set });
+      const r = simulate(data, months, set, selector(source));
+      setBusy("計算比較基準…");
+      await new Promise((ok) => setTimeout(ok, 0));
+      r.extra = benchmarks(data, months, set);
+      setRes({ r, name: sourceName(source), set });
     } catch (e) { setErr(String((e as Error).message ?? e)); }
     setBusy("");
   }
@@ -99,7 +103,9 @@ export default function Backtest() {
         out.push({ id: s.id, name: s.name, r: simulate(data, months, set, selector({ kind: "strategy", id: s.id, params: defaults(s) })) });
       }
       out.sort((a, b) => b.r.stats.cagr - a.r.stats.cagr);
-      setTable(out);
+      setBusy("計算比較基準…");
+      await new Promise((ok) => setTimeout(ok, 0));
+      setTable({ rows: out, bms: benchmarks(data, months, set) });
     } catch (e) { setErr(String((e as Error).message ?? e)); }
     setBusy("");
   }
@@ -197,7 +203,7 @@ export default function Backtest() {
               選好方法和設定後按「開始回測」。第一次需要下載幾 MB 的歷史資料，之後同一個分頁會變快。
             </div>
           )}
-          {table && <CompareTable rows={table} onPick={(id) => { const s: Source = { kind: "strategy", id, params: defaults(STRATEGY_MAP[id]) }; setSrc(s); run(s); }} />}
+          {table && <CompareTable rows={table.rows} bms={table.bms} onPick={(id) => { const s: Source = { kind: "strategy", id, params: defaults(STRATEGY_MAP[id]) }; setSrc(s); run(s); }} />}
           {res && <ResultView r={res.r} name={res.name} set={res.set} />}
           <Notes />
         </div>
@@ -235,12 +241,14 @@ function ResultView({ r, name, set }: { r: BtResult; name: string; set: BtSettin
         <Card label="累計交易成本" value={`${r.costPct.toFixed(1)}%`} sub="占資產比例合計" />
       </div>
 
+      <BenchTable r={r} />
+
       <Equity r={r} />
 
       <h3 className="mt-6 text-sm font-bold text-ink">逐年報酬</h3>
       <div className="mt-2 overflow-x-auto rounded-lg border border-line bg-surface">
         <table className="w-full text-sm">
-          <thead className="bg-surface-2 text-xs text-muted"><tr><th className="px-3 py-2 text-left font-medium">年度</th><th className="px-3 py-2 text-right font-medium">策略</th><th className="px-3 py-2 text-right font-medium">大盤（含息）</th><th className="px-3 py-2 text-right font-medium">差距</th></tr></thead>
+          <thead className="bg-surface-2 text-xs text-muted"><tr><th className="px-3 py-2 text-left font-medium">年度</th><th className="px-3 py-2 text-right font-medium">策略</th><th className="px-3 py-2 text-right font-medium">大盤（含息）</th><th className="px-3 py-2 text-right font-medium">差距</th>{r.extra?.map((b) => <th key={b.name} className="px-3 py-2 text-right font-medium">{b.name}</th>)}</tr></thead>
           <tbody>
             {r.yearly.map((y) => (
               <tr key={y.year} className="border-t border-line">
@@ -248,6 +256,7 @@ function ResultView({ r, name, set }: { r: BtResult; name: string; set: BtSettin
                 <td className={`num px-3 py-2 text-right ${tone(y.ret)}`}>{pct(y.ret)}</td>
                 <td className={`num px-3 py-2 text-right ${tone(y.bench)}`}>{pct(y.bench)}</td>
                 <td className={`num px-3 py-2 text-right ${tone(y.bench == null ? null : y.ret - y.bench)}`}>{y.bench == null ? "—" : pct(y.ret - y.bench)}</td>
+                {r.extra?.map((b) => <td key={b.name} className={`num px-3 py-2 text-right ${tone(b.yearly[y.year] ?? null)}`}>{pct(b.yearly[y.year] ?? null)}</td>)}
               </tr>
             ))}
           </tbody>
@@ -299,6 +308,42 @@ function ResultView({ r, name, set }: { r: BtResult; name: string; set: BtSettin
   );
 }
 
+/** 比較基準：大盤（市值加權，台積電占比很高）、全市場等權重、0050 */
+function BenchTable({ r }: { r: BtResult }) {
+  if (!r.extra?.length) return null;
+  const rows: { name: string; note: string; s: BtResult["stats"] }[] = [
+    { name: "這個策略", note: "", s: r.stats },
+    { name: "大盤（加權報酬指數）", note: "依市值加權、含息；台積電占比很高", s: r.benchStats },
+    ...r.extra.map((b) => ({ name: b.name, note: b.note, s: b.stats })),
+  ];
+  return (
+    <div className="mt-4">
+      <h3 className="text-sm font-bold text-ink">跟誰比？</h3>
+      <p className="mt-1 text-xs leading-relaxed text-muted">
+        大盤是依市值加權，近年大型權值股（尤其台積電）漲最多時，「等權重持有多檔」的策略很難贏；所以另外列出「全市場等權重」（什麼都不挑、每檔一樣多）和 0050 一起比較。策略贏過「全市場等權重」，才代表挑股本身有幫助。
+      </p>
+      <div className="mt-2 overflow-x-auto rounded-lg border border-line bg-surface">
+        <table className="w-full min-w-[560px] text-sm">
+          <thead className="bg-surface-2 text-xs text-muted">
+            <tr>{["比較對象", "總報酬", "年化報酬", "最大回撤", "夏普值"].map((h, i) => <th key={h} className={`px-3 py-2 font-medium ${i ? "text-right" : "text-left"}`}>{h}</th>)}</tr>
+          </thead>
+          <tbody>
+            {rows.map((x, i) => (
+              <tr key={x.name} className={`border-t border-line ${i === 0 ? "font-bold" : ""}`}>
+                <td className="px-3 py-2 text-ink">{x.name}{x.note && <span className="block text-xs font-normal text-muted">{x.note}</span>}</td>
+                <td className={`num px-3 py-2 text-right ${tone(x.s.total)}`}>{pct(x.s.total)}</td>
+                <td className={`num px-3 py-2 text-right ${tone(x.s.cagr)}`}>{pct(x.s.cagr)}</td>
+                <td className="num px-3 py-2 text-right text-down">{pct(x.s.mdd)}</td>
+                <td className="num px-3 py-2 text-right text-ink">{x.s.sharpe == null ? "—" : x.s.sharpe.toFixed(2)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function Equity({ r }: { r: BtResult }) {
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -317,23 +362,31 @@ function Equity({ r }: { r: BtResult }) {
     const b = chart.addSeries(LineSeries, { color: v("--muted"), lineWidth: 1, priceLineVisible: false, title: "大盤（含息）" });
     a.setData(r.dates.map((d, i) => ({ time: d as Time, value: r.equity[i] * 100 })));
     b.setData(r.dates.map((d, i) => ({ time: d as Time, value: r.bench[i] * 100 })));
+    const colors = ["#c08a1e", "#7a5ab8"];
+    (r.extra ?? []).forEach((x, k) => {
+      const sr = chart.addSeries(LineSeries, { color: colors[k % 2], lineWidth: 1, lineStyle: 2, priceLineVisible: false, title: x.name });
+      sr.setData(r.dates.map((d, i) => ({ time: d as Time, value: x.curve[i] * 100 })));
+    });
     chart.timeScale().fitContent();
     return () => chart.remove();
   }, [r]);
   return (
     <div className="mt-4 rounded-lg border border-line bg-surface p-2">
-      <p className="px-1 text-xs text-muted">資產變化（起點 = 100）：<span className="text-accent">━ 策略</span>　<span>━ 大盤（含息）</span></p>
+      <p className="px-1 text-xs text-muted">資產變化（起點 = 100）：<span className="text-accent">━ 策略</span>　<span>━ 大盤（含息）</span>
+        {r.extra?.map((x, k) => <span key={x.name} style={{ color: ["#c08a1e", "#7a5ab8"][k % 2] }}>　┅ {x.name}</span>)}</p>
       <div ref={box} className="h-[280px] w-full sm:h-[340px]" />
     </div>
   );
 }
 
-function CompareTable({ rows, onPick }: { rows: { id: string; name: string; r: BtResult }[]; onPick: (id: string) => void }) {
+function CompareTable({ rows, bms, onPick }: { rows: { id: string; name: string; r: BtResult }[]; bms: Bench[]; onPick: (id: string) => void }) {
   const b = rows[0]?.r.benchStats;
+  const ew = bms.find((x) => x.name === "全市場等權重")?.stats;
+  const refs = [{ name: "大盤（加權報酬指數）", s: b }, ...bms.map((x) => ({ name: x.name, s: x.stats }))];
   return (
     <div>
       <h2 className="text-base font-bold text-ink">策略績效比較</h2>
-      <p className="mt-1 text-xs text-muted">全部用預設數字、同一組回測設定。點策略名稱看完整回測。大盤（含息）年化 {pct(b?.cagr)}、最大回撤 {pct(b?.mdd)}。</p>
+      <p className="mt-1 text-xs text-muted">全部用預設數字、同一組回測設定。點策略名稱看完整回測。灰底三列是比較基準：大盤依市值加權（台積電占比高），「全市場等權重」是什麼都不挑、每檔一樣多。</p>
       <div className="mt-2 overflow-x-auto rounded-lg border border-line bg-surface">
         <table className="w-full min-w-[640px] text-sm">
           <thead className="bg-surface-2 text-xs text-muted">
@@ -341,10 +394,21 @@ function CompareTable({ rows, onPick }: { rows: { id: string; name: string; r: B
               <th key={h} className={`px-3 py-2 font-medium ${i ? "text-right" : "text-left"}`}>{h}</th>))}</tr>
           </thead>
           <tbody>
+            {refs.map((x) => x.s && (
+              <tr key={x.name} className="border-t border-line bg-surface-2 text-muted">
+                <td className="px-3 py-2">（比較）{x.name}</td>
+                <td className="num px-3 py-2 text-right">{pct(x.s.cagr)}</td>
+                <td className="num px-3 py-2 text-right">{pct(x.s.total)}</td>
+                <td className="num px-3 py-2 text-right">{pct(x.s.mdd)}</td>
+                <td className="num px-3 py-2 text-right">{x.s.sharpe == null ? "—" : x.s.sharpe.toFixed(2)}</td>
+                <td className="num px-3 py-2 text-right">{x.s.winMonth == null ? "—" : `${Math.round(x.s.winMonth)}%`}</td>
+                <td className="num px-3 py-2 text-right">—</td>
+              </tr>
+            ))}
             {rows.map(({ id, name, r }) => (
               <tr key={id} className="border-t border-line hover:bg-surface-2">
                 <td className="px-3 py-2"><button type="button" onClick={() => onPick(id)} className="text-left text-ink hover:text-accent hover:underline">{name}</button></td>
-                <td className={`num px-3 py-2 text-right ${tone(r.stats.cagr - (b?.cagr ?? 0))}`}>{pct(r.stats.cagr)}</td>
+                <td className={`num px-3 py-2 text-right ${tone(r.stats.cagr - (ew?.cagr ?? b?.cagr ?? 0))}`}>{pct(r.stats.cagr)}</td>
                 <td className="num px-3 py-2 text-right text-ink">{pct(r.stats.total)}</td>
                 <td className="num px-3 py-2 text-right text-down">{pct(r.stats.mdd)}</td>
                 <td className="num px-3 py-2 text-right text-ink">{r.stats.sharpe == null ? "—" : r.stats.sharpe.toFixed(2)}</td>
@@ -355,7 +419,7 @@ function CompareTable({ rows, onPick }: { rows: { id: string; name: string; r: B
           </tbody>
         </table>
       </div>
-      <p className="mt-1 text-xs text-muted">年化報酬紅色＝贏大盤、綠色＝輸大盤。</p>
+      <p className="mt-1 text-xs text-muted">年化報酬紅色＝贏「全市場等權重」（挑股有幫助）、綠色＝輸。</p>
     </div>
   );
 }

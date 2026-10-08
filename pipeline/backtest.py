@@ -174,10 +174,15 @@ def _sig(x) -> float | None:
     return float(f"{x:.6g}")
 
 
+BENCH_ETFS = ["0050"]
+PX_VER = 2          # 價格檔格式版本：2＝加入 0050；版本變了就全部重做
+
+
 def write_prices(store: DataStore, days: pd.DatetimeIndex, months: list[dict], years: list[int] | None = None) -> dict:
     """依年份輸出價格檔；years=None 表示全部重做。"""
     prices = store.read_daily("prices", days[0], days[-1])
-    prices = prices[prices["code"].map(util.security_type) == "stock"]
+    # 普通股＋0050（0050 只當比較基準；回測快照裡沒有它，策略不會選到）
+    prices = prices[(prices["code"].map(util.security_type) == "stock") | prices["code"].isin(BENCH_ETFS)]
     adj = forward_adjusted(prices, store.read_daily("exright", days[0], days[-1]))
     idx = store.read_daily("index").sort_values("date").set_index("date")
     execs = {m["exec"] for m in months}
@@ -229,7 +234,7 @@ def run_backtest_data(store: DataStore, budget_min: float = 40, rebuild: bool = 
             log.exception("回測快照 %s 失敗：%s", m["month"], e)
         store.put_state("backtest", {**state, "months": sorted(done)})
     first_px = not state.get("px_done")
-    years = None if (first_px or rebuild) else [days[-1].year, (days[-1] - pd.Timedelta(days=40)).year]
+    years = None if (first_px or rebuild or state.get("px_ver") != PX_VER) else [days[-1].year, (days[-1] - pd.Timedelta(days=40)).year]
     sizes = write_prices(cached, days, months, years)
     ready = [m for m in months if m["month"] in done]
     store.st.put("site/bt/index.json", json.dumps({
@@ -238,6 +243,6 @@ def run_backtest_data(store: DataStore, budget_min: float = 40, rebuild: bool = 
         "first_day": days[0].strftime("%Y-%m-%d"), "last_day": days[-1].strftime("%Y-%m-%d"),
         "pending": len(months) - len(ready),
     }, ensure_ascii=False).encode("utf-8"), "application/json")
-    store.put_state("backtest", {**state, "months": sorted(done), "px_done": True})
+    store.put_state("backtest", {**state, "months": sorted(done), "px_done": True, "px_ver": PX_VER})
     return {"built": built, "failed": failed, "ready": len(ready), "total": len(months),
             "px_kb": {y: round(s / 1024) for y, s in sizes.items()}, "minutes": round((time.time() - t0) / 60, 1)}
