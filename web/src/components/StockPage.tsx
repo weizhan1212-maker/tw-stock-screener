@@ -58,7 +58,8 @@ export default function StockPage({ code }: { code: string }) {
   // 盤中即時（富果，已核准成員都拿得到）；比盤後快照新或同一天才顯示
   const liveAll = useLiveQuotes([code], 10_000);
   const live = liveAll?.[code];
-  const showLive = !!live && live.price != null && (!snap || live.date >= snap.meta.asof);
+  // 盤後資料已經更新到同一天（傍晚以後）就不再顯示即時區塊，避免重複
+  const showLive = !!live && live.price != null && (!snap || live.date > snap.meta.asof || (live.date === snap.meta.asof && !live.isClose));
 
   const tags = useMemo(() => (snap ? focusTags(snap.rows, code) : []), [snap, code]);
   const matched = useMemo(() => {
@@ -72,47 +73,47 @@ export default function StockPage({ code }: { code: string }) {
   }, [code, name]);
 
   return (
-    <div className="mx-auto max-w-[1200px] px-4 py-5">
+    <div className="mx-auto max-w-[1440px] px-4 py-5">
       <nav className="mb-2 text-sm"><BackLink fallback="/" fallbackLabel="策略選股" /></nav>
 
-      {/* 標頭 */}
-      <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
-        <div>
-          <div className="flex flex-wrap items-baseline gap-x-2">
+      {/* 標頭：左邊名稱、價格上下對齊；右邊三個同樣大小的動作按鈕 */}
+      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <h1 className="text-2xl font-bold text-ink">{name || code}</h1>
             <span className="num text-lg text-muted">{code}</span>
-            <span className="self-center"><WatchStar code={code} name={name} size="md" /></span>
-            <Link href={`/compare?codes=${code}`} className="self-center rounded-md border border-line px-2 py-0.5 text-xs text-muted hover:border-accent hover:text-accent">比較</Link>
-            <Link href={`/alerts?code=${code}`} className="self-center rounded-md border border-line px-2 py-0.5 text-xs text-muted hover:border-accent hover:text-accent">警報</Link>
-          </div>
-          <div className="mt-1 flex flex-wrap gap-1.5 text-xs">
             {(row?.market ?? data?.info.market) && (
-              <span className="rounded bg-surface-2 px-1.5 py-0.5 text-muted">{(row?.market ?? data?.info.market) === "TPEX" ? "上櫃" : "上市"}</span>
+              <span className="self-center rounded bg-surface-2 px-1.5 py-0.5 text-xs text-muted">{(row?.market ?? data?.info.market) === "TPEX" ? "上櫃" : "上市"}</span>
             )}
-            {!isStock && <span className="rounded bg-surface-2 px-1.5 py-0.5 text-muted">ETF</span>}
+            {!isStock && <span className="self-center rounded bg-surface-2 px-1.5 py-0.5 text-xs text-muted">ETF</span>}
             {typeof row?.ind === "string" && row.ind && (
-              <Link href={`/industry/${encodeURIComponent(row.ind)}`} className="rounded bg-surface-2 px-1.5 py-0.5 text-muted hover:text-accent">
+              <Link href={`/industry/${encodeURIComponent(row.ind)}`} className="self-center rounded bg-surface-2 px-1.5 py-0.5 text-xs text-muted hover:text-accent">
                 {row.ind}
               </Link>
             )}
           </div>
+          {showLive && live ? (
+            <div className="num mt-1 flex flex-wrap items-baseline gap-x-3">
+              <span className="text-3xl font-bold text-ink">{n(live.price, 2)}</span>
+              <span className={`text-lg ${tone(live.change)}`}>{signed(live.change)}（{signed(live.pct)}%）</span>
+              <span className="rounded bg-accent-soft px-1.5 py-0.5 text-xs text-accent">{liveLabel(live)}</span>
+            </div>
+          ) : row && (
+            <div className="num mt-1 flex flex-wrap items-baseline gap-x-3">
+              <span className="text-3xl font-bold text-ink">{n(row.close, 2)}</span>
+              {num(row.prev_close) != null && num(row.chg_pct) != null && (
+                <span className={`text-lg ${tone(row.chg_pct)}`}>{signed(num(row.close)! - num(row.prev_close)!)}（{signed(row.chg_pct)}%）</span>
+              )}
+            </div>
+          )}
         </div>
-        {showLive && live ? (
-          <div className="num flex flex-wrap items-baseline gap-x-3">
-            <span className="text-3xl font-bold text-ink">{n(live.price, live.price! >= 1000 ? 0 : 2)}</span>
-            <span className={`text-lg ${tone(live.change)}`}>{signed(live.change)}（{signed(live.pct)}%）</span>
-            <span className="rounded bg-accent-soft px-1.5 py-0.5 text-xs text-accent">{liveLabel(live)}</span>
-          </div>
-        ) : row && (
-          <div className="num flex items-baseline gap-3">
-            <span className="text-3xl font-bold text-ink">{n(row.close, num(row.close)! >= 1000 ? 0 : 2)}</span>
-            {num(row.prev_close) != null && num(row.chg_pct) != null && (
-              <span className={`text-lg ${tone(row.chg_pct)}`}>{signed(num(row.close)! - num(row.prev_close)!)}（{signed(row.chg_pct)}%）</span>
-            )}
-          </div>
-        )}
-        <div className="flex flex-wrap items-center gap-2"><DataStatus snap={snap} error={snapErr} /></div>
+        <div className="flex flex-wrap items-center gap-2">
+          <WatchStar code={code} name={name} size="md" />
+          <Link href={`/compare?codes=${code}`} className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1 text-sm text-muted hover:border-accent hover:text-ink">⇄ 比較</Link>
+          <Link href={`/alerts?code=${code}`} className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1 text-sm text-muted hover:border-accent hover:text-ink">🔔 警報</Link>
+        </div>
       </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2"><DataStatus snap={snap} error={snapErr} /></div>
 
       {showLive && live && <LivePanel q={live} />}
 

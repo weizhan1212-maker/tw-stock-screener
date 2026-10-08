@@ -7,7 +7,7 @@ import Results, { type Sort } from "@/components/Results";
 import { NumInput } from "@/components/Screener";
 import { useSnapshot } from "@/hooks/useSnapshot";
 import { encodeConds } from "@/lib/screener";
-import { defaults, makeCtx, type Params, STRATEGY_MAP } from "@/lib/strategies";
+import { defaults, isLiquid, makeCtx, MIN_AVG_VALUE, type Params, pending, STRATEGY_MAP } from "@/lib/strategies";
 
 export default function StrategyDetail({ id }: { id: string }) {
   const s = STRATEGY_MAP[id];
@@ -15,7 +15,11 @@ export default function StrategyDetail({ id }: { id: string }) {
   const [p, setP] = useState<Params>(() => defaults(s));
   const [sort, setSort] = useState<Sort>(s.sort);
   const ctx = useMemo(() => (snap ? makeCtx(snap.rows, snap.meta.market_bull) : null), [snap]);
-  const rows = useMemo(() => (ctx ? s.run(ctx, p) : []), [ctx, s, p]);
+  const allRows = useMemo(() => (ctx ? s.run(ctx, p) : []), [ctx, s, p]);
+  // 預設排除成交清淡的股票（營收極小或冷門股的比率常常失真），可以關掉
+  const [liquidOnly, setLiquidOnly] = useState(true);
+  const rows = useMemo(() => (liquidOnly ? allRows.filter(isLiquid) : allRows), [allRows, liquidOnly]);
+  const accumulating = ctx ? pending(s, ctx.stocks) : false;
   const notice = ctx && s.notice ? s.notice(ctx) : null;
   const cols = useMemo(() => {
     const c = [...s.cols];
@@ -108,6 +112,12 @@ export default function StrategyDetail({ id }: { id: string }) {
 
         <div>
           {notice && <p className="mb-3 rounded-lg bg-warn-bg px-3 py-2 text-sm text-warn-ink">{notice}</p>}
+          {accumulating && s.needs && <p className="mb-3 rounded-lg bg-surface-2 px-3 py-2 text-sm text-ink">{s.needs.msg}</p>}
+          <label className="mb-2 flex items-center gap-2 text-sm text-ink">
+            <input type="checkbox" checked={liquidOnly} onChange={(e) => setLiquidOnly(e.target.checked)} />
+            排除成交清淡的股票（20 日均成交值 &lt; {MIN_AVG_VALUE} 億）
+            {liquidOnly && allRows.length > rows.length && <span className="text-xs text-muted">已排除 {allRows.length - rows.length} 檔</span>}
+          </label>
           <Results
             key={JSON.stringify(p)}
             rows={rows} cols={cols} sort={sort} setSort={setSort} loading={!snap}

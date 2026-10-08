@@ -49,7 +49,15 @@ export interface Strategy {
   notFor?: string[];
   /** 額外提醒（例如 CAN SLIM 的大盤狀態） */
   notice?: (ctx: Ctx) => string | null;
+  /** 需要累積才有的資料：全市場都還沒有這個欄位時，卡片顯示 msg 而不是「0 檔」 */
+  needs?: { field: string; msg: string };
 }
+
+/** 流動性門檻（只影響畫面顯示，回測不套用）：20 日均成交值至少 0.1 億 */
+export const MIN_AVG_VALUE = 0.1;
+export const isLiquid = (r: Row) => (num(r.avg_value20) ?? 0) >= MIN_AVG_VALUE;
+/** 全市場都還沒有累積資料 */
+export const pending = (s: Strategy, rows: Row[]) => !!s.needs && !rows.some((r) => num(r[s.needs!.field]) != null);
 
 const v = (r: Row, k: string) => num(r[k]);
 const gt = (r: Row, k: string, x: number) => { const a = v(r, k); return a != null && a > x; };

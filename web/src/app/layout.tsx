@@ -2,9 +2,9 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { auth } from "@/auth";
 import StockSearch from "@/components/StockSearch";
-import ThemeToggle from "@/components/ThemeToggle";
 import { NavTracker } from "@/components/BackLink";
 import HideOnAbout from "@/components/HideOnAbout";
+import { DesktopNav, MobileTabBar } from "@/components/SiteNav";
 import UserMenu from "@/components/UserMenu";
 import "./globals.css";
 
@@ -32,56 +32,24 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" />
       </head>
-      <body className="min-h-dvh flex flex-col antialiased">
+      <body className={`flex min-h-dvh flex-col antialiased ${user ? "pb-[calc(56px+env(safe-area-inset-bottom))] lg:pb-0" : ""}`}>
         <HideOnAbout>
-        <header className="border-b border-line bg-surface">
-          <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
-            <Link href={user ? "/" : "/about"} className="flex items-center gap-2 whitespace-nowrap text-[17px] font-bold tracking-wide text-ink">
+        <header className="sticky top-0 z-40 border-b border-line bg-surface/95 backdrop-blur">
+          <div className="mx-auto flex h-14 max-w-[1440px] items-center gap-3 px-4">
+            <Link href={user ? "/" : "/about"} className="flex shrink-0 items-center gap-2 whitespace-nowrap text-[17px] font-bold tracking-wide text-ink">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo.png" alt="" width={26} height={26} className="h-[26px] w-[26px]" />
               股見未來
             </Link>
-            {user && (
-            <nav className="order-last -mx-2.5 flex w-full gap-1 overflow-x-auto whitespace-nowrap text-sm sm:order-none sm:mx-0 sm:w-auto">
-              <Link href="/" className="rounded-md px-2.5 py-1 text-ink hover:bg-surface-2">
-                策略選股
-              </Link>
-              <Link href="/screener" className="rounded-md px-2.5 py-1 text-ink hover:bg-surface-2">
-                自訂篩選
-              </Link>
-              <Link href="/market" className="rounded-md px-2.5 py-1 text-ink hover:bg-surface-2">
-                市場總覽
-              </Link>
-              <Link href="/industry" className="rounded-md px-2.5 py-1 text-ink hover:bg-surface-2">
-                產業
-              </Link>
-              <Link href="/etf" className="rounded-md px-2.5 py-1 text-ink hover:bg-surface-2">
-                ETF
-              </Link>
-              <Link href="/ranking" className="rounded-md px-2.5 py-1 text-ink hover:bg-surface-2">
-                排行榜
-              </Link>
-              <Link href="/backtest" className="rounded-md px-2.5 py-1 text-ink hover:bg-surface-2">
-                回測
-              </Link>
-              <Link href="/watchlist" className="rounded-md px-2.5 py-1 text-ink hover:bg-surface-2">
-                自選股
-              </Link>
-              <Link href="/portfolio" className="rounded-md px-2.5 py-1 text-ink hover:bg-surface-2">
-                投資組合
-              </Link>
-              <Link href="/alerts" className="rounded-md px-2.5 py-1 text-ink hover:bg-surface-2">
-                警報
-              </Link>
-            </nav>
-            )}
-            <div className="ml-auto flex items-center gap-3">
+            {user ? <DesktopNav /> : null}
+            <div className="flex-1 lg:hidden" />
+            <div className="ml-auto flex shrink-0 items-center gap-2">
               {user ? <StockSearch /> : <Link href="/login" className="text-sm text-accent hover:underline">登入</Link>}
               <UserMenu />
-              <ThemeToggle />
             </div>
           </div>
         </header>
+        {user && <MobileTabBar />}
         </HideOnAbout>
         <NavTracker />
         <main className="flex-1">{children}</main>

@@ -1,11 +1,11 @@
 "use client";
 
 /** 個股頁的盤中即時區塊：開高低、均價、量、金額、最佳五檔。資料來源富果。 */
+import { useState } from "react";
 import type { LiveQuote } from "@/lib/fugle";
 
 const f = (x: number | null | undefined, d = 2) =>
   x == null ? "—" : x.toLocaleString("zh-TW", { minimumFractionDigits: d, maximumFractionDigits: d });
-const pd = (x: number | null) => (x != null && x >= 1000 ? 0 : 2);
 
 export function liveLabel(q: LiveQuote) {
   if (q.isClose) return "今日收盤";
@@ -15,10 +15,23 @@ export function liveLabel(q: LiveQuote) {
 }
 
 export default function LivePanel({ q }: { q: LiveQuote }) {
-  const d = pd(q.price);
+  const d = 2;                                          // 跟表格一致：價格一律兩位小數
   const cls = (p: number | null) => (p == null || q.ref == null || p === q.ref ? "text-ink" : p > q.ref ? "text-up" : "text-down");
   const maxSize = Math.max(1, ...q.bids.map((b) => b.size), ...q.asks.map((a) => a.size));
   const bar = (s: number) => `${Math.round((s / maxSize) * 100)}%`;
+  const [open, setOpen] = useState(!q.isClose);          // 收盤後縮成一行，K 線往上移；要看再展開
+  if (!open) {
+    return (
+      <section className="num mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-line bg-surface px-4 py-2 text-sm">
+        <span className="font-bold text-ink">{liveLabel(q)}</span>
+        <span className="text-muted">開 <span className={cls(q.open)}>{f(q.open, d)}</span></span>
+        <span className="text-muted">高 <span className={cls(q.high)}>{f(q.high, d)}</span></span>
+        <span className="text-muted">低 <span className={cls(q.low)}>{f(q.low, d)}</span></span>
+        <span className="text-muted">量 <span className="text-ink">{f(q.volLots, 0)} 張</span></span>
+        <button type="button" onClick={() => setOpen(true)} className="ml-auto text-xs text-accent hover:underline">看五檔與明細 ▾</button>
+      </section>
+    );
+  }
   return (
     <section className="mt-4 rounded-lg border border-line bg-surface p-4">
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">

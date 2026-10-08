@@ -10,6 +10,7 @@ export default function StockSearch() {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
+  const [expanded, setExpanded] = useState(false);       // 手機：點放大鏡才展開輸入框
   const { snap, start } = useSnapshotLazy();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -24,12 +25,17 @@ export default function StockSearch() {
   function go(code: string) {
     setQ("");
     setOpen(false);
+    setExpanded(false);
     inputRef.current?.blur();
     router.push(`/stock/${code}`);
   }
 
   return (
     <div className="relative">
+      <button type="button" aria-label="搜尋股票" onClick={() => { setExpanded(true); start(); setTimeout(() => inputRef.current?.focus(), 0); }}
+        className="flex h-8 w-8 items-center justify-center rounded-md text-muted hover:text-ink sm:hidden">
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
+      </button>
       <input
         ref={inputRef}
         type="search"
@@ -40,7 +46,7 @@ export default function StockSearch() {
         aria-expanded={open && hits.length > 0}
         aria-controls="stock-search-list"
         onFocus={() => { start(); setOpen(true); }}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onBlur={() => setTimeout(() => { setOpen(false); setExpanded(false); }, 150)}
         onChange={(e) => { setQ(e.target.value); setActive(0); setOpen(true); }}
         onKeyDown={(e) => {
           if (e.key === "ArrowDown") { e.preventDefault(); setActive((a) => Math.min(a + 1, hits.length - 1)); }
@@ -50,12 +56,12 @@ export default function StockSearch() {
             if (h) go(String(h.code));
             else if (/^[0-9A-Z]{4,6}$/i.test(q.trim())) go(q.trim().toUpperCase());
           }
-          if (e.key === "Escape") setOpen(false);
+          if (e.key === "Escape") { setOpen(false); setExpanded(false); }
         }}
-        className="w-36 rounded-md border border-line bg-surface-2 px-2.5 py-1 text-sm text-ink placeholder:text-muted sm:w-48"
+        className={`${expanded ? "fixed inset-x-3 top-2.5 z-50 h-9 shadow-lg" : "hidden"} rounded-md border border-line bg-surface-2 px-2.5 py-1 text-base text-ink placeholder:text-muted sm:static sm:block sm:h-auto sm:w-48 sm:text-sm sm:shadow-none`}
       />
       {open && hits.length > 0 && (
-        <ul id="stock-search-list" role="listbox" className="absolute right-0 z-40 mt-1 w-64 overflow-hidden rounded-lg border border-line bg-surface shadow-lg">
+        <ul id="stock-search-list" role="listbox" className="fixed inset-x-3 top-[52px] z-50 overflow-hidden rounded-lg border border-line bg-surface shadow-lg sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-1 sm:w-64">
           {hits.map((r, i) => (
             <li key={String(r.code)} role="option" aria-selected={i === active}>
               <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => go(String(r.code))}

@@ -1,0 +1,85 @@
+"use client";
+
+/**
+ * 站內導覽：
+ * - 電腦（寬 1024 以上）：頁首一排連結，目前頁面加底色
+ * - 手機、平板：底部固定分頁列（策略、篩選、市場、自選、更多），「更多」從底部展開其他頁面
+ */
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+
+export const NAV: { href: string; label: string; short?: string }[] = [
+  { href: "/", label: "策略選股", short: "策略" },
+  { href: "/screener", label: "自訂篩選", short: "篩選" },
+  { href: "/market", label: "市場總覽", short: "市場" },
+  { href: "/industry", label: "產業" },
+  { href: "/etf", label: "ETF" },
+  { href: "/ranking", label: "排行榜" },
+  { href: "/backtest", label: "回測" },
+  { href: "/watchlist", label: "自選股", short: "自選" },
+  { href: "/portfolio", label: "投資組合" },
+  { href: "/alerts", label: "警報" },
+];
+
+const isActive = (path: string, href: string) => (href === "/" ? path === "/" || path.startsWith("/strategy") : path.startsWith(href));
+
+export function DesktopNav() {
+  const path = usePathname();
+  return (
+    <nav aria-label="主選單" className="hidden min-w-0 flex-1 gap-0.5 overflow-x-auto whitespace-nowrap text-sm lg:flex">
+      {NAV.map((n) => (
+        <Link key={n.href} href={n.href} aria-current={isActive(path, n.href) ? "page" : undefined}
+          className={`rounded-md px-2.5 py-1 ${isActive(path, n.href) ? "bg-accent-soft font-medium text-accent" : "text-ink hover:bg-surface-2"}`}>
+          {n.label}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
+const ICON: Record<string, React.ReactNode> = {
+  "/": <path d="M4 19V9m5 10V5m5 14v-7m5 7V8" />,
+  "/screener": <path d="M3 5h18l-7 8v6l-4-2v-4z" />,
+  "/market": <path d="M3 17l5-5 4 4 8-9M14 7h6v6" />,
+  "/watchlist": <path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" />,
+  more: <path d="M5 12h.01M12 12h.01M19 12h.01" strokeWidth={3} />,
+};
+
+export function MobileTabBar() {
+  const path = usePathname();
+  const [open, setOpen] = useState(false);
+  useEffect(() => { setOpen(false); }, [path]);              // eslint-disable-line react-hooks/set-state-in-effect -- 換頁時關掉「更多」
+  const main = NAV.filter((n) => n.short);
+  const more = NAV.filter((n) => !n.short);
+  const moreActive = more.some((n) => isActive(path, n.href));
+  const tab = (active: boolean) => `flex flex-1 flex-col items-center gap-0.5 py-1.5 text-[11px] ${active ? "text-accent" : "text-muted"}`;
+  return (
+    <>
+      {open && <button type="button" aria-label="關閉" onClick={() => setOpen(false)} className="fixed inset-0 z-40 bg-black/30 lg:hidden" />}
+      {open && (
+        <div className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-50 rounded-t-2xl border-t border-line bg-surface p-3 shadow-2xl lg:hidden">
+          <div className="grid grid-cols-3 gap-2">
+            {more.map((n) => (
+              <Link key={n.href} href={n.href} className={`rounded-lg border px-2 py-3 text-center text-sm ${isActive(path, n.href) ? "border-accent bg-accent-soft text-accent" : "border-line text-ink"}`}>
+                {n.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+      <nav aria-label="主選單" className="fixed inset-x-0 bottom-0 z-50 flex border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden">
+        {main.map((n) => (
+          <Link key={n.href} href={n.href} aria-current={isActive(path, n.href) ? "page" : undefined} className={tab(isActive(path, n.href))}>
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">{ICON[n.href]}</svg>
+            {n.short}
+          </Link>
+        ))}
+        <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className={tab(open || moreActive)}>
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round">{ICON.more}</svg>
+          更多
+        </button>
+      </nav>
+    </>
+  );
+}

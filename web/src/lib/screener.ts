@@ -103,8 +103,9 @@ export function fmt(v: unknown, format: Format, signed = false): string {
     case "bool":
       return v === 1 ? "是" : "否";
     case "price":
-      return Math.abs(v) >= 1000 ? N0.format(v) : N2.format(v);
+      return N2.format(v);                              // 同一欄一律兩位小數，右對齊時小數點對齊
     case "pct":
+      if (Math.abs(v) >= 1000) return v > 0 ? "> 999" : "< -999";   // 營收極小的公司比率會爆掉，截斷顯示
       return `${signed && v > 0 ? "+" : ""}${N2.format(v)}`;
     case "lots":
       return N0.format(v);

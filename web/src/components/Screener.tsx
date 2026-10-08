@@ -192,6 +192,7 @@ export default function Screener() {
     return FIELD_MAP[key] || key === "code" ? { key, dir: d === "asc" ? 1 : -1 } : { key: "market_cap", dir: -1 };
   });
   const [adding, setAdding] = useState("");
+  const [panel, setPanel] = useState(false);              // 手機：條件面板從底部展開
   const [extra, setExtra] = useState<string[]>(() => (params.get("x") ?? "").split(",").filter((k) => FIELD_MAP[k]));
   const query = useMemo(() => {
     const q = new URLSearchParams();
@@ -237,8 +238,23 @@ export default function Screener() {
         <DataStatus snap={snap} error={error} />
       </div>
 
+      {/* 手機：結果放第一位；條件收進按鈕，符合檔數固定在上方 */}
+      <div className="sticky top-14 z-30 -mx-4 mb-3 flex items-center gap-3 border-b border-line bg-paper/95 px-4 py-2 backdrop-blur lg:hidden">
+        <button type="button" onClick={() => setPanel(true)} className="rounded-md bg-accent px-3 py-1.5 text-sm font-bold text-white">
+          條件（{conds.length}）
+        </button>
+        <span className="num text-sm text-ink">符合 <b>{snap ? result.length.toLocaleString() : "…"}</b> 檔</span>
+        {conds.length > 0 && <button type="button" onClick={() => setConds([])} className="ml-auto text-xs text-muted underline">清除</button>}
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-[340px_minmax(0,1fr)]">
-        <aside className="space-y-3">
+        <aside className={`${panel ? "fixed inset-0 z-[60] block overflow-y-auto bg-paper px-4 pb-24 pt-3" : "hidden"} space-y-3 lg:static lg:z-auto lg:block lg:max-h-[calc(100dvh-88px)] lg:self-start lg:overflow-y-auto lg:bg-transparent lg:p-0 lg:pr-1 lg:sticky lg:top-[72px]`}>
+          <div className="sticky top-0 z-10 -mx-4 flex items-center justify-between border-b border-line bg-paper px-4 py-2 lg:hidden">
+            <span className="font-bold text-ink">篩選條件</span>
+            <button type="button" onClick={() => setPanel(false)} className="rounded-md bg-accent px-3 py-1.5 text-sm font-bold text-white">
+              完成，看 {result.length.toLocaleString()} 檔
+            </button>
+          </div>
           <div className="flex flex-wrap gap-2">
             <Seg label="類型" value={universe} onChange={setUniverse}
               options={[["all", "全部"], ["stock", "股票"], ["etf", "ETF"]]} />

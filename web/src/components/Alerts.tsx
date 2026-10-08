@@ -42,7 +42,7 @@ export default function Alerts() {
   const unread = data ? data.inbox.filter((n) => !data.lastRead || n.t > data.lastRead).length : 0;
 
   return (
-    <div className="mx-auto max-w-[1100px] px-4 py-5">
+    <div className="mx-auto max-w-[1440px] px-4 py-5">
       <h1 className="text-xl font-bold text-ink">警報</h1>
       <p className="mt-1 text-sm text-muted">每個交易日盤後（約 18:45）檢查一次，符合時通知在這一頁；綁定 Telegram 後也會傳到手機。</p>
       {msg && <p className="mt-2 rounded-lg bg-warn-bg px-3 py-2 text-sm text-warn-ink">{msg}</p>}

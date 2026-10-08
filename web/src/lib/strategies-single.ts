@@ -13,6 +13,7 @@ interface Def {
   id: string; name: string; category: Cat; tagline: string; plain: string;
   params: Param[]; conds: (p: Params) => Cond[]; rules: (p: Params) => string[];
   cols: string[]; sort: Sort; period: string; notFor: string[]; finance?: string;
+  needs?: Strategy["needs"];
 }
 
 const VOL: Param = { key: "vol", label: "成交量至少", value: 300, unit: "張", step: 100 };
@@ -25,7 +26,7 @@ function single(d: Def): Strategy {
     id: d.id, name: d.name, group: "單一條件", category: d.category, tagline: d.tagline, plain: d.plain,
     params: d.params, rules: d.rules, cols: d.cols, sort: d.sort, period: d.period, notFor: d.notFor,
     finance: d.finance ?? "金融股與一般股票一起計算。",
-    toConditions: d.conds,
+    toConditions: d.conds, needs: d.needs,
     run: (c, p) => {
       const cs = d.conds(p).map((x, i) => ({ ...x, id: String(i) }));
       return c.stocks.filter((r) => cs.every((x) => passes(r, x)));
@@ -159,6 +160,7 @@ export const SINGLE: Strategy[] = [
     rules: (p) => [`千張大戶持股比例比上週增加 ≥ ${p.chg} 個百分點`, volRule(p)],
     cols: [...B, "big_pct", "big_pct_chg", "ret20", "volume_lots"], sort: { key: "big_pct_chg", dir: -1 },
     period: "集保結算所每週公布的股權分散表（每週五資料）；本站從 2026 年 10 月開始累積，滿兩週才有增減資料。", notFor: ["ETF 與受益憑證不適用", "大戶可能是公司派、法人或信託，不一定是看好"],
+    needs: { field: "big_pct_chg", msg: "資料累積中：集保每週五公布，本站 10/2 開始累積，滿兩週（約 10 月中）起才有結果" },
   }),
   single({
     id: "margin_clean", name: "融資減、股價漲", category: "籌碼面", tagline: "散戶下車、股價反而上漲",
@@ -191,10 +193,11 @@ export const SINGLE: Strategy[] = [
   }),
   single({
     id: "eps_jump", name: "單季獲利大增", category: "基本面", tagline: "最新一季 EPS 年增率高",
-    plain: "最新一季每股盈餘比去年同季大幅成長，代表公司真的賺更多錢，不只是營收變大。",
-    params: [{ key: "yoy", label: "EPS 年增至少", value: 50, unit: "%" }],
-    conds: (p) => [{ field: "eps_q_yoy", op: "ge", a: p.yoy }, { field: "eps_q", op: "ge", a: 0.01 }],
-    rules: (p) => [`最新一季 EPS 年增率 ≥ ${p.yoy}%`, "最新一季 EPS > 0"],
+    plain: "最新一季每股盈餘比去年同季大幅成長，而且營收也連續成長、獲利本身有一定規模，代表公司真的賺更多錢，不是去年同季基期太低（例如匯損）造成的假成長。",
+    params: [{ key: "yoy", label: "EPS 年增至少", value: 50, unit: "%" }, { key: "eps", label: "單季 EPS 至少", value: 0.5, unit: "元", step: 0.1 },
+      { key: "rev", label: "近 3 個月營收年增都至少", value: 20, unit: "%" }],
+    conds: (p) => [{ field: "eps_q_yoy", op: "ge", a: p.yoy }, { field: "eps_q", op: "ge", a: p.eps }, { field: "rev_yoy_min3", op: "ge", a: p.rev }],
+    rules: (p) => [`最新一季 EPS 年增率 ≥ ${p.yoy}%`, `最新一季 EPS ≥ ${p.eps} 元（排除獲利太小、比率失真）`, `近 3 個月營收年增率都 ≥ ${p.rev}%（確認是本業成長）`],
     cols: [...B, "eps_q", "eps_q_yoy", "eps_ttm", "pe"], sort: { key: "eps_q_yoy", dir: -1 },
     period: "最新一季合併財報。", notFor: ["業外收益（賣土地、匯兌）撐起的獲利", "去年同季虧損或很低，年增率失真"],
   }),

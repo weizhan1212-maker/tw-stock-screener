@@ -7,15 +7,29 @@ import { sortRows } from "@/components/Results";
 import { useSnapshot } from "@/hooks/useSnapshot";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { fmt, type Row } from "@/lib/screener";
-import { defaults, makeCtx, STRATEGIES, type Strategy } from "@/lib/strategies";
+import { defaults, isLiquid, makeCtx, pending, STRATEGIES, type Strategy } from "@/lib/strategies";
+
+type Note = { pending?: string; loose?: boolean } | null;
 
 export default function StrategyHome() {
   const { snap, error } = useSnapshot();
   const results = useMemo(() => {
     if (!snap) return null;
     const ctx = makeCtx(snap.rows, snap.meta.market_bull);
-    return Object.fromEntries(STRATEGIES.map((s) => [s.id, sortRows(s.run(ctx, defaults(s)), s.sort)]));
+    // 卡片數字預設排除成交清淡的股票（跟策略頁預設一致）
+    return Object.fromEntries(STRATEGIES.map((s) => [s.id, sortRows(s.run(ctx, defaults(s)).filter(isLiquid), s.sort)]));
   }, [snap]);
+  const meta = useMemo(() => {
+    if (!snap) return null;
+    const stocks = snap.rows.filter((r) => r.sec_type === "stock");
+    return { liquidCount: stocks.filter(isLiquid).length, pend: Object.fromEntries(STRATEGIES.map((s) => [s.id, pending(s, stocks)])) };
+  }, [snap]);
+  const note = (s: Strategy, rows: Row[] | null) => {
+    if (!meta || !rows) return null;
+    if (meta.pend[s.id]) return { pending: s.needs!.msg };
+    if (meta.liquidCount && rows.length / meta.liquidCount > 0.2) return { loose: true };
+    return null;
+  };
 
   return (
     <div className="mx-auto max-w-[1440px] px-4 py-5">
@@ -44,7 +58,7 @@ export default function StrategyHome() {
           </p>
           <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {STRATEGIES.filter((s) => s.group === g).map((s) => (
-              <StrategyCard key={s.id} s={s} rows={results?.[s.id] ?? null} />
+              <StrategyCard key={s.id} s={s} rows={results?.[s.id] ?? null} note={note(s, results?.[s.id] ?? null)} />
             ))}
           </ul>
         </section>
@@ -58,7 +72,7 @@ export default function StrategyHome() {
             <h3 className="mb-2 text-sm font-medium text-muted">{cat}</h3>
             <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {STRATEGIES.filter((s) => s.group === "單一條件" && s.category === cat).map((s) => (
-                <SmallCard key={s.id} s={s} rows={results?.[s.id] ?? null} />
+                <SmallCard key={s.id} s={s} rows={results?.[s.id] ?? null} note={note(s, results?.[s.id] ?? null)} />
               ))}
             </ul>
           </div>
@@ -72,38 +86,47 @@ export default function StrategyHome() {
   );
 }
 
-function StrategyCard({ s, rows }: { s: Strategy; rows: ReturnType<Strategy["run"]> | null }) {
+function Count({ rows, note, big }: { rows: Row[] | null; note: Note; big?: boolean }) {
+  if (rows == null) return <>…</>;
+  if (note?.pending) return <span className="rounded bg-surface-2 px-1.5 py-0.5 text-xs">累積中</span>;
   return (
-    <li>
+    <>
+      {note?.loose && <span className="mr-1.5 rounded bg-warn-bg px-1.5 py-0.5 text-[11px] text-warn-ink" title="符合的股票超過全市場兩成，條件偏寬鬆，建議再加條件">條件寬鬆</span>}
+      <b className={`${big ? "text-lg" : ""} text-ink`}>{rows.length}</b> 檔
+    </>
+  );
+}
+
+function StrategyCard({ s, rows, note }: { s: Strategy; rows: Row[] | null; note: Note }) {
+  return (
+    <li className="min-w-0">
       <Link
         href={`/strategy/${s.id}`}
         className="flex h-full flex-col rounded-lg border border-line bg-surface p-4 transition-colors hover:border-accent"
       >
         <div className="flex items-baseline justify-between gap-3">
           <span className="text-[15px] font-bold text-ink">{s.name}</span>
-          <span className="num shrink-0 text-sm text-muted">
-            {rows == null ? "…" : <><b className="text-lg text-ink">{rows.length}</b> 檔</>}
-          </span>
+          <span className="num shrink-0 text-sm text-muted"><Count rows={rows} note={note} big /></span>
         </div>
         {s.author && <span className="mt-0.5 text-xs text-muted">{s.author}</span>}
         <p className="mt-2 text-sm text-ink">{s.tagline}</p>
         <p className="mt-auto truncate pt-3 text-xs text-muted">
-          {rows == null ? "計算中…" : rows.length === 0 ? "目前沒有符合的股票" : rows.slice(0, 4).map((r) => `${r.code} ${r.name}`).join("、")}
+          {rows == null ? "計算中…" : note?.pending ? note.pending : rows.length === 0 ? "目前沒有符合的股票" : rows.slice(0, 4).map((r) => `${r.code} ${r.name}`).join("、")}
         </p>
       </Link>
     </li>
   );
 }
 
-function SmallCard({ s, rows }: { s: Strategy; rows: ReturnType<Strategy["run"]> | null }) {
+function SmallCard({ s, rows, note }: { s: Strategy; rows: Row[] | null; note: Note }) {
   return (
-    <li>
+    <li className="min-w-0">
       <Link href={`/strategy/${s.id}`} className="flex h-full items-center justify-between gap-3 rounded-lg border border-line bg-surface px-3 py-2.5 transition-colors hover:border-accent">
         <span className="min-w-0">
           <span className="block text-sm font-bold text-ink">{s.name}</span>
-          <span className="block truncate text-xs text-muted">{s.tagline}</span>
+          <span className="block truncate text-xs text-muted">{note?.pending ?? s.tagline}</span>
         </span>
-        <span className="num shrink-0 text-sm text-muted">{rows == null ? "…" : <><b className="text-ink">{rows.length}</b> 檔</>}</span>
+        <span className="num shrink-0 text-sm text-muted"><Count rows={rows} note={note} /></span>
       </Link>
     </li>
   );

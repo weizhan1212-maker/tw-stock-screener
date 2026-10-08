@@ -171,13 +171,15 @@ export default function KChart({ s }: { s: StockFile }) {
       layout: { background: { type: ColorType.Solid, color: surface }, textColor: ink, fontSize: 11,
         fontFamily: "'Noto Sans TC', system-ui, sans-serif", panes: { separatorColor: line } },
       grid: { vertLines: { visible: false }, horzLines: { color: line } },
-      rightPriceScale: { borderVisible: false },
+      rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.12, bottom: 0.08 } },
       timeScale: { borderVisible: false, rightOffset: 3 },
       crosshair: { mode: 0 },
       // 滾輪留給整頁捲動；拖曳可平移、雙指或拖曳價格軸可縮放；手機上下滑動照常捲頁
       handleScroll: { mouseWheel: false, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
       handleScale: { mouseWheel: false, pinch: true, axisPressedMouseMove: true, axisDoubleClickReset: true },
-      localization: { locale: "zh-TW", dateFormat: "yyyy/MM/dd" },
+      // 座標軸：千分位；1000 元以上不顯示小數（台股升降單位 5 元），其餘兩位
+      localization: { locale: "zh-TW", dateFormat: "yyyy/MM/dd",
+        priceFormatter: (p: number) => p.toLocaleString("zh-TW", { minimumFractionDigits: Math.abs(p) >= 1000 ? 0 : 2, maximumFractionDigits: Math.abs(p) >= 1000 ? 0 : 2 }) },
     });
     chartRef.current = chart;
     const t = (b: Bar) => b.t as Time;

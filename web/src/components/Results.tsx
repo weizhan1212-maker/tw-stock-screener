@@ -4,6 +4,7 @@ import Link from "next/link";
 import { type ReactNode, useMemo, useState } from "react";
 import { FIELD_MAP, UNIT } from "@/lib/fields";
 import WatchStar from "@/components/WatchStar";
+import { useSnapshot } from "@/hooks/useSnapshot";
 import { fmt, fmtUnit, isSigned, type Row, tone } from "@/lib/screener";
 
 export type Sort = { key: string; dir: 1 | -1 };
@@ -30,7 +31,8 @@ const label = (k: string) => FIELD_MAP[k]?.label ?? k;
 const headLabel = (k: string) => {
   const f = FIELD_MAP[k];
   if (!f) return k;
-  return ["yi", "yiRaw", "lots"].includes(f.format) ? `${f.label}（${UNIT[f.format]}）` : f.label;
+  if (["yi", "yiRaw", "lots", "pct"].includes(f.format) && !f.label.includes(`（${UNIT[f.format]}）`)) return `${f.label}（${UNIT[f.format]}）`;
+  return f.label;
 };
 
 export default function Results({
@@ -87,9 +89,10 @@ export default function Results({
 
       {!loading && rows.length === 0 && empty}
 
-      <div className="hidden overflow-x-auto rounded-lg border border-line bg-surface lg:block">
+      {/* 表格自己捲動，表頭固定在上方（捲很長也看得到每欄是什麼） */}
+      <div className="hidden max-h-[calc(100dvh-96px)] overflow-auto rounded-lg border border-line bg-surface lg:block">
         <table className="w-full text-sm">
-          <thead className="sticky top-0 bg-surface-2 text-left text-xs text-muted">
+          <thead className="sticky top-0 z-10 bg-surface-2 text-left text-xs text-muted shadow-[0_1px_0_var(--line)]">
             <tr>
               <th scope="col" className="w-8 px-1"><span className="sr-only">自選</span></th>
               <Th label="代號／名稱" k="code" sort={sort} setSort={setSort} left />
@@ -157,16 +160,24 @@ export default function Results({
   );
 }
 
+// 融資融券、外資持股官方較晚公布（約 23:30）：傍晚到深夜這段時間，這些欄位還是前一交易日
+const MARGIN_FIELDS = /^(margin_|short_|foreign_ratio)/;
+
 function Th({ label, k, sort, setSort, left }: {
   label: string; k: string; sort: Sort; setSort: (s: Sort) => void; left?: boolean;
 }) {
   const active = sort.key === k;
+  const { snap } = useSnapshot();
+  const m = snap?.meta;
+  const lag = MARGIN_FIELDS.test(k) && m?.margin_asof && m.margin_asof < m.asof ? m.margin_asof : null;
   return (
     <th scope="col" aria-sort={active ? (sort.dir === 1 ? "ascending" : "descending") : "none"}
       className={`whitespace-nowrap px-3 py-2 font-medium ${left ? "text-left" : "text-right"}`}>
       <button type="button" onClick={() => setSort({ key: k, dir: active ? (sort.dir === 1 ? -1 : 1) : -1 })}
-        className={`inline-flex items-center gap-1 hover:text-ink ${active ? "text-ink" : ""}`}>
+        title={FIELD_MAP[k]?.help ? `${FIELD_MAP[k].help}${UNIT[FIELD_MAP[k].format] ? `（單位：${UNIT[FIELD_MAP[k].format]}）` : ""}` : undefined}
+        className={`inline-flex items-center gap-1 hover:text-ink ${active ? "text-ink" : ""} ${FIELD_MAP[k]?.help ? "cursor-help underline decoration-dotted decoration-1 underline-offset-4" : ""}`}>
         {label}
+        {lag && <span title={`這一欄還是 ${lag} 的資料（官方較晚公布，約 23:30 更新）`} className="rounded bg-warn-bg px-1 text-[10px] font-normal text-warn-ink no-underline">T-1</span>}
         <span aria-hidden className="w-2 text-[10px]">{active ? (sort.dir === 1 ? "▲" : "▼") : ""}</span>
       </button>
     </th>
