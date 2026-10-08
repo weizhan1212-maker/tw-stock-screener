@@ -15,10 +15,11 @@ KEY_COLS = {"prices": ["close", "volume"], "insti": ["foreign", "trust", "dealer
 
 def run_report(store: DataStore):
     lines = ["## 資料檢查報告", "", "### 日資料", "",
-             "| 資料集 | 月份數 | 總筆數 | 日期範圍 | 近 20 日每日檔數（最少/中位/最多） | 缺值比例 |",
+             "| 資料集 | 月份數 | 近 3 個月筆數 | 近 3 個月日期範圍 | 近 20 日每日檔數（最少/中位/最多） | 缺值比例 |",
              "|---|---|---|---|---|---|"]
+    recent_start = pd.Timestamp.today() - pd.Timedelta(days=95)      # 只讀近 3 個月（省傳輸量）
     for name in DAILY_KEYS:
-        df = store.read_daily(name)
+        df = store.read_daily(name, recent_start)
         if df.empty:
             lines.append(f"| {name} | 0 | 0 | — | — | — |")
             continue
@@ -48,7 +49,7 @@ def run_report(store: DataStore):
         sample = list(bad.items())[:5]
         lines.append("- 未完成範例：" + "；".join(f"{k}: {v}" for k, v in sample))
 
-    p = store.read_daily("prices")
+    p = store.read_daily("prices", recent_start)
     if not p.empty:
         last = p[p["code"] == "2330"].tail(3)
         lines += ["", "### 抽樣：台積電最近 3 天", "", "```", last.to_string(index=False), "```"]

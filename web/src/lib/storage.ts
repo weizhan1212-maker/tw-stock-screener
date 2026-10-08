@@ -33,3 +33,26 @@ export async function putJson(path: string, data: unknown) {
   });
   if (!res.ok) throw new Error(`寫入 ${path} 失敗（${res.status}）`);
 }
+
+// 伺服器記憶體快取：同一個 Vercel 執行個體在 ttl 內重複要同一個檔，就不再向 Supabase 下載（省每月傳輸量）
+const memo = new Map<string, { t: number; buf: ArrayBuffer | null }>();
+let memoBytes = 0;
+const MEMO_MAX = 80 * 1024 * 1024;
+
+export async function getCachedBytes(path: string, ttlMs: number): Promise<ArrayBuffer | null> {
+  const hit = memo.get(path);
+  if (hit && Date.now() - hit.t < ttlMs) {
+    memo.delete(path); memo.set(path, hit);                    // 移到最新（LRU）
+    return hit.buf;
+  }
+  const res = await getObject(path);
+  const buf = res ? await res.arrayBuffer() : null;
+  if (hit) { memoBytes -= hit.buf?.byteLength ?? 0; memo.delete(path); }
+  memo.set(path, { t: Date.now(), buf });
+  memoBytes += buf?.byteLength ?? 0;
+  for (const [k, v] of memo) {                                  // 超過上限就丟掉最久沒用的
+    if (memoBytes <= MEMO_MAX) break;
+    memo.delete(k); memoBytes -= v.buf?.byteLength ?? 0;
+  }
+  return buf;
+}

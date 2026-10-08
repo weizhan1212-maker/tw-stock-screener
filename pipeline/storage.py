@@ -93,7 +93,31 @@ class SupabaseStorage:
         if r.status_code not in (200, 201) and "already exists" not in r.text.lower():
             raise RuntimeError(f"建立 bucket 失敗：{r.status_code} {r.text[:200]}")
 
+    # ---- 本機快取（GitHub Actions 用 actions/cache 保留）：只下載有變動的 parquet ----
+    # Supabase 免費方案每月傳輸 5 GB；每天重複下載整份歷史資料會超量。
+    # 有 PIPELINE_CACHE_DIR 時：parquet 先用 HEAD 比對 ETag（不傳內容），一樣就讀本機。狀態檔等小檔一律直接下載。
+    def _cache_path(self, path: str):
+        root = os.environ.get("PIPELINE_CACHE_DIR")
+        if not root or not path.endswith(".parquet"):
+            return None
+        return os.path.join(root, path)
+
+    def _etag(self, path: str) -> str | None:
+        r = self._req("HEAD", f"{self.base}/object/{self.bucket}/{path}")
+        if r.status_code != 200:
+            return None
+        return (r.headers.get("etag") or "").strip('"') or None
+
     def get(self, path: str) -> bytes | None:
+        cp = self._cache_path(path)
+        if cp and os.path.exists(cp) and os.path.exists(cp + ".etag"):
+            tag = self._etag(path)
+            with open(cp + ".etag") as f:
+                same = bool(tag) and f.read().strip() == tag
+            if same:
+                SupabaseStorage.stats["cache_hits"] = SupabaseStorage.stats.get("cache_hits", 0) + 1
+                with open(cp, "rb") as g:
+                    return g.read()
         r = self._req("GET", f"{self.base}/object/{self.bucket}/{path}")
         if r.status_code == 200:
             st, n = SupabaseStorage.stats, len(r.content)
@@ -101,17 +125,34 @@ class SupabaseStorage:
             st["get_count"] += 1
             key = "/".join(path.split("/")[:2])
             st["by_prefix"][key] = st["by_prefix"].get(key, 0) + n
+            tag = (r.headers.get("etag") or "").strip('"')
+            if cp and tag:
+                self._save_cache(cp, r.content, tag)
             return r.content
         if r.status_code in (400, 404) and ("not_found" in r.text.lower() or "not found" in r.text.lower()
                                             or r.status_code == 404):
             return None
         raise RuntimeError(f"讀取 {path} 失敗：{r.status_code} {r.text[:200]}")
 
+    @staticmethod
+    def _save_cache(cp: str, data: bytes, tag: str):
+        os.makedirs(os.path.dirname(cp), exist_ok=True)
+        with open(cp + ".tmp", "wb") as f:
+            f.write(data)
+        os.replace(cp + ".tmp", cp)
+        with open(cp + ".etag", "w") as f:
+            f.write(tag)
+
     def put(self, path: str, data: bytes, content_type: str = "application/octet-stream"):
         r = self._req("POST", f"{self.base}/object/{self.bucket}/{path}", data=data,
                       headers={"x-upsert": "true", "content-type": content_type})
         if r.status_code not in (200, 201):
             raise RuntimeError(f"寫入 {path} 失敗：{r.status_code} {r.text[:200]}")
+        cp = self._cache_path(path)
+        if cp:
+            tag = self._etag(path)            # 寫完取新 ETag，下次讀就不用再下載
+            if tag:
+                self._save_cache(cp, data, tag)
 
     def exists(self, path: str) -> bool:
         return self.get(path) is not None

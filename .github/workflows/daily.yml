@@ -26,6 +26,8 @@ jobs:
   daily:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      PIPELINE_CACHE_DIR: ${{ github.workspace }}/.pcache
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -33,6 +35,12 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
+      # 本機保留上次下載的 parquet，只下載有變動的檔（Supabase 免費方案每月傳輸 5 GB）
+      - uses: actions/cache/restore@v4
+        with:
+          path: .pcache
+          key: pcache-${{ github.run_id }}
+          restore-keys: pcache-
       - name: 每日任務
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -85,6 +93,11 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: python -m pipeline report 2>&1 | tee -a run.log
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: .pcache
+          key: pcache-${{ github.run_id }}-${{ github.run_attempt }}
       - name: 保存執行紀錄
         if: always()
         run: .github/scripts/save-log.sh daily

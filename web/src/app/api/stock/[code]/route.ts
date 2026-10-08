@@ -1,6 +1,6 @@
 /** 個股資料：讀 Supabase Storage 的 site/stock/{code}.json.gz，原樣轉給瀏覽器（proxy.ts 已把關登入）。 */
 import { readFile } from "node:fs/promises";
-import { getObject } from "@/lib/storage";
+import { getCachedBytes } from "@/lib/storage";
 
 export async function GET(_req: Request, ctx: RouteContext<"/api/stock/[code]">) {
   const { code } = await ctx.params;
@@ -15,9 +15,9 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/stock/[code]">)
     }
   }
   try {
-    const res = await getObject(`site/stock/${code}.json.gz`);
-    if (!res) return Response.json({ error: "找不到這檔股票的資料" }, { status: 404 });
-    return new Response(await res.arrayBuffer(), { headers });
+    const buf = await getCachedBytes(`site/stock/${code}.json.gz`, 300_000);
+    if (!buf) return Response.json({ error: "找不到這檔股票的資料" }, { status: 404 });
+    return new Response(buf, { headers });
   } catch (e) {
     console.error(e);                                         // 細節只留在伺服器紀錄，不回給瀏覽器
     return Response.json({ error: "資料暫時讀不到，請稍後再試" }, { status: 502 });

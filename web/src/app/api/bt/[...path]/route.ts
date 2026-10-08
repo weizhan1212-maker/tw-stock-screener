@@ -3,7 +3,7 @@
  * 過去月份與過去年份的檔案不會再變，讓瀏覽器長期快取；本機開發可設 BT_DIR=資料夾。
  */
 import { readFile } from "node:fs/promises";
-import { getObject } from "@/lib/storage";
+import { getCachedBytes } from "@/lib/storage";
 
 const DAY = 86400;
 
@@ -32,9 +32,9 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/bt/[...path]">)
     }
   }
   try {
-    const res = await getObject(`site/bt/${p}`);
-    if (!res) return Response.json({ error: "回測資料還沒準備好" }, { status: 404 });
-    return new Response(await res.arrayBuffer(), { headers });
+    const buf = await getCachedBytes(`site/bt/${p}`, Math.min(maxAge, 3600) * 1000);
+    if (!buf) return Response.json({ error: "回測資料還沒準備好" }, { status: 404 });
+    return new Response(buf, { headers });
   } catch (e) {
     console.error(e);                                         // 細節只留在伺服器紀錄，不回給瀏覽器
     return Response.json({ error: "資料暫時讀不到，請稍後再試" }, { status: 502 });

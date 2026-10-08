@@ -127,10 +127,10 @@ def main(argv=None):
 def _report_traffic(cmd: str):
     from .storage import SupabaseStorage
     st = SupabaseStorage.stats
-    if not st["get_count"]:
+    if not st["get_count"] and not st.get("cache_hits"):
         return
     top = sorted(st["by_prefix"].items(), key=lambda x: -x[1])[:8]
-    msg = (f"下載量（{cmd}）：{st['get_bytes'] / 1e6:.1f} MB／{st['get_count']} 次；"
+    msg = (f"下載量（{cmd}）：{st['get_bytes'] / 1e6:.1f} MB／{st['get_count']} 次，本機快取命中 {st.get('cache_hits', 0)} 次；"
            + "、".join(f"{k} {v / 1e6:.1f} MB" for k, v in top))
     log.info(msg)
     jobs.summary(f"## Supabase 下載量\n\n{msg}")
