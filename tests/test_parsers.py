@@ -154,3 +154,16 @@ def test_finmind_parsers():
 def test_finmind_rate_limit():
     with pytest.raises(finmind.RateLimited):
         finmind.check({"status": 402, "msg": "Requests reach the upper limit."})
+
+
+def test_tpex_insti_old_format():
+    import datetime as dt
+    from pipeline.sources import tpex
+    body = {"stat": "ok", "date": "20161012", "tables": [
+        {"title": None, "fields": None, "data": []},
+        {"title": "三大法人買賣明細資訊", "fields": ["代號", "名稱"] + [f"f{i}" for i in range(14)],
+         "data": [["1258", "其祥-KY", "0", "1,000", "-1,000", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "-1,000"],
+                  ["6488", "環球晶", "5,000", "1,000", "4,000", "2,000", "0", "2,000", "-500", "0", "0", "0", "0", "500", "-500", "5,500"]]}]}
+    df = tpex.parse_insti(body, dt.date(2016, 10, 12))["insti"]
+    r = df[df["code"] == "6488"].iloc[0]
+    assert (r["foreign"], r["trust"], r["dealer"], r["total"]) == (4000, 2000, -500, 5500)

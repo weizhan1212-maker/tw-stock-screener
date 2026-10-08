@@ -66,15 +66,18 @@ def parse_quotes(body, d: dt.date) -> dict:
 # [2-4] 外資及陸資(不含外資自營商) [5-7] 外資自營商 [8-10] 外資及陸資合計 [11-13] 投信
 # [14-16] 自營商(自行買賣) [17-19] 自營商(避險) [20-22] 自營商合計 [23] 三大法人合計
 INSTI_POS = {"foreign": 10, "trust": 13, "dealer": 22, "total": 23}
+# 2018-01-15 以前的舊格式（16 欄）：外資淨買、投信淨買、自營淨買、三大法人合計
+INSTI_POS_OLD = {"foreign": 4, "trust": 7, "dealer": 8, "total": 15}
 
 
 def parse_insti(body, d: dt.date) -> dict:
     t = _table(body, "三大法人")
     if t is None or not _date_ok(body, d):
         return {}
-    if len(t["fields"]) != 24:
+    pos = {24: INSTI_POS, 16: INSTI_POS_OLD}.get(len(t["fields"]))
+    if pos is None:
         raise ValueError(f"櫃買三大法人欄位數改變：{len(t['fields'])}，需要更新解析程式")
-    df = build_frame(t["fields"], t["data"], d, MARKET, {}, positional=INSTI_POS)
+    df = build_frame(t["fields"], t["data"], d, MARKET, {}, positional=pos)
     if not df.empty:
         # 檢查碼：外資＋投信＋自營商 = 三大法人合計
         bad = (df["foreign"] + df["trust"] + df["dealer"] - df["total"]).abs() > 1
