@@ -1,0 +1,126 @@
+2026-10-08 15:27:27,367 INFO 2026-10-08 → {'twse_quotes': 'ok', 'tpex_quotes': 'ok', 'twse_insti': 'ok', 'tpex_insti': 'ok', 'twse_margin': 'ok', 'tpex_margin': 'ok', 'twse_valuation': 'ok', 'tpex_valuation': 'ok', 'twse_qfii': 'ok'}
+2026-10-08 15:28:38,339 WARNING 抓取失敗 https://openapi.taifex.com.tw/v1/OpenInterestOfLargeTradersFutures（第 1 次）：非 JSON 回應（HTTP 200）：'日期,契約,商品名稱(契約名稱),到期月份(週別),交易人類別,前五大交易人買方數量,前五大交易人賣方數量,前十大交易人買方數量,前十大交易人賣方數量,全市場未沖銷部位數\r\n20261007,BRF,布蘭特原油期貨,202612,0,88,'，10 秒後重試
+2026-10-08 15:28:48,357 WARNING 抓取失敗 https://openapi.taifex.com.tw/v1/OpenInterestOfLargeTradersFutures（第 2 次）：非 JSON 回應（HTTP 200）：'日期,契約,商品名稱(契約名稱),到期月份(週別),交易人類別,前五大交易人買方數量,前五大交易人賣方數量,前十大交易人買方數量,前十大交易人賣方數量,全市場未沖銷部位數\r\n20261007,BRF,布蘭特原油期貨,202612,0,88,'，30 秒後重試
+2026-10-08 15:29:18,371 WARNING 抓取失敗 https://openapi.taifex.com.tw/v1/OpenInterestOfLargeTradersFutures（第 3 次）：非 JSON 回應（HTTP 200）：'日期,契約,商品名稱(契約名稱),到期月份(週別),交易人類別,前五大交易人買方數量,前五大交易人賣方數量,前十大交易人買方數量,前十大交易人賣方數量,全市場未沖銷部位數\r\n20261007,BRF,布蘭特原油期貨,202612,0,88,'，60 秒後重試
+2026-10-08 15:30:18,388 WARNING fut_large 失敗：https://openapi.taifex.com.tw/v1/OpenInterestOfLargeTradersFutures None: 非 JSON 回應（HTTP 200）：'日期,契約,商品名稱(契約名稱),到期月份(週別),交易人類別,前五大交易人買方數量,前五大交易人賣方數量,前十大交易人買方數量,前十大交易人賣方數量,全市場未沖銷部位數\r\n20261007,BRF,布蘭特原油期貨,202612,0,88,'
+2026-10-08 15:30:46,827 INFO ## 每日任務 2026-10-08
+
+| 日期 | 狀態 |
+|---|---|
+| 2026-09-28 | 休市 |
+| 2026-09-29 | 完成 |
+| 2026-09-30 | 完成 |
+| 2026-10-01 | 完成 |
+| 2026-10-02 | 完成 |
+| 2026-10-05 | 完成 |
+| 2026-10-06 | 完成 |
+| 2026-10-07 | 完成 |
+| 2026-10-08 | 完成 |
+
+寫入筆數：margin=2213, margin_total=1, qfii=1329, exright_twse=15, exright_tpex=11, holders=3323, revenue=1977, income_periods=1934, qfii_tpex=893, securities=2420, company=1982, delisting=706, etf_info=271, events=105, extras_business_light=512, extras_pcr=21, extras_fut_large=失敗：https://openapi.taifex.com.tw/v1/OpenInterestOfLargeTrade, extras_fut_insti=1, extras_fx=25, extras_taiex_ohlc=6, extras_dca_rank=40, extras_tpex_insti=1, extras_tpex_daytrade=6, extras_tpex_sbl=932, extras_tpex_block=8, extras_futures=2, extras_tpex_index=6, extras_twse_extra_days=1
+2026-10-08 15:30:46,828 INFO 下載量（daily）：7.2 MB／28 次，本機快取命中 7 次；master/income.parquet 4.5 MB、master/prices 1.6 MB、master/_state 0.5 MB、master/margin 0.1 MB、master/qfii 0.1 MB、master/daytrade 0.1 MB、master/sbl 0.1 MB、master/holders 0.1 MB
+2026-10-08 15:30:46,828 INFO ## Supabase 下載量
+
+下載量（daily）：7.2 MB／28 次，本機快取命中 7 次；master/income.parquet 4.5 MB、master/prices 1.6 MB、master/_state 0.5 MB、master/margin 0.1 MB、master/qfii 0.1 MB、master/daytrade 0.1 MB、master/sbl 0.1 MB、master/holders 0.1 MB
+2026-10-08 15:30:50,804 INFO ## 季報補抓
+
+完成 0 檔，佇列剩 0 檔
+2026-10-08 15:30:50,804 INFO 下載量（fin-refresh）：0.1 MB／3 次，本機快取命中 3 次；master/_state 0.1 MB
+2026-10-08 15:30:50,804 INFO ## Supabase 下載量
+
+下載量（fin-refresh）：0.1 MB／3 次，本機快取命中 3 次；master/_state 0.1 MB
+2026-10-08 15:32:20,019 INFO 快照：2355 檔、136 欄，壓縮後 783 KB
+2026-10-08 15:32:20,025 INFO ## 篩選快照
+
+資料日 2026-10-08，2355 檔，136 欄
+2026-10-08 15:32:20,025 INFO 下載量（snapshot）：38.6 MB／54 次，本機快取命中 44 次；master/prices 15.2 MB、master/balance.parquet 11.5 MB、master/cashflow.parquet 6.9 MB、master/insti 1.4 MB、master/revenue.parquet 1.1 MB、master/margin 1.0 MB、master/_state 0.6 MB、master/valuation 0.3 MB
+2026-10-08 15:32:20,025 INFO ## Supabase 下載量
+
+下載量（snapshot）：38.6 MB／54 次，本機快取命中 44 次；master/prices 15.2 MB、master/balance.parquet 11.5 MB、master/cashflow.parquet 6.9 MB、master/insti 1.4 MB、master/revenue.parquet 1.1 MB、master/margin 1.0 MB、master/_state 0.6 MB、master/valuation 0.3 MB
+2026-10-08 15:33:48,872 INFO ## 市場總覽
+
+資料日 2026-10-08，指數 10 項，5 KB，指數歷史 192 KB，重大訊息 5 KB
+2026-10-08 15:33:48,872 INFO 下載量（market）：1.7 MB／134 次，本機快取命中 54 次；master/indices 0.9 MB、master/_state 0.5 MB、master/taiex_ohlc 0.2 MB、master/index 0.1 MB、master/margin_total 0.0 MB、master/market_insti 0.0 MB、master/daytrade_total 0.0 MB、master/fut_large 0.0 MB
+2026-10-08 15:33:48,872 INFO ## Supabase 下載量
+
+下載量（market）：1.7 MB／134 次，本機快取命中 54 次；master/indices 0.9 MB、master/_state 0.5 MB、master/taiex_ohlc 0.2 MB、master/index 0.1 MB、master/margin_total 0.0 MB、master/market_insti 0.0 MB、master/daytrade_total 0.0 MB、master/fut_large 0.0 MB
+2026-10-08 15:37:15,635 INFO 個股檔：{'asof': '2026-10-08', 'count': 2341, 'failed': [], 'n_failed': 0, 'avg_kb': 15.6, 'total_mb': 35.6}
+2026-10-08 15:37:15,684 INFO ## 個股檔
+
+2341 檔，平均 15.6 KB，合計 35.6 MB，失敗 0 檔
+2026-10-08 15:37:15,685 INFO 下載量（stocks）：86.6 MB／173 次，本機快取命中 47 次；master/prices 39.2 MB、master/margin 24.4 MB、master/insti 22.4 MB、master/exright 0.3 MB、master/_state 0.2 MB
+2026-10-08 15:37:15,685 INFO ## Supabase 下載量
+
+下載量（stocks）：86.6 MB／173 次，本機快取命中 47 次；master/prices 39.2 MB、master/margin 24.4 MB、master/insti 22.4 MB、master/exright 0.3 MB、master/_state 0.2 MB
+{"asof":"2026-10-08","full":true,"users":1,"notes":1,"telegram":1,"tgFailed":0,"errors":0}
+2026-10-08 15:39:15,942 INFO ## 回測資料
+
+本次新增 0 個月、失敗 []，可回測 36/36 個月，價格檔 {2021: 59, 2022: 976, 2023: 1227, 2024: 1451, 2025: 1514, 2026: 1213} KB，1.9 分鐘
+2026-10-08 15:39:15,943 INFO 下載量（backtest-data）：6.8 MB／37 次，本機快取命中 141 次；master/prices 6.7 MB、master/index 0.1 MB、master/exright 0.0 MB、master/_state 0.0 MB
+2026-10-08 15:39:15,943 INFO ## Supabase 下載量
+
+下載量（backtest-data）：6.8 MB／37 次，本機快取命中 141 次；master/prices 6.7 MB、master/index 0.1 MB、master/exright 0.0 MB、master/_state 0.0 MB
+2026-10-08 15:40:27,823 INFO ## 資料檢查報告
+
+### 日資料
+
+| 資料集 | 月份數 | 近 3 個月筆數 | 近 3 個月日期範圍 | 近 20 日每日檔數（最少/中位/最多） | 缺值比例 |
+|---|---|---|---|---|---|
+| prices | 59 | 153,605 | 2026-07-06 ~ 2026-10-08 | 2328/2331/2336 | close=1.1%, volume=0.0% |
+| insti | 59 | 146,091 | 2026-07-06 ~ 2026-10-08 | 2188/2210/2231 | foreign=0.0%, trust=0.0%, dealer=0.0% |
+| margin | 59 | 145,552 | 2026-07-06 ~ 2026-10-08 | 2211/2212/2213 | margin_balance=0.0%, short_balance=0.0% |
+| valuation | 59 | 129,942 | 2026-07-06 ~ 2026-10-08 | 1965/1968/1973 | pe=23.1%, pb=0.0%, dividend_yield=0.0% |
+| qfii | 59 | 91,862 | 2026-07-06 ~ 2026-10-08 | 1328/1329/2222 | foreign_ratio=0.0% |
+| exright | 124 | 1,191 | 2026-07-06 ~ 2026-10-08 | 1/7/54 | prev_close=0.0%, ref_price=0.0% |
+| index | 59 | 66 | 2026-07-06 ~ 2026-10-08 | 1/1/1 | taiex=0.0%, taiex_tr=0.0% |
+| holders | 1 | 3,323 | 2026-10-02 ~ 2026-10-02 | 3323/3323/3323 |  |
+| taiex_ohlc | 49 | 66 | 2026-07-06 ~ 2026-10-08 | 1/1/1 |  |
+| indices | 59 | 3,762 | 2026-07-06 ~ 2026-10-08 | 57/57/57 |  |
+| margin_total | 15 | 66 | 2026-07-06 ~ 2026-10-08 | 1/1/1 |  |
+| market_insti | 5 | 70 | 2026-07-06 ~ 2026-10-08 | 1/1/2 |  |
+| daytrade | 5 | 80,601 | 2026-07-06 ~ 2026-10-08 | 1218/1230/1233 |  |
+| daytrade_total | 5 | 72 | 2026-07-06 ~ 2026-10-08 | 1/1/2 |  |
+| sbl | 5 | 89,917 | 2026-07-06 ~ 2026-10-08 | 1296/1296/2228 |  |
+| block | 5 | 1,214 | 2026-07-06 ~ 2026-10-08 | 12/20/30 |  |
+| futures | 1 | 8 | 2026-10-02 ~ 2026-10-07 | 2/2/2 |  |
+| pcr | 2 | 21 | 2026-09-07 ~ 2026-10-07 | 1/1/1 |  |
+| fut_large | 1 | 2 | 2026-10-06 ~ 2026-10-07 | 1/1/1 |  |
+| fut_insti | 1 | 2 | 2026-10-06 ~ 2026-10-07 | 1/1/1 |  |
+| fx | 2 | 25 | 2026-09-01 ~ 2026-10-07 | 1/1/1 |  |
+
+### 其他表
+
+| 表 | 筆數 | 檔數 |
+|---|---|---|
+| income | 960,395 | 2055 |
+| balance | 2,509,703 | 2069 |
+| cashflow | 1,455,112 | 2057 |
+| revenue | 184,556 | 1891 |
+| revenue_latest | 1,977 | 1977 |
+| dividend | 13,297 | 1861 |
+| securities | 2,420 | 2420 |
+| company | 1,982 | 1982 |
+| etf_info | 271 | 271 |
+| events | 105 | 82 |
+| delisting | 706 | 706 |
+| income_periods | 1,934 | 1934 |
+
+### 回補進度
+
+- 日資料：完成 1167 個交易日、休市 90 天、未完成 5 天、有缺漏端點 0 天
+- FinMind：完成 1997 檔（全部完成：True）
+- 季報補抓佇列：0 檔
+- 未完成範例：2022-07-01: {'twse_quotes': 'ok', 'tpex_quotes': 'ok', 'twse_insti': 'ok', 'tpex_insti': 'ok', 'twse_margin': 'ok', 'tpex_margin': 'ok', 'twse_valuation': 'ok', 'tpex_valuation': 'ok', '_tries': 1, 'twse_qfii': "error:https://www.twse.com.tw/rwd/zh/fund/MI_QFIIS {'date': '20220701', 'selectType': 'ALLBUT0999', 'response': 'json'}: HTTPSConnectionPool(host='www.twse.com.tw', port=443): Read timed out. (read ti"}；2022-06-29: {'twse_quotes': 'ok', 'tpex_quotes': 'ok', 'twse_insti': 'ok', 'tpex_insti': 'ok', 'twse_margin': 'ok', 'tpex_margin': 'ok', '_tries': 1, 'twse_valuation': "error:https://www.twse.com.tw/rwd/zh/afterTrading/BWIBBU_d {'date': '20220629', 'selectType': 'ALL', 'response': 'json'}: HTTPSConnectionPool(host='www.twse.com.tw', port=443): Read timed out. (read t", 'tpex_valuation': 'ok', 'twse_qfii': 'ok'}；2022-06-23: {'twse_quotes': 'ok', 'tpex_quotes': 'ok', 'twse_insti': 'ok', 'tpex_insti': 'ok', 'twse_margin': 'ok', 'tpex_margin': 'ok', 'twse_valuation': 'ok', 'tpex_valuation': 'ok', '_tries': 1, 'twse_qfii': "error:https://www.twse.com.tw/rwd/zh/fund/MI_QFIIS {'date': '20220623', 'selectType': 'ALLBUT0999', 'response': 'json'}: HTTPSConnectionPool(host='www.twse.com.tw', port=443): Read timed out. (read ti"}；2022-06-17: {'twse_quotes': 'ok', 'tpex_quotes': 'ok', '_tries': 1, 'twse_insti': "error:https://www.twse.com.tw/rwd/zh/fund/T86 {'date': '20220617', 'selectType': 'ALLBUT0999', 'response': 'json'}: HTTPSConnectionPool(host='www.twse.com.tw', port=443): Read timed out. (read timeout", 'tpex_insti': 'ok', 'twse_margin': 'ok', 'tpex_margin': 'ok', 'twse_valuation': 'ok', 'tpex_valuation': 'ok', 'twse_qfii': 'ok'}；2022-06-15: {'twse_quotes': 'ok', 'tpex_quotes': 'ok', 'twse_insti': 'ok', 'tpex_insti': 'ok', '_tries': 1, 'twse_margin': "error:https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN {'date': '20220615', 'selectType': 'ALL', 'response': 'json'}: HTTPSConnectionPool(host='www.twse.com.tw', port=443): Read timed out. (read ", 'tpex_margin': 'ok', 'twse_valuation': 'ok', 'tpex_valuation': 'ok', 'twse_qfii': 'ok'}
+
+### 抽樣：台積電最近 3 天
+
+```
+      date code market name   open   high    low  close     volume        value  trades  shares_issued  ref_next
+2026-10-06 2330   TWSE  台積電 2575.0 2590.0 2565.0 2585.0 20801802.0 5.363915e+10 83438.0            NaN       NaN
+2026-10-07 2330   TWSE  台積電 2565.0 2585.0 2560.0 2585.0 16941183.0 4.364360e+10 70880.0            NaN       NaN
+2026-10-08 2330   TWSE  台積電 2550.0 2575.0 2550.0 2550.0 20154000.0 5.150892e+10 11418.0            NaN       NaN
+```
+2026-10-08 15:40:27,825 INFO 下載量（report）：3.2 MB／19 次，本機快取命中 68 次；master/daytrade 1.2 MB、master/sbl 0.6 MB、master/qfii 0.6 MB、master/valuation 0.5 MB、master/_state 0.4 MB、master/block 0.0 MB、master/daytrade_total 0.0 MB、master/market_insti 0.0 MB
+2026-10-08 15:40:27,825 INFO ## Supabase 下載量
+
+下載量（report）：3.2 MB／19 次，本機快取命中 68 次；master/daytrade 1.2 MB、master/sbl 0.6 MB、master/qfii 0.6 MB、master/valuation 0.5 MB、master/_state 0.4 MB、master/block 0.0 MB、master/daytrade_total 0.0 MB、master/market_insti 0.0 MB
