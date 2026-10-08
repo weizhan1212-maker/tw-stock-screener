@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       job:
-        description: "daily / finmind / snapshot / extras / indices / smoke / migrate-check / migrate-merge / migrate-ignore"
+        description: "daily / finmind / snapshot / extras / indices / smoke / migrate-check / migrate-merge / migrate-ignore / migrate-selftest"
         default: smoke
       chain:
         description: "跑不完是否自動接力（true/false）"

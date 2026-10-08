@@ -33,7 +33,7 @@ def main(argv=None):
     f.add_argument("--chain", action="store_true")
     sub.add_parser("report")
     mu = sub.add_parser("migrate-users")
-    mu.add_argument("--mode", choices=["merge", "ignore", "check"], default="check")
+    mu.add_argument("--mode", choices=["merge", "ignore", "check", "selftest"], default="check")
     sub.add_parser("snapshot")
     sub.add_parser("market")
     sk = sub.add_parser("stocks")
@@ -68,7 +68,8 @@ def main(argv=None):
             jobs.redispatch("backfill.yml", {"job": "finmind", "chain": "true", "years": f"{a.years:g}"})
     elif a.cmd == "migrate-users":
         from . import migrate_users
-        res = migrate_users.check() if a.mode == "check" else migrate_users.migrate(store.st, a.mode)
+        res = (migrate_users.check() if a.mode == "check" else migrate_users.selftest() if a.mode == "selftest"
+               else migrate_users.migrate(store.st, a.mode))
         jobs.summary(f"## 使用者資料搬移（{a.mode}）\n\n{res}")
         print(res)
     elif a.cmd == "report":

@@ -77,3 +77,38 @@ def migrate(storage, mode: str = "merge") -> dict:
     res["user_kv"] = upsert("user_kv", kv, "user_hash,key")
     log.info("搬移結果：%s", res)
     return res
+
+
+def selftest() -> dict:
+    """同時寫入測試：模擬「管理員核准 A」與「B 第一次登入」、兩個使用者同時登記警報，各 20 次並行，
+    確認沒有任何一筆被蓋掉。測試資料用 _selftest 前綴，結束後刪除。"""
+    from concurrent.futures import ThreadPoolExecutor
+    s, base = _rest()
+
+    def post(table, row, conflict, how):
+        r = s.post(f"{base}/{table}?on_conflict={conflict}", data=json.dumps(row),
+                   headers={"Prefer": f"resolution={how}-duplicates,return=minimal"}, timeout=30)
+        r.raise_for_status()
+
+    a, b = "_selftest_a@example.com", "_selftest_b@example.com"
+    post("members", {"email": a, "status": "pending"}, "email", "ignore")
+    jobs = []
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        for i in range(20):
+            jobs.append(ex.submit(post, "members", {"email": a, "status": "approved", "decided_at": "2026-10-08T00:00:00Z"}, "email", "merge"))
+            jobs.append(ex.submit(post, "members", {"email": f"_selftest_new{i}@example.com", "status": "pending"}, "email", "ignore"))
+            jobs.append(ex.submit(post, "members", {"email": a, "status": "pending"}, "email", "ignore"))   # A 再次登入不應打回待核准
+            jobs.append(ex.submit(post, "alert_users", {"user_hash": "_selftest_hash_1"}, "user_hash", "ignore"))
+            jobs.append(ex.submit(post, "alert_users", {"user_hash": "_selftest_hash_2"}, "user_hash", "ignore"))
+        for j in jobs:
+            j.result()
+    st = s.get(f"{base}/members?select=status&email=eq.{a}", timeout=30).json()
+    news = s.get(f"{base}/members?select=email&email=like._selftest_new*", timeout=30).json()
+    hs = s.get(f"{base}/alert_users?select=user_hash&user_hash=like._selftest_hash*", timeout=30).json()
+    res = {"A 狀態（應為 approved）": st[0]["status"] if st else None, "新登入筆數（應為 20）": len(news),
+           "警報名單（應為 2）": len(hs)}
+    s.delete(f"{base}/members?email=like._selftest*", timeout=30)
+    s.delete(f"{base}/alert_users?user_hash=like._selftest*", timeout=30)
+    res["通過"] = res["A 狀態（應為 approved）"] == "approved" and len(news) == 20 and len(hs) == 2
+    _ = b
+    return res
