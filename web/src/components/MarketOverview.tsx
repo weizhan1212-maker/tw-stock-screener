@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useUrlState } from "@/hooks/useUrlState";
 import { useEffect, useMemo, useState } from "react";
 import NewsList from "@/components/NewsList";
 import Sentiment, { type SentimentData } from "@/components/Sentiment";
@@ -70,7 +71,7 @@ function Bars({ values }: { values: (number | null)[] }) {
 export default function MarketOverview() {
   const [m, setM] = useState<Market | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [scope, setScope] = useState<"all" | "TWSE" | "TPEX">("all");
+  const [scope, setScope] = useUrlState<"all" | "TWSE" | "TPEX">("m", "all", ["all", "TWSE", "TPEX"]);
   useEffect(() => {
     fetch("/api/market").then(async (r) => {
       const j = await r.json();

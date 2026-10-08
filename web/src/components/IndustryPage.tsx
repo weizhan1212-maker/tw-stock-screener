@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useUrlState } from "@/hooks/useUrlState";
 import { useEffect, useMemo, useState } from "react";
 import DataStatus from "@/components/DataStatus";
 import Results, { type Sort } from "@/components/Results";
@@ -16,7 +17,7 @@ const COLS = ["close", "chg_pct", "ret20", "rs60", "pe", "pb", "rev_yoy", "inst_
 
 export default function IndustryPage({ name }: { name: string }) {
   const { snap, error } = useSnapshot();
-  const [period, setPeriod] = useState<Period>("chg_pct");
+  const [period, setPeriod] = useUrlState<Period>("p", "chg_pct", ["chg_pct", "ret5", "ret20", "ret60"]);
   const [sort, setSort] = useState<Sort>({ key: "market_cap", dir: -1 });
   useEffect(() => { document.title = `${name}｜產業｜股見未來`; }, [name]);
   const rows = useMemo<Row[]>(() => (snap ? groupIndustries(snap.rows).get(name) ?? [] : []), [snap, name]);

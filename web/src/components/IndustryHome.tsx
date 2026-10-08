@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useUrlState } from "@/hooks/useUrlState";
 import { useMemo, useState } from "react";
 import DataStatus from "@/components/DataStatus";
 import { Seg } from "@/components/Screener";
@@ -29,8 +30,8 @@ function val(s: IndustryStat, k: Key, period: Period): number | string | null {
 
 export default function IndustryHome() {
   const { snap, error } = useSnapshot();
-  const [period, setPeriod] = useState<Period>("chg_pct");
-  const [market, setMarket] = useState<Market>("all");
+  const [period, setPeriod] = useUrlState<Period>("p", "chg_pct", ["chg_pct", "ret5", "ret20", "ret60"]);
+  const [market, setMarket] = useUrlState<Market>("m", "all", ["all", "TWSE", "TPEX"] as Market[]);
   const [sort, setSort] = useState<{ k: Key; dir: 1 | -1 }>({ k: "ret", dir: -1 });
   const stats = useMemo(
     () => (snap ? industryStats(snap.rows.filter((r) => market === "all" || r.market === market)) : []),

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import DataStatus from "@/components/DataStatus";
 import Results, { type Sort } from "@/components/Results";
@@ -115,13 +116,19 @@ function DcaRank() {
 
 export default function Rankings() {
   const { snap, error } = useSnapshot();
-  const [gid, setGid] = useState("hot");
+  // 目前看的榜單記在網址（?g=&r=&u=&m=），點進個股再按返回會回到同一個榜
+  const q = useSearchParams();
+  const [gid, setGid] = useState(() => (q.get("g") === "dca" || GROUPS.some((g) => g.id === q.get("g")) ? q.get("g")! : "hot"));
   const group = GROUPS.find((g) => g.id === gid) ?? GROUPS[0];
-  const [rid, setRid] = useState(group.ranks[0].id);
+  const [rid, setRid] = useState(() => group.ranks.find((r) => r.id === q.get("r"))?.id ?? group.ranks[0].id);
   const rank = group.ranks.find((r) => r.id === rid) ?? group.ranks[0];
-  const [universe, setUniverse] = useState<Universe>("stock");
-  const [market, setMarket] = useState<Market>("all");
+  const [universe, setUniverse] = useState<Universe>(() => (["stock", "etf", "all"].includes(q.get("u") ?? "") ? q.get("u") as Universe : "stock"));
+  const [market, setMarket] = useState<Market>(() => (["all", "TWSE", "TPEX"].includes(q.get("m") ?? "") ? q.get("m") as Market : "all"));
   const [sort, setSort] = useState<Sort>({ key: rank.key, dir: rank.dir });
+  useEffect(() => {
+    const p = new URLSearchParams({ g: gid, ...(gid === "dca" ? {} : { r: rank.id, u: universe, m: market }) });
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}?${p}`);
+  }, [gid, rank.id, universe, market]);
 
   function pick(g: string, r?: string) {
     if (g === "dca") { setGid(g); return; }

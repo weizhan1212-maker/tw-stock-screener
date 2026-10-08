@@ -5,14 +5,15 @@ import DataStatus from "@/components/DataStatus";
 import Results, { type Sort } from "@/components/Results";
 import { Seg } from "@/components/Screener";
 import { useSnapshot } from "@/hooks/useSnapshot";
+import { useUrlState } from "@/hooks/useUrlState";
 import { type Market, num } from "@/lib/screener";
 
 const COLS = ["close", "chg_pct", "etf_aum", "holders", "dividend_yield", "etf_div_count", "ret240", "avg_value20"];
 
 export default function EtfHome() {
   const { snap, error } = useSnapshot();
-  const [market, setMarket] = useState<Market>("all");
-  const [type, setType] = useState("全部");
+  const [market, setMarket] = useUrlState<Market>("m", "all", ["all", "TWSE", "TPEX"] as Market[]);
+  const [type, setType] = useUrlState<string>("t", "全部");
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<Sort>({ key: "etf_aum", dir: -1 });
   const etfs = useMemo(() => (snap ? snap.rows.filter((r) => r.sec_type === "etf" && r.stale !== 1) : []), [snap]);
