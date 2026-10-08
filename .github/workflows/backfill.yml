@@ -92,7 +92,7 @@ jobs:
           python -m pipeline snapshot 2>&1 | tee -a run.log
           python -m pipeline market 2>&1 | tee -a run.log
       - name: 資料檢查報告
-        if: always()
+        if: always() && !startsWith(github.event.inputs.job, 'migrate-')
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
