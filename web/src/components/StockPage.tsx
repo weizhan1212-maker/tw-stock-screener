@@ -54,7 +54,7 @@ export default function StockPage({ code }: { code: string }) {
   const row: Row | undefined = useMemo(() => snap?.rows.find((r) => r.code === code), [snap, code]);
   const name = (row?.name as string) || data?.info.name || "";
   const isStock = (row?.sec_type ?? data?.info.sec_type) === "stock";
-  // 盤中即時（富果，試用中只有管理員拿得到）；比盤後快照新或同一天才顯示
+  // 盤中即時（富果，已核准成員都拿得到）；比盤後快照新或同一天才顯示
   const liveAll = useLiveQuotes([code], 10_000);
   const live = liveAll?.[code];
   const showLive = !!live && live.price != null && (!snap || live.date >= snap.meta.asof);

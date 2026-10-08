@@ -1,9 +1,9 @@
 /**
- * 盤中即時報價（富果）。試用期間只開放管理員（Willy）：富果條款是否允許給他人看尚未確認。
+ * 盤中即時報價（富果）。開放給已核准的成員（2026-10-08 Willy 決定，風險由 Willy 承擔：富果條款未明文允許轉給他人看）。
+ * 免費方案每分鐘 60 次是所有人共用；同一檔 8 秒內共用快取，超過額度就回舊資料。
  * GET /api/quote?codes=2330,2317（最多 30 檔）
  */
 import { auth } from "@/auth";
-import { isAdmin } from "@/lib/allowlist";
 import { fugleEnabled, quote, type LiveQuote } from "@/lib/fugle";
 
 const MAX = 30;
@@ -13,7 +13,8 @@ export async function GET(req: Request) {
   const local = process.env.SKIP_AUTH === "1" && !process.env.VERCEL;
   if (!local) {
     const s = await auth();
-    if (!isAdmin(s?.user?.email)) return Response.json({ enabled: false }, { status: 403 });
+    const u = s?.user as { email?: string; status?: string } | undefined;
+    if (!u?.email || u.status !== "approved") return Response.json({ enabled: false }, { status: 403 });
   }
   const codes = [...new Set((new URL(req.url).searchParams.get("codes") ?? "").split(","))]
     .filter((c) => /^[0-9A-Z]{4,6}$/.test(c)).slice(0, MAX);

@@ -18,7 +18,7 @@ export default function Watchlist() {
   const w = useWatchlist();
   const [sort, setSort] = useState<Sort>({ key: "_order", dir: 1 });
 
-  // 盤中即時（富果免費方案每分鐘 60 次，所以只更新前 30 檔、每分鐘一次；試用中只有管理員拿得到）
+  // 盤中即時（富果免費方案每分鐘 60 次，所以只更新前 30 檔、每分鐘一次；已核准成員都拿得到）
   const liveCodes = useMemo(() => (w.codes ?? []).slice(0, 30), [w.codes]);
   const live = useLiveQuotes(liveCodes, 60_000);
 
