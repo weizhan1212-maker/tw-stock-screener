@@ -9,8 +9,9 @@ import { gunzipSync } from "node:zlib";
 import { type Alert, type AlertConfig, type AlertStateFile, type EventsFile, evaluate, evaluateNotice, type Note, type PortfolioPos } from "@/lib/alerts";
 import { decode, type RawSnapshot } from "@/lib/screener";
 import { botToken, sendMessage } from "@/lib/server/telegram";
-import { derivedSecret, userPath } from "@/lib/server/user";
-import { getJson, getObject, putJson } from "@/lib/storage";
+import { alertUsers, kvGet, kvPut } from "@/lib/server/db";
+import { derivedSecret } from "@/lib/server/user";
+import { getObject } from "@/lib/storage";
 
 export const maxDuration = 60;
 const SITE = "https://tw-stock-screener-willy1212.vercel.app";
@@ -36,25 +37,25 @@ export async function POST(req: Request) {
   const full = meta.complete !== false;             // 舊快照沒有這個欄位時視為完整
   let events: EventsFile = { asof: meta.asof, recent: [], conf: [] };
   try { events = (await gz<EventsFile>("site/events.json.gz")) ?? events; } catch { /* 沒有就略過 notice 警報 */ }
-  const idx = await getJson<{ users: string[] }>("alerts/users.json", { users: [] });
+  const idxUsers = await alertUsers();
   const tgOn = !!botToken();
   const summary = { asof: meta.asof, full, users: 0, notes: 0, telegram: 0, tgFailed: 0, errors: 0 };
 
   async function runUser(h: string) {
     const [cfg, st, tg] = await Promise.all([
-      getJson<AlertConfig>(userPath(h, "alerts.json"), { alerts: [] }),
-      getJson<AlertStateFile>(userPath(h, "alert_state.json"), { state: {}, inbox: [] }),
-      getJson<{ chatId?: number }>(userPath(h, "telegram.json"), {}),
+      kvGet<AlertConfig>(h, "alerts", { alerts: [] }),
+      kvGet<AlertStateFile>(h, "alert_state", { state: {}, inbox: [] }),
+      kvGet<{ chatId?: number }>(h, "telegram", {}),
     ]);
     const active = cfg.alerts.filter((a: Alert) => a.enabled);
     if (!active.length && !st.tgPending?.length) return;
     summary.users++;
     const needPf = active.some((a) => a.kind === "portfolio" || (a.kind === "notice" && a.scope === "portfolio"));
-    const pf = needPf ? await getJson<{ portfolios: { positions: PortfolioPos[] }[] }>(userPath(h, "portfolio.json"), { portfolios: [] }) : { portfolios: [] };
+    const pf = needPf ? await kvGet<{ portfolios: { positions: PortfolioPos[] }[] }>(h, "portfolio", { portfolios: [] }) : { portfolios: [] };
     const positions = pf.portfolios.flatMap((p) => p.positions);
     const scopeCodes: Record<string, string[]> = { portfolio: [...new Set(positions.map((x) => x.code))] };
     if (active.some((a) => a.kind === "notice" && (a.scope ?? "watchlist") === "watchlist")) {
-      scopeCodes.watchlist = (await getJson<{ codes: string[] }>(userPath(h, "watchlist.json"), { codes: [] })).codes ?? [];
+      scopeCodes.watchlist = (await kvGet<{ codes: string[] }>(h, "watchlist", { codes: [] })).codes ?? [];
     }
     const state = { ...(st.state ?? {}) };
     const fresh: Note[] = [];
@@ -85,11 +86,11 @@ export async function POST(req: Request) {
     } else if (!tg.chatId) {
       pending = [];                                  // 沒綁 Telegram 就不留
     }
-    await putJson(userPath(h, "alert_state.json"), { state, inbox: [...fresh, ...(st.inbox ?? [])].slice(0, 100), tgPending: pending });
+    await kvPut(h, "alert_state", { state, inbox: [...fresh, ...(st.inbox ?? [])].slice(0, 100), tgPending: pending });
     summary.notes += fresh.length;
   }
 
-  const users = [...idx.users];
+  const users = [...idxUsers];
   await Promise.all(Array.from({ length: Math.min(PARALLEL, users.length) }, async () => {
     for (let h = users.shift(); h; h = users.shift()) {
       try { await runUser(h); } catch { summary.errors++; }

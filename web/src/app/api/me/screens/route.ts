@@ -1,13 +1,13 @@
 /**
  * 已儲存的篩選組合：每位使用者一份（條件、股票池、欄位、排序），最多 30 組。
- * 存在 Supabase Storage users/{email 雜湊}/screens.json。
+ * 存在 Supabase 資料庫 user_kv（key=screens）。
  */
 import { createHash } from "node:crypto";
 import { auth } from "@/auth";
-import { getJson, putJson } from "@/lib/storage";
+import { kvGet, kvPut } from "@/lib/server/db";
 
 const MAX = 30;
-const path = (email: string) => `users/${createHash("sha256").update(email.toLowerCase()).digest("hex").slice(0, 32)}/screens.json`;
+const hash = (email: string) => createHash("sha256").update(email.toLowerCase()).digest("hex").slice(0, 32);
 
 async function me() {
   const s = await auth();
@@ -27,7 +27,7 @@ function valid(x: unknown): x is Screen {
 export async function GET() {
   const email = await me();
   if (!email) return Response.json({ error: "請先登入" }, { status: 401 });
-  const data = await getJson<{ screens: Screen[] }>(path(email), { screens: [] });
+  const data = await kvGet<{ screens: Screen[] }>(hash(email), "screens", { screens: [] });
   return Response.json({ screens: data.screens ?? [] }, { headers: { "Cache-Control": "no-store" } });
 }
 
@@ -38,6 +38,6 @@ export async function PUT(req: Request) {
   const list = Array.isArray(body?.screens) ? body!.screens : null;
   if (!list || !list.every(valid)) return Response.json({ error: "格式錯誤" }, { status: 400 });
   const screens = (list as Screen[]).slice(0, MAX);
-  await putJson(path(email), { screens, updated_at: new Date().toISOString() });
+  await kvPut(hash(email), "screens", { screens, updated_at: new Date().toISOString() });
   return Response.json({ screens });
 }

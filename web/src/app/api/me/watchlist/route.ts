@@ -1,13 +1,13 @@
 /**
- * 自選股：每位使用者一份，存在 Supabase Storage users/{email 雜湊}/watchlist.json。
+ * 自選股：每位使用者一份，存在 Supabase 資料庫 user_kv（key=watchlist）。
  * GET 取得、PUT 整份覆寫（最多 300 檔）。
  */
 import { createHash } from "node:crypto";
 import { auth } from "@/auth";
-import { getJson, putJson } from "@/lib/storage";
+import { kvGet, kvPut } from "@/lib/server/db";
 
 const MAX = 300;
-const path = (email: string) => `users/${createHash("sha256").update(email.toLowerCase()).digest("hex").slice(0, 32)}/watchlist.json`;
+const hash = (email: string) => createHash("sha256").update(email.toLowerCase()).digest("hex").slice(0, 32);
 
 async function me() {
   const s = await auth();
@@ -18,7 +18,7 @@ async function me() {
 export async function GET() {
   const email = await me();
   if (!email) return Response.json({ error: "請先登入" }, { status: 401 });
-  const data = await getJson<{ codes: string[] }>(path(email), { codes: [] });
+  const data = await kvGet<{ codes: string[] }>(hash(email), "watchlist", { codes: [] });
   return Response.json({ codes: data.codes ?? [] }, { headers: { "Cache-Control": "no-store" } });
 }
 
@@ -31,6 +31,6 @@ export async function PUT(req: Request) {
     return Response.json({ error: "格式錯誤" }, { status: 400 });
   }
   const uniq = [...new Set(codes as string[])].slice(0, MAX);
-  await putJson(path(email), { codes: uniq, updated_at: new Date().toISOString() });
+  await kvPut(hash(email), "watchlist", { codes: uniq, updated_at: new Date().toISOString() });
   return Response.json({ codes: uniq });
 }

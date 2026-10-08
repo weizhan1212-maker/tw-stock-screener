@@ -4,10 +4,7 @@
  */
 import { timingSafeEqual } from "node:crypto";
 import { botToken, sendMessage, verifyCode, webhookSecret } from "@/lib/server/telegram";
-import { userPath } from "@/lib/server/user";
-import { getJson, putJson } from "@/lib/storage";
-
-const INDEX = "alerts/users.json";
+import { alertUserAdd, kvPut } from "@/lib/server/db";
 
 export async function POST(req: Request) {
   if (!botToken()) return new Response("not configured", { status: 404 });
@@ -24,9 +21,8 @@ export async function POST(req: Request) {
       if (!hash) {
         await sendMessage(chatId, "請到「股見未來」網站的「警報」頁按「連結 Telegram」，從那個連結進來才能完成綁定。");
       } else {
-        await putJson(userPath(hash, "telegram.json"), { chatId, linkedAt: new Date().toISOString() });
-        const idx = await getJson<{ users: string[] }>(INDEX, { users: [] });
-        if (!idx.users.includes(hash)) await putJson(INDEX, { users: [...idx.users, hash] });
+        await kvPut(hash, "telegram", { chatId, linkedAt: new Date().toISOString() });
+        await alertUserAdd(hash);
         await sendMessage(chatId, "✅ 已綁定「股見未來」。之後你設定的警報會在每天盤後傳到這裡。\n要停止通知，傳 /stop 或到網站解除綁定。");
       }
     } else if (text === "/stop") {

@@ -1,12 +1,12 @@
 /**
- * 投資組合／持倉：每位使用者一份，存在 Supabase Storage users/{email 雜湊}/portfolio.json。
+ * 投資組合／持倉：每位使用者一份，存在 Supabase 資料庫 user_kv（key=portfolio）。
  * 手動輸入，不串券商。最多 10 個組合、每個 100 筆持倉。
  */
 import { createHash } from "node:crypto";
 import { auth } from "@/auth";
-import { getJson, putJson } from "@/lib/storage";
+import { kvGet, kvPut } from "@/lib/server/db";
 
-const path = (email: string) => `users/${createHash("sha256").update(email.toLowerCase()).digest("hex").slice(0, 32)}/portfolio.json`;
+const hash = (email: string) => createHash("sha256").update(email.toLowerCase()).digest("hex").slice(0, 32);
 
 async function me() {
   const s = await auth();
@@ -37,7 +37,7 @@ function valid(body: unknown): body is { portfolios: unknown[] } {
 export async function GET() {
   const email = await me();
   if (!email) return Response.json({ error: "請先登入" }, { status: 401 });
-  const data = await getJson<{ portfolios: unknown[] }>(path(email), { portfolios: [] });
+  const data = await kvGet<{ portfolios: unknown[] }>(hash(email), "portfolio", { portfolios: [] });
   return Response.json({ portfolios: data.portfolios ?? [] }, { headers: { "Cache-Control": "no-store" } });
 }
 
@@ -46,6 +46,6 @@ export async function PUT(req: Request) {
   if (!email) return Response.json({ error: "請先登入" }, { status: 401 });
   const body = await req.json().catch(() => null);
   if (!valid(body)) return Response.json({ error: "格式錯誤" }, { status: 400 });
-  await putJson(path(email), { portfolios: body.portfolios, updated_at: new Date().toISOString() });
+  await kvPut(hash(email), "portfolio", { portfolios: body.portfolios, updated_at: new Date().toISOString() });
   return Response.json({ ok: true });
 }
