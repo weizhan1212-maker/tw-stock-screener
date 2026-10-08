@@ -16,6 +16,7 @@ function validAlert(a: Alert) {
     case "screen": return s(a.query, 2000);
     case "strategy": return s(a.strategyId, 40) && (a.params === undefined || (typeof a.params === "object" && Object.values(a.params).every((v) => typeof v === "number")));
     case "portfolio": return true;
+    case "notice": return a.scope === "watchlist" || a.scope === "portfolio";
     default: return false;
   }
 }

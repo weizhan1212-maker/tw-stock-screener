@@ -8,6 +8,7 @@
 - quarters：季財報（最近 20 季：營收、EPS、毛利率、營業利益率、淨利率、ROE 年化）
 - dividends：股利（普通股用 FinMind 股利資料；ETF 用除息紀錄）
 - holders：集保大戶（每週，從上線起累積）
+- events：重大訊息（recent，最近 20 則）與法說會（conf，開會日期）。來源只提供最近一天，從上線日起每天累積
 """
 import gzip
 import json
@@ -37,6 +38,13 @@ def _r(v, nd=2):
     if math.isnan(f) or math.isinf(f):
         return None
     return round(f, nd)
+
+
+def _i(v):
+    try:
+        return None if v is None or v != v else int(v)
+    except (TypeError, ValueError):
+        return None
 
 
 def _col(df: pd.DataFrame, name: str, nd=2, scale=1.0):
@@ -90,6 +98,7 @@ def load_inputs(store: DataStore, asof: pd.Timestamp, years: float = 4.2) -> dic
         "dividend": store.read_table("dividend"),
         "exright": exr,
         "holders": store.read_daily("holders", asof - pd.Timedelta(days=400), asof),
+        "events": store.read_table("events"),
         "securities": store.read_table("securities"),
         "company": store.read_table("company"),
     }
@@ -157,6 +166,16 @@ def build_one(code: str, d: pd.DataFrame, parts: dict, info: dict, asof: str) ->
         out["holders"] = [{"d": x.strftime("%Y-%m-%d"), "big": _r(b), "big400": _r(b4), "retail": _r(rt),
                            "n": _r(n, 0)} for x, b, b4, rt, n in
                           zip(hd["date"], hd["pct_1000"], hd["pct_400"], hd["pct_retail"], hd["holders"])]
+    ev = parts["events"].get(code)
+    if ev is not None and not ev.empty:
+        ev = ev.sort_values(["spoke_date", "spoke_time"], ascending=False)
+        d0 = lambda x: x.strftime("%Y-%m-%d") if isinstance(x, pd.Timestamp) and not pd.isna(x) else None  # noqa: E731
+        recent = [{"d": d0(r.spoke_date), "t": f"{r.spoke_time[:2]}:{r.spoke_time[2:4]}", "s": r.subject, "c": _i(r.clause),
+                   "f": d0(r.fact_date), "b": (r.body or "")[:600]}
+                  for r in ev.head(20).itertuples(index=False)]
+        conf = [{"d": d0(r.conf_date), "t": r.conf_time or None, "s": r.subject, "spoke": d0(r.spoke_date)}
+                for r in ev[ev["is_conf"] & ev["conf_date"].notna()].sort_values("conf_date", ascending=False).head(8).itertuples(index=False)]
+        out["events"] = {"recent": recent, "conf": conf}
     return out
 
 
@@ -170,7 +189,7 @@ def build_all(store: DataStore, asof=None, codes: list[str] | None = None, worke
     daily = inp["daily"]
     recent = daily[daily["date"] >= asof - pd.Timedelta(days=30)]["code"].unique()
     targets = sorted(set(recent) if codes is None else set(codes) & set(daily["code"].unique()))
-    parts = {k: _groups(inp[k]) for k in ("revenue", "quarters", "dividend", "exright", "holders")}
+    parts = {k: _groups(inp[k]) for k in ("revenue", "quarters", "dividend", "exright", "holders", "events")}
     sec = inp["securities"].set_index("code") if not inp["securities"].empty else pd.DataFrame()
     comp = inp["company"].set_index("code") if not inp["company"].empty else pd.DataFrame()
     prices_name = store.read_daily("prices", asof - pd.Timedelta(days=30), asof)

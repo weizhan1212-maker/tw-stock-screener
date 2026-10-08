@@ -10,6 +10,8 @@ export interface StockFile {
   quarters?: { p: string; rev: N; eps: N; gm: N; om: N; nm: N; roe: N }[];
   dividends?: { period: string; cash: N; stock: N; ex: string | null }[];
   holders?: { d: string; big: N; big400: N; retail: N; n: N }[];
+  /** 重大訊息（recent，新到舊）與法說會（conf：開會日期 d、時間 t）。來源只給最近一天，從上線日起累積 */
+  events?: { recent: { d: string; t: string; s: string; c: number | null; f: string | null; b: string }[]; conf: { d: string; t: string | null; s: string; spoke: string }[] };
 }
 type N = number | null;
 

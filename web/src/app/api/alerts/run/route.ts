@@ -4,7 +4,7 @@
  */
 import { timingSafeEqual } from "node:crypto";
 import { gunzipSync } from "node:zlib";
-import { type Alert, type AlertConfig, type AlertStateFile, evaluate, type Note, type PortfolioPos } from "@/lib/alerts";
+import { type Alert, type AlertConfig, type AlertStateFile, type EventsFile, evaluate, evaluateNotice, type Note, type PortfolioPos } from "@/lib/alerts";
 import { decode, type RawSnapshot } from "@/lib/screener";
 import { botToken, sendMessage } from "@/lib/server/telegram";
 import { derivedSecret, userPath } from "@/lib/server/user";
@@ -25,6 +25,14 @@ export async function POST(req: Request) {
   const raw = JSON.parse((buf[0] === 0x1f ? gunzipSync(buf) : buf).toString("utf8")) as RawSnapshot;
   const snap = decode(raw);
   const meta = snap.meta as unknown as { asof: string; market_bull?: boolean };
+  let events: EventsFile = { asof: meta.asof, recent: [], conf: [] };
+  try {
+    const er = await getObject("site/events.json.gz");
+    if (er) {
+      const eb = Buffer.from(await er.arrayBuffer());
+      events = JSON.parse((eb[0] === 0x1f ? gunzipSync(eb) : eb).toString("utf8")) as EventsFile;
+    }
+  } catch { /* 沒有重大訊息檔就略過 notice 警報 */ }
   const idx = await getJson<{ users: string[] }>("alerts/users.json", { users: [] });
   const tgOn = !!botToken();
   const summary = { users: 0, notes: 0, telegram: 0, errors: 0 };
@@ -44,12 +52,21 @@ export async function POST(req: Request) {
         const pf = await getJson<{ portfolios: { positions: PortfolioPos[] }[] }>(userPath(h, "portfolio.json"), { portfolios: [] });
         positions = pf.portfolios.flatMap((p) => p.positions);
       }
+      const noticeScopes = new Set(active.filter((a) => a.kind === "notice").map((a) => a.scope ?? "watchlist"));
+      const scopeCodes: Record<string, string[]> = {};
+      if (noticeScopes.has("watchlist")) scopeCodes.watchlist = (await getJson<{ codes: string[] }>(userPath(h, "watchlist.json"), { codes: [] })).codes ?? [];
+      if (noticeScopes.has("portfolio")) {
+        const pf = await getJson<{ portfolios: { positions: PortfolioPos[] }[] }>(userPath(h, "portfolio.json"), { portfolios: [] });
+        scopeCodes.portfolio = [...new Set(pf.portfolios.flatMap((p) => p.positions.map((x) => x.code)))];
+      }
       const state = { ...(st.state ?? {}) };
       const fresh: Note[] = [];
       const tgLines: string[] = [];
       for (const a of active) {
         if (state[a.id]?.asof === meta.asof) continue;                 // 這個資料日已評估過
-        const r = evaluate(a, snap.rows, meta, state[a.id], positions);
+        const r = a.kind === "notice"
+          ? evaluateNotice(a, events, scopeCodes[a.scope ?? "watchlist"] ?? [], state[a.id], meta.asof)
+          : evaluate(a, snap.rows, meta, state[a.id], positions);
         state[a.id] = r.state;
         if (r.note) {
           fresh.push({ ...r.note, t: new Date().toISOString(), asof: meta.asof, alertId: a.id });

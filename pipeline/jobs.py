@@ -251,11 +251,15 @@ def refresh_reference(store: DataStore, fetcher: Fetcher) -> dict:
     def etf_info():
         return store.upsert_table("etf_info", openapi.parse_etf_info(fetcher.get_json(openapi.URLS["twse_etf"])), replace=True)
 
+    def events():
+        frames = [openapi.parse_events(fetcher.get_json(openapi.URLS[f"{m}_events"]), m.upper()) for m in ("twse", "tpex")]
+        return store.upsert_table("events", pd.concat(frames, ignore_index=True))
+
     def holders():
         return store.upsert_daily("holders", tdcc.parse(fetcher.get_text(tdcc.URL, delay=1)))
 
     for name, fn in (("holders", holders), ("revenue", revenue), ("income_periods", income_periods), ("qfii_tpex", tpex_qfii),
-                     ("securities", securities), ("company", company), ("delisting", delisting), ("etf_info", etf_info)):
+                     ("securities", securities), ("company", company), ("delisting", delisting), ("etf_info", etf_info), ("events", events)):
         safe(name, fn)
     return counts
 

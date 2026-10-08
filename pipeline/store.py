@@ -49,6 +49,7 @@ TABLE_KEYS = {
     "securities": ["code"],
     "company": ["code"],
     "etf_info": ["code"],
+    "events": ["code", "spoke_date", "spoke_time", "subject"],   # 重大訊息（每日累積，來源只給最近一天）
     "delisting": ["code"],
     "income_periods": ["code", "year", "quarter"],
 }

@@ -140,6 +140,7 @@ function AddForm({ q, hasPortfolio, onAdd }: { q: URLSearchParams; hasPortfolio:
   const [strategyId, setStrategyId] = useState(q.get("strategy") ?? STRATEGIES[0].id);
   const [screens, setScreens] = useState<{ name: string; query: string }[] | null>(null);
   const [screen, setScreen] = useState(q.get("screen") ?? "");
+  const [scope, setScope] = useState<"watchlist" | "portfolio">("watchlist");
   const [telegram, setTelegram] = useState(true);
   useEffect(() => {
     fetch("/api/me/screens").then((r) => r.json()).then((j) => setScreens(j.screens ?? [])).catch(() => setScreens([]));
@@ -156,6 +157,8 @@ function AddForm({ q, hasPortfolio, onAdd }: { q: URLSearchParams; hasPortfolio:
   } else if (kind === "screen" && screen) {
     const s = screens?.find((x) => x.query === screen);
     alert = { id: uid(), kind, name: (s?.name ?? "自訂篩選").slice(0, 40), enabled: true, telegram, query: screen };
+  } else if (kind === "notice") {
+    alert = { id: uid(), kind, name: scope === "portfolio" ? "持股重大訊息" : "自選股重大訊息", enabled: true, telegram, scope };
   } else if (kind === "portfolio" && !hasPortfolio) {
     alert = { id: uid(), kind, name: "持倉提醒", enabled: true, telegram };
   }
@@ -169,6 +172,7 @@ function AddForm({ q, hasPortfolio, onAdd }: { q: URLSearchParams; hasPortfolio:
           <option value="strategy">策略有新股票入選</option>
           <option value="screen">我的篩選組合有新股票符合</option>
           <option value="portfolio">投資組合到目標價／失效價</option>
+          <option value="notice">自選股／持股的重大訊息與法說會</option>
         </select>
       </label>
       {kind === "price" && (
@@ -209,6 +213,17 @@ function AddForm({ q, hasPortfolio, onAdd }: { q: URLSearchParams; hasPortfolio:
             </select>
           )}
         </label>
+      )}
+      {kind === "notice" && (
+        <div className="mt-2 space-y-2">
+          <label className="flex flex-col gap-1 text-xs text-muted">看哪一組
+            <select value={scope} onChange={(e) => setScope(e.target.value as "watchlist" | "portfolio")} className={input}>
+              <option value="watchlist">自選股</option>
+              <option value="portfolio">投資組合的持股</option>
+            </select>
+          </label>
+          <p className="text-xs text-muted">有新的重大訊息公告，或法說會在 3 天內舉行時通知，每則只通知一次。公告內容為公司自行申報，本站原文轉知，不做判斷。</p>
+        </div>
       )}
       {kind === "portfolio" && (
         <p className="mt-2 text-xs text-muted">{hasPortfolio ? "已經設定過持倉提醒了。" : "投資組合裡有設目標價或失效價的持股，收盤到價時通知。"}</p>

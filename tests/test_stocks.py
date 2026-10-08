@@ -49,3 +49,19 @@ def test_health_scores(fake, tmp_path):
     r = df[df["code"] == "2330"].iloc[0]
     assert 0 <= r["hs_profit"] <= 100 and r["big_pct"] == 80
     assert df[df["sec_type"] == "etf"]["health_score"].isna().all()
+
+
+def test_stock_events(fake, tmp_path):
+    from pipeline.sources import openapi
+    from tests.test_events import TWSE
+    s = _store(tmp_path, fake)
+    ev = openapi.parse_events(TWSE, "TWSE")
+    ev["code"] = "2330"                                  # 借用測試資料的代號
+    s.upsert_table("events", ev)
+    s.upsert_table("events", ev)                         # 重複寫入不應產生重複列
+    build_all(s, codes=["2330"], workers=1)
+    d = json.loads(gzip.decompress(s.st.get(f"{PREFIX}/2330.json.gz")))
+    e = d["events"]
+    assert len(e["recent"]) == 3 and e["recent"][0]["d"] == "2026-10-07"
+    assert {c["d"] for c in e["conf"]} == {"2026-10-15", "2026-10-13"}
+    assert e["conf"][0]["t"] in ("14:00", "09:00")

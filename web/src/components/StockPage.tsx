@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import DataStatus from "@/components/DataStatus";
 import Section from "@/components/Section";
-import { EtfInfoCard, EventStatsCard, HealthExplain, RiskCard, ValuationCard } from "@/components/StockRisk";
+import { EtfInfoCard, EventStatsCard, HealthExplain, NoticesCard, RiskCard, ValuationCard } from "@/components/StockRisk";
 import KChart from "@/components/KChart";
 import LivePanel, { liveLabel } from "@/components/LivePanel";
 import NewsList from "@/components/NewsList";
@@ -172,6 +172,7 @@ export default function StockPage({ code }: { code: string }) {
 
         {!isStock && row && <EtfInfoCard row={row} s={data} />}
         {data && <RiskCard s={data} row={row} />}
+        {isStock && data && <NoticesCard s={data} />}
         {isStock && data && row && <ValuationCard s={data} row={row} />}
         {isStock && snap && row && <HealthCard rows={snap.rows} row={row} code={code} s={data} />}
         {data && <ChipsCard s={data} row={row} />}

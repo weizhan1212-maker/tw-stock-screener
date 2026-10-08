@@ -1,4 +1,7 @@
 """證交所／櫃買 OpenAPI：公司基本資料、月營收（最新一期）、季報公布偵測、櫃買外資持股（最新）。"""
+import datetime as dt
+import re
+
 import pandas as pd
 
 from ..util import clean_code, roc_to_date, security_type, to_num
@@ -16,6 +19,8 @@ URLS = {
     "tpex_qfii": f"{TPEX_OA}/tpex_3insti_qfii",
     "twse_holiday": f"{TWSE_OA}/holidaySchedule/holidaySchedule",
     "twse_etf": f"{TWSE_OA}/opendata/t187ap47_L",          # 基金（ETF）基本資料彙總表
+    "twse_events": f"{TWSE_OA}/opendata/t187ap04_L",       # 上市公司每日重大訊息（只有最近一個發言日）
+    "tpex_events": f"{TPEX_OA}/mopsfin_t187ap04_O",        # 上櫃公司每日重大訊息
 }
 
 
@@ -120,3 +125,55 @@ def parse_holidays(rows) -> set:
         if d:
             out.add(d)
     return out
+
+
+_CONF_DATE = re.compile(r"召開法人說明會之日期[:：]\s*(\d{2,3})/(\d{1,2})/(\d{1,2})")
+_CONF_TIME = re.compile(r"召開法人說明會之時間[:：]\s*(\d{1,2})\s*時\s*(\d{1,2})?")
+
+
+def parse_events(rows, market: str, body_max: int = 1500) -> pd.DataFrame:
+    """每日重大訊息。第 12 款＝法人說明會：從說明文字解析開會日期與時間（多日行程取第一天）。
+    欄位名稱上市／上櫃不同，且上市的「主旨」key 有尾端空白。"""
+    recs = []
+    for r in rows or []:
+        code = clean_code(_g(r, "公司代號", "SecuritiesCompanyCode"))
+        if security_type(code) != "stock":
+            continue
+        spoke = roc_to_date(_g(r, "發言日期"))
+        if spoke is None:
+            continue
+        subject = re.sub(r"\s+", " ", str(_g(r, "主旨 ", "主旨") or "")).strip()
+        clause_m = re.search(r"(\d+)", str(_g(r, "符合條款") or ""))
+        clause = int(clause_m.group(1)) if clause_m else None
+        body = str(_g(r, "說明") or "").replace("\r", "").strip()
+        fact = None
+        try:
+            fact = roc_to_date(_g(r, "事實發生日"))
+        except ValueError:
+            pass
+        conf_date = conf_time = None
+        if clause == 12:
+            m = _CONF_DATE.search(body)
+            if m:
+                y, mo, d = map(int, m.groups())
+                try:
+                    conf_date = dt.date(y + 1911, mo, d)
+                except ValueError:
+                    conf_date = None
+            conf_date = conf_date or fact
+            t = _CONF_TIME.search(body)
+            if t:
+                conf_time = f"{int(t.group(1)):02d}:{int(t.group(2) or 0):02d}"
+        recs.append({
+            "code": code, "market": market,
+            "name": str(_g(r, "公司名稱", "CompanyName") or "").strip(),
+            "spoke_date": pd.Timestamp(spoke),
+            "spoke_time": str(_g(r, "發言時間") or "").strip().zfill(6),
+            "subject": subject, "clause": clause,
+            "fact_date": pd.Timestamp(fact) if fact else pd.NaT,
+            "is_conf": clause == 12,
+            "conf_date": pd.Timestamp(conf_date) if conf_date else pd.NaT,
+            "conf_time": conf_time,
+            "body": body[:body_max],
+        })
+    return pd.DataFrame.from_records(recs)

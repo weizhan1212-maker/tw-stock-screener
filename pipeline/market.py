@@ -487,3 +487,30 @@ def write_market(store: DataStore, data: dict) -> int:
     raw = gzip.compress(json.dumps(data, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
     store.st.put(MARKET_PATH, raw, "application/gzip")
     return len(raw)
+
+
+# ---------------- 重大訊息檔（警報用，體積小） ----------------
+
+EVENTS_PATH = "site/events.json.gz"
+
+
+def build_events(store: DataStore, asof=None, days: int = 7) -> dict:
+    """近 days 天的重大訊息（只留代號、日期、主旨、條款）＋已知的未來法說會，網站警報評估用。"""
+    ev = store.read_table("events")
+    asof = pd.Timestamp(asof) if asof is not None else pd.Timestamp(util.today_tw())
+    out = {"asof": asof.strftime("%Y-%m-%d"), "recent": [], "conf": []}
+    if ev.empty:
+        return out
+    d0 = lambda x: x.strftime("%Y-%m-%d") if isinstance(x, pd.Timestamp) and not pd.isna(x) else None  # noqa: E731
+    rec = ev[ev["spoke_date"] >= asof - pd.Timedelta(days=days)].sort_values(["spoke_date", "spoke_time"], ascending=False)
+    out["recent"] = [{"code": r.code, "name": r.name, "d": d0(r.spoke_date), "t": f"{r.spoke_time[:2]}:{r.spoke_time[2:4]}",
+                      "s": r.subject[:120], "c": None if pd.isna(r.clause) else int(r.clause)} for r in rec.itertuples(index=False)]
+    cf = ev[ev["is_conf"] & ev["conf_date"].notna() & (ev["conf_date"] >= asof.normalize())].sort_values("conf_date")
+    out["conf"] = [{"code": r.code, "name": r.name, "d": d0(r.conf_date), "t": r.conf_time or None} for r in cf.itertuples(index=False)]
+    return out
+
+
+def write_events(store: DataStore, data: dict) -> int:
+    raw = gzip.compress(json.dumps(data, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+    store.st.put(EVENTS_PATH, raw, "application/gzip")
+    return len(raw)

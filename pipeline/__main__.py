@@ -78,11 +78,12 @@ def main(argv=None):
         jobs.summary(f"## 個股檔\n\n{res['count']} 檔，平均 {res['avg_kb']} KB，合計 {res['total_mb']} MB，失敗 {res['n_failed']} 檔")
     elif a.cmd == "market":
         from .market import build_market, write_market
-        from .market import build_indices, write_indices
+        from .market import build_indices, build_events, write_events, write_indices
         data = build_market(store)
+        esize = write_events(store, build_events(store, data["asof"]))
         size = write_market(store, data)
         isize = write_indices(store, build_indices(store))
-        log_ind = f"，指數歷史 {isize / 1024:.0f} KB"
+        log_ind = f"，指數歷史 {isize / 1024:.0f} KB，重大訊息 {esize / 1024:.0f} KB"
         jobs.summary(f"## 市場總覽\n\n資料日 {data['asof']}，指數 {len(data.get('indices', []))} 項，{size / 1024:.0f} KB{log_ind}")
     elif a.cmd == "backfill-extras":
         from .market import backfill_extras

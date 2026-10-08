@@ -39,6 +39,9 @@ export function upcomingEvents(s: StockFile, today = todayStr()): Ev[] {
   for (const d of s.dividends ?? []) {
     if (d.ex && d.ex >= today) out.push({ date: d.ex, label: "除權息", note: `現金 ${f(d.cash)} 元${d.stock ? `、股票 ${f(d.stock)} 元` : ""}` });
   }
+  for (const c of s.events?.conf ?? []) {
+    if (c.d >= today) out.push({ date: c.d, label: "法人說明會", note: `${c.t ? `${c.t}・` : ""}${c.s}` });
+  }
   const [y, m, day] = today.split("-").map(Number);
   const rev = day <= 10 ? `${y}-${String(m).padStart(2, "0")}-10` : m === 12 ? `${y + 1}-01-10` : `${y}-${String(m + 1).padStart(2, "0")}-10`;
   out.push({ date: rev, label: "月營收公布期限", note: "多數公司在 10 日前公布上個月營收" });
@@ -150,7 +153,7 @@ export function RiskCard({ s, row }: { s: StockFile; row?: Row }) {
           })}
         </ul>
         <p className="mt-1 text-xs text-muted">
-          除權息為已公告的日期；{isEtf ? "ETF 沒有月營收與財報，請以投信公告為準；" : ""}法說會與重大訊息目前沒有可合法自動取得的資料來源，請到公開資訊觀測站查詢。
+          除權息為已公告的日期；{isEtf ? "ETF 沒有月營收與財報，請以投信公告為準；" : ""}法人說明會取自公司的重大訊息公告，上線前已公告的場次可能沒有，請到公開資訊觀測站確認。
         </p>
       </div>
     </Section>
@@ -485,6 +488,44 @@ export function eventStats(s: StockFile) {
     revenue: [statOf("營收年增 ≥ 20%", grp.up), statOf("年增 0～20%", grp.flat), statOf("營收衰退", grp.down)],
     quarter: [statOf("EPS 比去年同季成長", qg.up), statOf("EPS 比去年同季衰退", qg.down)],
   };
+}
+
+/** 重大訊息：證交所／櫃買中心每日開放資料，每天累積。第 12 款是法人說明會。 */
+export function NoticesCard({ s }: { s: StockFile }) {
+  const ev = s.events;
+  const today = todayStr();
+  const upcoming = (ev?.conf ?? []).filter((c) => c.d >= today).sort((a, b) => a.d.localeCompare(b.d));
+  return (
+    <Section id="notices" title="重大訊息" note="證交所、櫃買中心每日公告的開放資料；只有本站上線後累積的部分，完整歷史請到公開資訊觀測站">
+      {upcoming.length > 0 && (
+        <div className="mb-3 rounded-md bg-accent-soft px-3 py-2 text-sm">
+          <b className="text-ink">即將舉行的法人說明會：</b>
+          {upcoming.map((c) => (
+            <span key={c.d + c.s} className="ml-2 inline-block"><span className="num font-bold text-ink">{c.d}{c.t ? ` ${c.t}` : ""}</span><span className="ml-1 text-xs text-muted">（{daysBetween(today, c.d)} 天後）</span></span>
+          ))}
+        </div>
+      )}
+      {!ev || ev.recent.length === 0 ? (
+        <p className="text-sm text-muted">目前沒有累積到這檔股票的重大訊息（本站每日自動累積，之後有公告就會出現在這裡）。</p>
+      ) : (
+        <ul className="divide-y divide-line text-sm">
+          {ev.recent.map((e, i) => (
+            <li key={`${e.d}${e.t}${i}`} className="py-2">
+              <details className="group">
+                <summary className="flex cursor-pointer list-none flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                  <span className="num w-[7.5rem] shrink-0 text-xs text-muted">{e.d} {e.t}</span>
+                  <span className="min-w-0 flex-1 text-ink">{e.c === 12 && <span className="mr-1.5 rounded bg-accent-soft px-1.5 py-0.5 text-xs text-accent">法說會</span>}{e.s}</span>
+                  <span className="text-xs text-muted group-open:hidden">展開</span>
+                </summary>
+                {e.b && <p className="mt-2 whitespace-pre-line rounded-md bg-surface-2 p-3 text-xs leading-relaxed text-ink">{e.b}{e.b.length >= 600 ? "…（全文請見公開資訊觀測站）" : ""}</p>}
+              </details>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="mt-2 text-xs text-muted">公告內容為公司自行申報，本站只原文呈現，不做利多利空判斷，也不構成投資建議。</p>
+    </Section>
+  );
 }
 
 export function EventStatsCard({ s }: { s: StockFile }) {
