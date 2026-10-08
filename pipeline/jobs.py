@@ -160,6 +160,15 @@ def _holidays(fetcher: Fetcher) -> set:
         return set()
 
 
+def save_days(store: DataStore, updates: dict):
+    """只寫回這次動到的日期：先讀最新狀態再合併，避免每日任務與歷史回補同時跑時互相蓋掉。"""
+    if not updates:
+        return
+    cur = store.get_state("days", {})
+    cur.update(updates)
+    store.put_state("days", cur)
+
+
 # ---------------- 每日任務 ----------------
 
 def run_daily(store: DataStore, fetcher: Fetcher, lookback_days: int = 10, today: dt.date | None = None):
@@ -168,20 +177,21 @@ def run_daily(store: DataStore, fetcher: Fetcher, lookback_days: int = 10, today
     state = store.get_state("days", {})
     frames: dict = {}
     touched = []
+    updates: dict = {}
     for i in range(lookback_days, -1, -1):
         d = today - dt.timedelta(days=i)
         key = d.isoformat()
         if d.weekday() >= 5 or day_complete(state.get(key)):
             continue
         st, fr = fetch_day(fetcher, d, state.get(key), d == today, holidays)
-        state[key] = st
+        state[key] = updates[key] = st
         if fr:
             for k, v in fr.items():
                 frames.setdefault(k, []).extend(v)
             touched.append(d)
         log.info("%s → %s", key, st)
     counts = flush(store, frames)
-    store.put_state("days", state)
+    save_days(store, updates)
 
     if touched:
         lo, hi = min(touched), max(touched)
@@ -300,7 +310,8 @@ def run_backfill_daily(store: DataStore, fetcher: Fetcher, years: int = 4, budge
     while m <= today:
         nxt = (m.replace(day=28) + dt.timedelta(days=4)).replace(day=1)
         key = m.strftime("%Y-%m")
-        if key not in done_months or nxt > today - dt.timedelta(days=40):
+        # 最近 40 天內的月份由每日任務負責，回補不碰，避免同時寫同一個檔
+        if key not in done_months and nxt <= today - dt.timedelta(days=40):
             try:
                 fetch_twse_exright(fetcher, store, m, min(nxt - dt.timedelta(days=1), today))
                 done_months.add(key)
@@ -315,21 +326,22 @@ def run_backfill_daily(store: DataStore, fetcher: Fetcher, years: int = 4, budge
     before = len(todo)
     log.info("待回補 %d 天（%s ~ %s）", len(todo), start, today)
     frames: dict = {}
+    updates: dict = {}
     processed = 0
     for d in todo:
         if (time.monotonic() - t0) / 60 > budget_min or (max_days and processed >= max_days):
             break
         st, fr = fetch_day(fetcher, d, state.get(d.isoformat()), False, holidays)
-        state[d.isoformat()] = st
+        state[d.isoformat()] = updates[d.isoformat()] = st
         for k, v in fr.items():
             frames.setdefault(k, []).extend(v)
         processed += 1
         if processed % flush_every == 0:
             flush(store, frames)
-            store.put_state("days", state)
+            save_days(store, updates)
             log.info("已處理 %d / %d 天，耗時 %.1f 分", processed, len(todo), (time.monotonic() - t0) / 60)
     flush(store, frames)
-    store.put_state("days", state)
+    save_days(store, updates)
 
     remaining = sum(1 for d in dates if d.weekday() < 5 and not day_complete(state.get(d.isoformat())))
     if remaining == 0:
@@ -374,11 +386,12 @@ def run_backfill_finmind(store: DataStore, fetcher: Fetcher, years: int = 8, bud
     # 回測期間內下市的公司也要（避免倖存者偏差）
     dl = store.read_table("delisting")
     if not dl.empty:
-        cutoff = pd.Timestamp(today - dt.timedelta(days=int(365.25 * 4) + 30))
+        cutoff = pd.Timestamp(today - dt.timedelta(days=int(365.25 * min(years, 10.5)) + 30))
         extra = dl[(dl["delisted_date"] >= cutoff) & (dl["code"].str.fullmatch(r"[1-9]\d{3}"))]["code"]
         codes = sorted(set(codes) | set(extra))
 
-    state = store.get_state("finmind_backfill", {})
+    skey = "finmind_backfill" if years <= 8 else f"finmind_backfill_{int(years)}y"   # 延長年數另記進度，整批重抓
+    state = store.get_state(skey, {})
     state.pop("_complete", None)
     todo = [c for c in codes if not all(k in state.get(c, []) for k in kinds)]
     before = len(todo)
@@ -391,7 +404,7 @@ def run_backfill_finmind(store: DataStore, fetcher: Fetcher, years: int = 8, bud
             if parts:
                 store.upsert_table(k, pd.concat(parts, ignore_index=True))
                 parts.clear()
-        store.put_state("finmind_backfill", state)
+        store.put_state(skey, state)
 
     for code in todo:
         if (time.monotonic() - t0) / 60 > budget_min or (max_codes and processed >= max_codes):

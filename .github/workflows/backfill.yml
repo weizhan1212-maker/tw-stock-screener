@@ -15,9 +15,13 @@ on:
       chain:
         description: "跑不完是否自動接力（true/false）"
         default: "false"
+      years:
+        description: "回補年數（daily 預設 4、finmind 預設 8；10 年回測用 daily=10.2、finmind=11）"
+        default: ""
 
 concurrency:
-  group: ${{ github.event.inputs.job == 'finmind' && 'backfill-finmind' || 'pipeline-days' }}
+  # 日資料回補用自己的群組，不會卡住每日更新（狀態檔已改成合併寫入）
+  group: ${{ github.event.inputs.job == 'finmind' && 'backfill-finmind' || (github.event.inputs.job == 'daily' && 'backfill-daily' || 'pipeline-days') }}
   cancel-in-progress: false
 
 permissions:
@@ -57,12 +61,12 @@ jobs:
         if: github.event.inputs.job == 'daily'
         run: |
           set -o pipefail
-          python -m pipeline backfill-daily --budget-min 320 ${{ github.event.inputs.chain == 'true' && '--chain' || '' }} 2>&1 | tee -a run.log
+          python -m pipeline backfill-daily --budget-min 320 ${{ github.event.inputs.years != '' && format('--years {0}', github.event.inputs.years) || '' }} ${{ github.event.inputs.chain == 'true' && '--chain' || '' }} 2>&1 | tee -a run.log
       - name: FinMind 回補
         if: github.event.inputs.job == 'finmind'
         run: |
           set -o pipefail
-          python -m pipeline backfill-finmind --budget-min 320 ${{ github.event.inputs.chain == 'true' && '--chain' || '' }} 2>&1 | tee -a run.log
+          python -m pipeline backfill-finmind --budget-min 320 ${{ github.event.inputs.years != '' && format('--years {0}', github.event.inputs.years) || '' }} ${{ github.event.inputs.chain == 'true' && '--chain' || '' }} 2>&1 | tee -a run.log
       - name: 指數歷史回補
         if: github.event.inputs.job == 'indices'
         run: |

@@ -58,12 +58,12 @@ def main(argv=None):
         before, left = jobs.run_backfill_daily(store, fetcher, years=a.years, budget_min=a.budget_min,
                                                max_days=a.max_days)
         if left and a.chain and left < before:     # 有進度才接力，避免卡在永遠失敗的日期
-            jobs.redispatch("backfill.yml", {"job": "daily", "chain": "true"})
+            jobs.redispatch("backfill.yml", {"job": "daily", "chain": "true", "years": f"{a.years:g}"})
     elif a.cmd == "backfill-finmind":
         before, left = jobs.run_backfill_finmind(store, fetcher, years=a.years, budget_min=a.budget_min,
                                                  max_codes=a.max_codes)
         if left and a.chain and left < before:
-            jobs.redispatch("backfill.yml", {"job": "finmind", "chain": "true"})
+            jobs.redispatch("backfill.yml", {"job": "finmind", "chain": "true", "years": f"{a.years:g}"})
     elif a.cmd == "report":
         from .report import run_report
         run_report(store)
