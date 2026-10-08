@@ -144,7 +144,7 @@ export default function AboutPage() {
               </Reveal>
               <Reveal delay={80}>
                 <h1 className="mt-6 text-[32px] font-semibold leading-[1.15] tracking-[-0.03em] sm:text-[48px] lg:text-[56px]">
-                  <span className="lp-grad">台股盤後資料，<br />整理成</span><span className="lp-shimmer">看得懂</span><span className="lp-grad">的<wbr />選股工具</span>
+                  <span className="lp-grad">台股盤後資料<br /></span><span className="lp-shimmer">看得懂</span><span className="lp-grad">的選股工具</span>
                 </h1>
               </Reveal>
               <Reveal delay={160}>
