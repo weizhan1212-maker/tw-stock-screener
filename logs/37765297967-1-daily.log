@@ -1,0 +1,28 @@
+2026-10-08 10:47:17,471 INFO 2026-10-08 → {'twse_quotes': 'ok', 'tpex_quotes': 'ok', 'twse_insti': 'ok', 'tpex_insti': 'ok', 'twse_margin': 'pending', 'tpex_margin': 'pending', 'twse_valuation': 'ok', 'tpex_valuation': 'ok', 'twse_qfii': 'pending'}
+2026-10-08 10:48:22,155 INFO ## 每日任務 2026-10-08
+
+| 日期 | 狀態 |
+|---|---|
+| 2026-09-28 | 休市 |
+| 2026-09-29 | 完成 |
+| 2026-09-30 | 完成 |
+| 2026-10-01 | 完成 |
+| 2026-10-02 | 完成 |
+| 2026-10-05 | 完成 |
+| 2026-10-06 | 完成 |
+| 2026-10-07 | 完成 |
+| 2026-10-08 | {'twse_quotes': 'ok', 'tpex_quotes': 'ok', 'twse_insti': 'ok', 'tpex_insti': 'ok', 'twse_margin': 'pending', 'tpex_margin': 'pending', 'twse_valuation': 'ok', 'tpex_valuation': 'ok', 'twse_qfii': 'pending'} |
+
+寫入筆數：prices=1004, insti=2190, valuation=1967, exright_twse=15, exright_tpex=11, holders=3323, revenue=1977, income_periods=1934, qfii_tpex=886, securities=2420, company=1982, delisting=706, etf_info=271, events=105, extras_business_light=512, extras_pcr=21, extras_fut_large=1, extras_fut_insti=1, extras_fx=25, extras_taiex_ohlc=6, extras_dca_rank=40, extras_tpex_insti=1, extras_tpex_daytrade=5, extras_tpex_sbl=932, extras_tpex_block=8, extras_futures=2, extras_tpex_index=6, extras_twse_extra_days=0
+2026-10-08 10:49:27,310 INFO 快照：2355 檔、136 欄，壓縮後 783 KB
+2026-10-08 10:49:27,316 INFO ## 篩選快照
+
+資料日 2026-10-08，2355 檔，136 欄
+2026-10-08 10:50:28,871 INFO ## 市場總覽
+
+資料日 2026-10-08，指數 10 項，5 KB，指數歷史 192 KB，重大訊息 5 KB
+2026-10-08 10:53:09,386 INFO 個股檔：{'asof': '2026-10-08', 'count': 2341, 'failed': [], 'n_failed': 0, 'avg_kb': 15.6, 'total_mb': 35.6}
+2026-10-08 10:53:09,443 INFO ## 個股檔
+
+2341 檔，平均 15.6 KB，合計 35.6 MB，失敗 0 檔
+{"asof":"2026-10-08","full":false,"users":0,"notes":0,"telegram":0,"tgFailed":0,"errors":0}
