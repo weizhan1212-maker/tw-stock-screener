@@ -122,3 +122,17 @@ def main_industry(code, raw) -> str | None:
         return None
     core = [p for p in parts if p not in _IND_THEME]
     return (core or parts)[0]
+
+
+# 一天要「行情、三大法人、本益比」上市櫃都到齊才算可發布；避免盤中提早公布的上市行情讓網站顯示半套資料
+READY_TASKS = ("twse_quotes", "tpex_quotes", "twse_insti", "tpex_insti", "twse_valuation", "tpex_valuation")
+_DONE = {"ok", "missing", "holiday"}
+
+
+def latest_ready_day(days: dict) -> str | None:
+    ready = [d for d, s in days.items() if isinstance(s, dict) and all(s.get(t) in _DONE for t in READY_TASKS)
+             and s.get("twse_quotes") == "ok"]
+    if ready:
+        return max(ready)
+    quotes = [d for d, s in days.items() if isinstance(s, dict) and s.get("twse_quotes") == "ok"]
+    return max(quotes) if quotes else None

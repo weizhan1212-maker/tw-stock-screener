@@ -238,8 +238,7 @@ def build_indices(store: DataStore, asof=None) -> dict:
     """指數詳細頁用：每個指數 4 年收盤（加權指數含開高低收）、台指期近月（一般／盤後）。"""
     days = store.get_state("days", {})
     if asof is None:
-        done = [d for d, s in days.items() if isinstance(s, dict) and s.get("twse_quotes") == "ok"]
-        asof = max(done)
+        asof = util.latest_ready_day(days)
     asof = pd.Timestamp(asof)
     start = asof - pd.Timedelta(days=int(365.25 * 4) + 10)
     out: dict = {"asof": asof.strftime("%Y-%m-%d"), "series": {}}
@@ -296,8 +295,7 @@ def _num(v):
 def build_market(store: DataStore, asof=None) -> dict:
     days = store.get_state("days", {})
     if asof is None:
-        done = [d for d, s in days.items() if isinstance(s, dict) and s.get("twse_quotes") == "ok"]
-        asof = max(done)
+        asof = util.latest_ready_day(days)
     asof = pd.Timestamp(asof)
     start = asof - pd.Timedelta(days=120)
     out: dict = {"asof": asof.strftime("%Y-%m-%d"), "generated_at": util.now_tw().isoformat(timespec="seconds")}

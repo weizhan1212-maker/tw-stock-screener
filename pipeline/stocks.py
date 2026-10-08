@@ -182,8 +182,7 @@ def build_one(code: str, d: pd.DataFrame, parts: dict, info: dict, asof: str) ->
 def build_all(store: DataStore, asof=None, codes: list[str] | None = None, workers: int = 8) -> dict:
     days = store.get_state("days", {})
     if asof is None:
-        done = [d for d, s in days.items() if isinstance(s, dict) and s.get("twse_quotes") == "ok"]
-        asof = max(done) if done else util.today_tw().isoformat()
+        asof = util.latest_ready_day(days) or util.today_tw().isoformat()
     asof = pd.Timestamp(asof)
     inp = load_inputs(store, asof)
     daily = inp["daily"]

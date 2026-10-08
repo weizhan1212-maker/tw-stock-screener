@@ -294,8 +294,7 @@ def fundamentals(store: DataStore, asof: pd.Timestamp) -> pd.DataFrame:
 def build_snapshot(store: DataStore, asof=None, lookback_days: int = 420) -> tuple[pd.DataFrame, dict]:
     days = store.get_state("days", {})
     if asof is None:
-        done = [d for d, s in days.items() if isinstance(s, dict) and s.get("twse_quotes") == "ok"]
-        asof = max(done) if done else util.today_tw().isoformat()
+        asof = util.latest_ready_day(days) or util.today_tw().isoformat()
     asof = pd.Timestamp(asof)
     start = asof - pd.Timedelta(days=lookback_days)
 

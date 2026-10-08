@@ -146,3 +146,14 @@ def test_fin_refresh_skips_recently_tried(fake, tmp_path):
     fake.calls.clear()
     jobs.run_fin_refresh(s, fake)
     assert not fake.calls
+
+
+def test_latest_ready_day():
+    from pipeline.util import latest_ready_day
+    full = {t: "ok" for t in ("twse_quotes", "tpex_quotes", "twse_insti", "tpex_insti", "twse_margin", "tpex_margin",
+                              "twse_valuation", "tpex_valuation", "twse_qfii")}
+    partial = {**{k: "pending" for k in full}, "twse_quotes": "ok"}      # 盤中只拿到上市行情
+    assert latest_ready_day({"2026-10-07": full, "2026-10-08": partial}) == "2026-10-07"
+    assert latest_ready_day({"2026-10-07": full, "2026-10-08": {**full, "twse_margin": "pending"}}) == "2026-10-08"
+    assert latest_ready_day({"2026-10-08": partial}) == "2026-10-08"     # 沒有完整日時退回有行情的最新日
+    assert latest_ready_day({}) is None
