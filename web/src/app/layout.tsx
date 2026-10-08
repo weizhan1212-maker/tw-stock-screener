@@ -3,6 +3,7 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import StockSearch from "@/components/StockSearch";
 import ThemeToggle from "@/components/ThemeToggle";
+import { NavTracker } from "@/components/BackLink";
 import HideOnAbout from "@/components/HideOnAbout";
 import UserMenu from "@/components/UserMenu";
 import "./globals.css";
@@ -82,6 +83,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           </div>
         </header>
         </HideOnAbout>
+        <NavTracker />
         <main className="flex-1">{children}</main>
         <HideOnAbout>
         <footer className="border-t border-line px-4 py-4 text-center text-xs leading-relaxed text-muted">

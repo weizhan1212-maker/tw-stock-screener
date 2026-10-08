@@ -2,6 +2,7 @@
 
 /** 個股頁：報價、焦點標籤、K 線、多空、支撐壓力、財務健康、籌碼、營收、財報、股利、大戶。 */
 import Link from "next/link";
+import BackLink from "@/components/BackLink";
 import { useEffect, useMemo, useState } from "react";
 import DataStatus from "@/components/DataStatus";
 import Section from "@/components/Section";
@@ -72,7 +73,7 @@ export default function StockPage({ code }: { code: string }) {
 
   return (
     <div className="mx-auto max-w-[1200px] px-4 py-5">
-      <nav className="mb-2 text-sm"><Link href="/screener" className="text-muted hover:text-ink">← 自訂篩選</Link></nav>
+      <nav className="mb-2 text-sm"><BackLink fallback="/" fallbackLabel="策略選股" /></nav>
 
       {/* 標頭 */}
       <div className="flex flex-wrap items-end gap-x-6 gap-y-3">

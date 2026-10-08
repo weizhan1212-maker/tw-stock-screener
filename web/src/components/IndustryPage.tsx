@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import BackLink from "@/components/BackLink";
 import { useUrlState } from "@/hooks/useUrlState";
 import { useEffect, useMemo, useState } from "react";
 import DataStatus from "@/components/DataStatus";
@@ -31,7 +32,7 @@ export default function IndustryPage({ name }: { name: string }) {
 
   return (
     <div className="mx-auto max-w-[1440px] px-4 py-5">
-      <nav className="mb-2 text-sm"><Link href="/industry" className="text-muted hover:text-ink">← 產業</Link></nav>
+      <nav className="mb-2 text-sm"><BackLink fallback="/industry" fallbackLabel="產業" /></nav>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <h1 className="text-2xl font-bold text-ink">{name}</h1>
         <DataStatus snap={snap} error={error} />

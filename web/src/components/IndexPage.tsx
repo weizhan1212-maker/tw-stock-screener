@@ -2,7 +2,7 @@
 
 /** 指數詳細頁：走勢圖（加權指數為 K 線，其他為收盤線）、期間漲跌、成分／產業股票列表。 */
 import { AreaSeries, CandlestickSeries, ColorType, createChart, type Time } from "lightweight-charts";
-import Link from "next/link";
+import BackLink from "@/components/BackLink";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import DataStatus from "@/components/DataStatus";
@@ -121,7 +121,7 @@ export default function IndexPage({ name: asked }: { name: string }) {
 
   return (
     <div className="mx-auto max-w-[1200px] px-4 py-5">
-      <nav className="mb-2 text-sm"><Link href="/market" className="text-muted hover:text-ink">← 市場總覽</Link></nav>
+      <nav className="mb-2 text-sm"><BackLink fallback="/market" fallbackLabel="市場總覽" /></nav>
       <div className="flex flex-wrap items-end gap-x-5 gap-y-2">
         <h1 className="text-2xl font-bold text-ink">{label(name)}</h1>
         {stats && (
