@@ -1,0 +1,64 @@
+2026-10-08 10:53:49,111 INFO ## 使用者資料搬移（selftest）
+
+{'A 狀態（應為 approved）': 'approved', '新登入筆數（應為 20）': 20, '警報名單（應為 2）': 2, '通過': True}
+{'A 狀態（應為 approved）': 'approved', '新登入筆數（應為 20）': 20, '警報名單（應為 2）': 2, '通過': True}
+2026-10-08 10:58:26,041 INFO ## 資料檢查報告
+
+### 日資料
+
+| 資料集 | 月份數 | 總筆數 | 日期範圍 | 近 20 日每日檔數（最少/中位/最多） | 缺值比例 |
+|---|---|---|---|---|---|
+| prices | 55 | 2,320,125 | 2022-04-13 ~ 2026-10-08 | 2328/2331/2336 | close=1.0%, volume=0.0% |
+| insti | 55 | 2,161,091 | 2022-04-13 ~ 2026-10-08 | 2188/2210/2231 | foreign=0.0%, trust=0.0%, dealer=0.0% |
+| margin | 55 | 2,155,356 | 2022-04-13 ~ 2026-10-07 | 2211/2212/2213 | margin_balance=0.0%, short_balance=0.0% |
+| valuation | 55 | 2,017,260 | 2022-04-13 ~ 2026-10-08 | 1965/1968/1973 | pe=22.9%, pb=0.0%, dividend_yield=0.0% |
+| qfii | 56 | 1,308,846 | 2022-04-13 ~ 2026-10-08 | 886/1329/2222 | foreign_ratio=0.0% |
+| exright | 124 | 14,991 | 2016-07-01 ~ 2026-10-08 | 1/7/54 | prev_close=0.0%, ref_price=0.0% |
+| index | 56 | 1,106 | 2022-03-23 ~ 2026-10-08 | 1/1/1 | taiex=0.0%, taiex_tr=0.0% |
+| holders | 1 | 3,323 | 2026-10-02 ~ 2026-10-02 | 3323/3323/3323 |  |
+| taiex_ohlc | 49 | 973 | 2022-10-03 ~ 2026-10-08 | 1/1/1 |  |
+| indices | 56 | 61,409 | 2022-03-23 ~ 2026-10-08 | 57/57/57 |  |
+| margin_total | 12 | 202 | 2022-03-23 ~ 2026-10-07 | 1/1/1 |  |
+| market_insti | 5 | 77 | 2026-06-24 ~ 2026-10-08 | 1/1/2 |  |
+| daytrade | 5 | 88,891 | 2026-06-24 ~ 2026-10-07 | 1223/1230/1233 |  |
+| daytrade_total | 5 | 78 | 2026-06-24 ~ 2026-10-07 | 1/1/2 |  |
+| sbl | 5 | 97,929 | 2026-06-24 ~ 2026-10-07 | 1296/1296/2228 |  |
+| block | 5 | 1,353 | 2026-06-24 ~ 2026-10-08 | 8/20/30 |  |
+| futures | 1 | 8 | 2026-10-02 ~ 2026-10-07 | 2/2/2 |  |
+| pcr | 2 | 21 | 2026-09-07 ~ 2026-10-07 | 1/1/1 |  |
+| fut_large | 1 | 2 | 2026-10-06 ~ 2026-10-07 | 1/1/1 |  |
+| fut_insti | 1 | 2 | 2026-10-06 ~ 2026-10-07 | 1/1/1 |  |
+| fx | 2 | 25 | 2026-09-01 ~ 2026-10-07 | 1/1/1 |  |
+
+### 其他表
+
+| 表 | 筆數 | 檔數 |
+|---|---|---|
+| income | 951,004 | 2055 |
+| balance | 2,487,514 | 2069 |
+| cashflow | 1,442,873 | 2057 |
+| revenue | 182,986 | 1891 |
+| revenue_latest | 1,977 | 1977 |
+| dividend | 13,203 | 1861 |
+| securities | 2,420 | 2420 |
+| company | 1,982 | 1982 |
+| etf_info | 271 | 271 |
+| events | 105 | 82 |
+| delisting | 706 | 706 |
+| income_periods | 1,934 | 1934 |
+
+### 回補進度
+
+- 日資料：完成 1100 個交易日、休市 81 天、未完成 6 天、有缺漏端點 0 天
+- FinMind：完成 1997 檔（全部完成：True）
+- 季報補抓佇列：0 檔
+- 未完成範例：2026-10-08: {'twse_quotes': 'ok', 'tpex_quotes': 'ok', 'twse_insti': 'ok', 'tpex_insti': 'ok', 'twse_margin': 'pending', 'tpex_margin': 'pending', 'twse_valuation': 'ok', 'tpex_valuation': 'ok', 'twse_qfii': 'pending'}；2022-07-01: {'twse_quotes': 'ok', 'tpex_quotes': 'ok', 'twse_insti': 'ok', 'tpex_insti': 'ok', 'twse_margin': 'ok', 'tpex_margin': 'ok', 'twse_valuation': 'ok', 'tpex_valuation': 'ok', '_tries': 1, 'twse_qfii': "error:https://www.twse.com.tw/rwd/zh/fund/MI_QFIIS {'date': '20220701', 'selectType': 'ALLBUT0999', 'response': 'json'}: HTTPSConnectionPool(host='www.twse.com.tw', port=443): Read timed out. (read ti"}；2022-06-29: {'twse_quotes': 'ok', 'tpex_quotes': 'ok', 'twse_insti': 'ok', 'tpex_insti': 'ok', 'twse_margin': 'ok', 'tpex_margin': 'ok', '_tries': 1, 'twse_valuation': "error:https://www.twse.com.tw/rwd/zh/afterTrading/BWIBBU_d {'date': '20220629', 'selectType': 'ALL', 'response': 'json'}: HTTPSConnectionPool(host='www.twse.com.tw', port=443): Read timed out. (read t", 'tpex_valuation': 'ok', 'twse_qfii': 'ok'}；2022-06-23: {'twse_quotes': 'ok', 'tpex_quotes': 'ok', 'twse_insti': 'ok', 'tpex_insti': 'ok', 'twse_margin': 'ok', 'tpex_margin': 'ok', 'twse_valuation': 'ok', 'tpex_valuation': 'ok', '_tries': 1, 'twse_qfii': "error:https://www.twse.com.tw/rwd/zh/fund/MI_QFIIS {'date': '20220623', 'selectType': 'ALLBUT0999', 'response': 'json'}: HTTPSConnectionPool(host='www.twse.com.tw', port=443): Read timed out. (read ti"}；2022-06-17: {'twse_quotes': 'ok', 'tpex_quotes': 'ok', '_tries': 1, 'twse_insti': "error:https://www.twse.com.tw/rwd/zh/fund/T86 {'date': '20220617', 'selectType': 'ALLBUT0999', 'response': 'json'}: HTTPSConnectionPool(host='www.twse.com.tw', port=443): Read timed out. (read timeout", 'tpex_insti': 'ok', 'twse_margin': 'ok', 'tpex_margin': 'ok', 'twse_valuation': 'ok', 'tpex_valuation': 'ok', 'twse_qfii': 'ok'}
+
+### 抽樣：台積電最近 3 天
+
+```
+      date code market name   open   high    low  close     volume        value  trades  shares_issued  ref_next
+2026-10-06 2330   TWSE  台積電 2575.0 2590.0 2565.0 2585.0 20801802.0 5.363915e+10 83438.0            NaN       NaN
+2026-10-07 2330   TWSE  台積電 2565.0 2585.0 2560.0 2585.0 16941183.0 4.364360e+10 70880.0            NaN       NaN
+2026-10-08 2330   TWSE  台積電 2550.0 2575.0 2550.0 2550.0 20154000.0 5.150892e+10 11418.0            NaN       NaN
+```
