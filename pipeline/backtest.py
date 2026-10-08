@@ -210,6 +210,9 @@ def run_backtest_data(store: DataStore, budget_min: float = 40, rebuild: bool = 
     months = rebalance_months(days)
     state = {} if rebuild else store.get_state("backtest", {})
     done = set(state.get("months", []))
+    if done and not rebuild:
+        # 平常只往後增量；往前延長（補了更早的歷史後）要用 rebuild，確保財報也已補齊
+        months = [m for m in months if m["month"] >= min(done)]
     built, failed = [], []
     for m in reversed(months):                     # 由新到舊，先有近期可用
         if m["month"] in done:

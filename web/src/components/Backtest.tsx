@@ -32,6 +32,15 @@ function selector(src: Source) {
   };
 }
 
+/** 期間選項：資料夠長才出現 5 年、10 年 */
+function yearOptions(nMonths: number): [string, string][] {
+  const o: [string, string][] = [["1", "1 年"], ["2", "2 年"], ["3", "3 年"]];
+  if (nMonths >= 60) o.push(["5", "5 年"]);
+  if (nMonths >= 120) o.push(["10", "10 年"]);
+  o.push(["0", "全部"]);
+  return o;
+}
+
 export default function Backtest() {
   const q = useSearchParams();
   const initial = useMemo<Source>(() => {
@@ -144,7 +153,7 @@ export default function Backtest() {
             <div className="flex items-center justify-between gap-2">
               <span>期間</span>
               <Seg label="期間" value={String(set.years)} onChange={(v) => setSet({ ...set, years: Number(v) })}
-                options={[["1", "1 年"], ["2", "2 年"], ["3", "3 年"], ["0", "全部"]]} />
+                options={yearOptions(index?.months.length ?? 0)} />
             </div>
             <div className="flex items-center justify-between gap-2">
               <span>換股頻率</span>
