@@ -1,0 +1,5 @@
+2026-10-08 11:07:09,377 INFO 搬移結果：{'members': 0, 'alert_users': 1, 'user_kv': 3}
+2026-10-08 11:07:09,379 INFO ## 使用者資料搬移（ignore）
+
+{'members': 0, 'alert_users': 1, 'user_kv': 3}
+{'members': 0, 'alert_users': 1, 'user_kv': 3}
