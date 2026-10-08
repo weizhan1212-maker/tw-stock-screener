@@ -42,18 +42,23 @@ export function HeroParallax({ children }: { children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    // 手機上主視覺是上下疊（示意卡在文字下方），捲動淡出會讓示意卡變透明，所以只在寬螢幕做
+    const wide = matchMedia("(min-width: 768px)");
     let raf = 0;
+    const reset = () => { const el = ref.current; if (el) { el.style.opacity = ""; el.style.transform = ""; } };
     const on = () => {
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
         const el = ref.current; if (!el) return;
+        if (!wide.matches) { reset(); return; }
         const p = Math.min(1, Math.max(0, window.scrollY / (el.offsetHeight * 0.9)));
         el.style.opacity = String(1 - p * 0.9);
         el.style.transform = `translateY(${p * 100}px) scale(${1 - p * 0.05})`;
       });
     };
     window.addEventListener("scroll", on, { passive: true });
-    return () => { window.removeEventListener("scroll", on); cancelAnimationFrame(raf); };
+    wide.addEventListener("change", on);
+    return () => { window.removeEventListener("scroll", on); wide.removeEventListener("change", on); cancelAnimationFrame(raf); };
   }, []);
   return <div ref={ref} className="lp-hero-inner">{children}</div>;
 }
