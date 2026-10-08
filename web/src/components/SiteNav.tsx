@@ -3,7 +3,7 @@
 /**
  * 站內導覽：
  * - 電腦（寬 1024 以上）：頁首一排連結，目前頁面加底色
- * - 手機、平板：底部固定分頁列（策略、篩選、市場、自選、更多），「更多」從底部展開其他頁面
+ * - 手機、平板：底部分頁列（策略、篩選、市場、自選、更多），往下捲收起、往上捲回來；「更多」從底部展開其他頁面
  */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -49,7 +49,23 @@ const ICON: Record<string, React.ReactNode> = {
 export function MobileTabBar() {
   const path = usePathname();
   const [open, setOpen] = useState(false);
+  const [hidden, setHidden] = useState(false);
   useEffect(() => { setOpen(false); }, [path]);              // eslint-disable-line react-hooks/set-state-in-effect -- 換頁時關掉「更多」
+  // 往下捲收起底部列、往上捲或回到頂端時再出現（不一直占著畫面）
+  useEffect(() => {
+    let last = window.scrollY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      const dy = y - last;
+      if (y < 80) setHidden(false);
+      else if (dy > 8) setHidden(true);
+      else if (dy < -8) setHidden(false);
+      if (Math.abs(dy) > 8) last = y;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  useEffect(() => { setHidden(false); }, [path]);            // eslint-disable-line react-hooks/set-state-in-effect -- 換頁後底部列回來
   const main = NAV.filter((n) => n.short);
   const more = NAV.filter((n) => !n.short);
   const moreActive = more.some((n) => isActive(path, n.href));
@@ -68,7 +84,7 @@ export function MobileTabBar() {
           </div>
         </div>
       )}
-      <nav aria-label="主選單" className="fixed inset-x-0 bottom-0 z-50 flex border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden">
+      <nav aria-label="主選單" className={`fixed inset-x-0 bottom-0 z-50 flex border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] transition-transform duration-200 lg:hidden ${hidden && !open ? "translate-y-full" : ""}`}>
         {main.map((n) => (
           <Link key={n.href} href={n.href} aria-current={isActive(path, n.href) ? "page" : undefined} className={tab(isActive(path, n.href))}>
             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">{ICON[n.href]}</svg>

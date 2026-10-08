@@ -239,7 +239,7 @@ export default function Screener() {
       </div>
 
       {/* 手機：結果放第一位；條件收進按鈕，符合檔數固定在上方 */}
-      <div className="sticky top-14 z-30 -mx-4 mb-3 flex items-center gap-3 border-b border-line bg-paper/95 px-4 py-2 backdrop-blur lg:hidden">
+      <div className="sticky top-0 z-30 -mx-4 mb-3 flex items-center gap-3 border-b border-line bg-paper/95 px-4 py-2 backdrop-blur lg:hidden">
         <button type="button" onClick={() => setPanel(true)} className="rounded-md bg-accent px-3 py-1.5 text-sm font-bold text-white">
           條件（{conds.length}）
         </button>
