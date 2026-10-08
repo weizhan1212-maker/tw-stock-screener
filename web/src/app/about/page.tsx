@@ -77,32 +77,34 @@ function Mock() {
   return (
     <div aria-hidden className="relative mx-auto w-full max-w-md select-none">
       <div className="absolute -inset-6 -z-10 rounded-3xl blur-3xl" style={{ background: "rgba(94,106,210,0.22)" }} />
-      <SpotCard className="p-4">
-        <div className="flex items-center justify-between text-xs text-muted">
-          <span className="font-semibold text-ink">策略選股</span><span className="lp-label" style={{ fontSize: 10 }}>畫面示意</span>
+      {/* 示意圖用不透明深底，文字對比才夠 */}
+      <div className="rounded-2xl p-4 sm:p-5" style={{ background: "linear-gradient(to bottom, #171923, #0d0e14)", boxShadow: "0 0 0 1px rgba(255,255,255,0.12), 0 2px 20px rgba(0,0,0,0.5), 0 0 60px rgba(94,106,210,0.12)" }}>
+        <div className="flex items-center justify-between">
+          <span className="text-base font-semibold text-white">策略選股</span>
+          <span className="text-xs text-[#b9bec9]">畫面示意</span>
         </div>
-        <ul className="mt-3 space-y-2">
+        <ul className="mt-3 space-y-2.5">
           {rows.map(([n, t, a], i) => (
-            <li key={n} className="flex items-center justify-between rounded-lg px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)" }}>
-              <span><b className="block text-sm font-medium text-ink">{n}</b><span className="text-xs text-muted">{t}</span></span>
-              <span className={`text-xs ${i === 2 ? "text-down" : "text-up"}`}>{a}</span>
+            <li key={n} className="flex items-center justify-between rounded-lg px-3.5 py-3" style={{ background: "#1d2030", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.1)" }}>
+              <span><b className="block text-[15px] font-semibold text-white">{n}</b><span className="mt-0.5 block text-[13px] text-[#c3c8d2]">{t}</span></span>
+              <span className={`text-sm ${i === 2 ? "text-down" : "text-up"}`}>{a}</span>
             </li>
           ))}
         </ul>
         <div className="mt-3 grid grid-cols-3 gap-2 text-center">
           {[["條件公開", "每一條"], ["回測", "含交易成本"], ["警報", "Telegram"]].map(([k, v]) => (
-            <div key={k} className="rounded-lg px-2 py-2" style={{ background: "rgba(255,255,255,0.04)" }}>
-              <div className="text-[11px] text-muted">{k}</div><div className="text-xs font-semibold text-ink">{v}</div>
+            <div key={k} className="rounded-lg px-2 py-2.5" style={{ background: "#1d2030" }}>
+              <div className="text-xs text-[#b9bec9]">{k}</div><div className="mt-0.5 text-[13px] font-semibold text-white">{v}</div>
             </div>
           ))}
         </div>
-        <svg viewBox="0 0 300 60" className="mt-3 h-14 w-full">
-          <defs><linearGradient id="lpg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#5e6ad2" stopOpacity="0.35" /><stop offset="1" stopColor="#5e6ad2" stopOpacity="0" /></linearGradient></defs>
+        <svg viewBox="0 0 300 60" preserveAspectRatio="none" className="mt-3 h-14 w-full">
+          <defs><linearGradient id="lpg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#6872d9" stopOpacity="0.4" /><stop offset="1" stopColor="#6872d9" stopOpacity="0" /></linearGradient></defs>
           <polygon points="0,48 30,44 60,46 90,36 120,38 150,28 180,30 210,20 240,24 270,12 300,14 300,60 0,60" fill="url(#lpg)" />
-          <polyline points="0,48 30,44 60,46 90,36 120,38 150,28 180,30 210,20 240,24 270,12 300,14" fill="none" stroke="#818cf8" strokeWidth="2.5" strokeLinejoin="round" />
-          <polyline points="0,50 30,49 60,48 90,45 120,46 150,41 180,42 210,38 240,39 270,34 300,35" fill="none" stroke="#8a8f98" strokeWidth="1.5" strokeDasharray="4 3" />
+          <polyline points="0,48 30,44 60,46 90,36 120,38 150,28 180,30 210,20 240,24 270,12 300,14" fill="none" stroke="#a5b4fc" strokeWidth="2.5" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+          <polyline points="0,50 30,49 60,48 90,45 120,46 150,41 180,42 210,38 240,39 270,34 300,35" fill="none" stroke="#b9bec9" strokeWidth="1.5" strokeDasharray="4 3" vectorEffect="non-scaling-stroke" />
         </svg>
-      </SpotCard>
+      </div>
     </div>
   );
 }
