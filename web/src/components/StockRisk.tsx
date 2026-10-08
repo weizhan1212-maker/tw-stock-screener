@@ -555,7 +555,7 @@ export function EventStatsCard({ s }: { s: StockFile }) {
           <p className="mt-1 text-xs text-muted">期間：法定公布期限前 5 日 → 後 5 日（公司可能提早公布）。</p>
         </div>
       </div>
-      <p className="mt-3 text-xs text-muted">過去的反應不代表下次一定一樣；法說會與重大訊息沒有合法的自動資料來源，沒有列入。</p>
+      <p className="mt-3 text-xs text-muted">過去的反應不代表下次一定一樣；法說會與重大訊息從 2026-10-08 起每日累積，樣本夠多後再加入統計。</p>
     </Section>
   );
 }
