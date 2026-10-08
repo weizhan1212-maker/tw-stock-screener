@@ -1,12 +1,11 @@
 /**
  * 我的警報：GET 取得設定、通知收件匣、Telegram 綁定狀態；PUT 覆寫設定（含「已讀到哪裡」）。
- * 設定 users/{雜湊}/alerts.json（使用者寫）；收件匣與狀態 users/{雜湊}/alert_state.json（每日任務寫）。
+ * 設定在資料庫 user_kv key=alerts（使用者寫）；收件匣與狀態 key=alert_state（每日任務寫）；有設警報的人記在 alert_users。
  */
 import { type Alert, type AlertConfig, type AlertStateFile, MAX_ALERTS } from "@/lib/alerts";
-import { currentUser, userPath } from "@/lib/server/user";
-import { getJson, putJson } from "@/lib/storage";
+import { currentUser } from "@/lib/server/user";
+import { alertUserAdd, kvGet, kvPut } from "@/lib/server/db";
 
-const INDEX = "alerts/users.json";
 
 function validAlert(a: Alert) {
   const s = (v: unknown, n: number) => typeof v === "string" && v.length <= n;
@@ -25,9 +24,9 @@ export async function GET() {
   const u = await currentUser();
   if (!u) return Response.json({ error: "請先登入" }, { status: 401 });
   const [cfg, st, tg] = await Promise.all([
-    getJson<AlertConfig>(userPath(u.hash, "alerts.json"), { alerts: [] }),
-    getJson<AlertStateFile>(userPath(u.hash, "alert_state.json"), { state: {}, inbox: [] }),
-    getJson<{ chatId?: number }>(userPath(u.hash, "telegram.json"), {}),
+    kvGet<AlertConfig>(u.hash, "alerts", { alerts: [] }),
+    kvGet<AlertStateFile>(u.hash, "alert_state", { state: {}, inbox: [] }),
+    kvGet<{ chatId?: number }>(u.hash, "telegram", {}),
   ]);
   return Response.json({ ...cfg, inbox: st.inbox ?? [], state: st.state ?? {}, telegram: !!tg.chatId, telegramReady: !!process.env.TELEGRAM_BOT_TOKEN },
     { headers: { "Cache-Control": "no-store" } });
@@ -41,9 +40,8 @@ export async function PUT(req: Request) {
     || (b.lastRead !== undefined && typeof b.lastRead !== "string")) {
     return Response.json({ error: "格式錯誤" }, { status: 400 });
   }
-  await putJson(userPath(u.hash, "alerts.json"), { alerts: b.alerts, lastRead: b.lastRead, updated_at: new Date().toISOString() });
+  await kvPut(u.hash, "alerts", { alerts: b.alerts, lastRead: b.lastRead, updated_at: new Date().toISOString() });
   // 每日任務只檢查有設定警報的使用者
-  const idx = await getJson<{ users: string[] }>(INDEX, { users: [] });
-  if (b.alerts.length && !idx.users.includes(u.hash)) await putJson(INDEX, { users: [...idx.users, u.hash] });
+  if (b.alerts.length) await alertUserAdd(u.hash);
   return Response.json({ ok: true });
 }
