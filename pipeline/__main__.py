@@ -16,6 +16,8 @@ from .http import Fetcher
 from .storage import from_env
 from .store import DataStore
 
+log = logging.getLogger("pipeline")
+
 
 def main(argv=None):
     p = argparse.ArgumentParser(prog="pipeline")
@@ -32,6 +34,7 @@ def main(argv=None):
     f.add_argument("--max-codes", type=int)
     f.add_argument("--chain", action="store_true")
     sub.add_parser("report")
+    sub.add_parser("storage-usage")
     mu = sub.add_parser("migrate-users")
     mu.add_argument("--mode", choices=["merge", "ignore", "check", "selftest"], default="check")
     sub.add_parser("snapshot")
@@ -66,6 +69,15 @@ def main(argv=None):
                                                  max_codes=a.max_codes)
         if left and a.chain and left < before:
             jobs.redispatch("backfill.yml", {"job": "finmind", "chain": "true", "years": f"{a.years:g}"})
+    elif a.cmd == "storage-usage":
+        sz = store.st.sizes("")
+        groups: dict = {}
+        for k, v in sz.items():
+            g = "/".join(k.split("/")[:2]) if k.count("/") >= 2 else k
+            groups[g] = groups.get(g, 0) + v
+        lines = [f"| {g} | {v / 1e6:.1f} MB |" for g, v in sorted(groups.items(), key=lambda x: -x[1])]
+        jobs.summary("## 儲存空間\n\n| 位置 | 大小 |\n|---|---|\n" + "\n".join(lines) + f"\n\n合計 {sum(sz.values()) / 1e6:.1f} MB，{len(sz)} 個檔")
+        print("\n".join(lines[:60]), f"\n合計 {sum(sz.values()) / 1e6:.1f} MB")
     elif a.cmd == "migrate-users":
         from . import migrate_users
         res = (migrate_users.check() if a.mode == "check" else migrate_users.selftest() if a.mode == "selftest"
@@ -109,6 +121,19 @@ def main(argv=None):
             jobs.redispatch("backtest.yml", {"chain": "true"})
     elif a.cmd == "fin-refresh":
         jobs.run_fin_refresh(store, fetcher, budget_min=a.budget_min)
+    _report_traffic(a.cmd)
+
+
+def _report_traffic(cmd: str):
+    from .storage import SupabaseStorage
+    st = SupabaseStorage.stats
+    if not st["get_count"]:
+        return
+    top = sorted(st["by_prefix"].items(), key=lambda x: -x[1])[:8]
+    msg = (f"下載量（{cmd}）：{st['get_bytes'] / 1e6:.1f} MB／{st['get_count']} 次；"
+           + "、".join(f"{k} {v / 1e6:.1f} MB" for k, v in top))
+    log.info(msg)
+    jobs.summary(f"## Supabase 下載量\n\n{msg}")
 
 
 if __name__ == "__main__":

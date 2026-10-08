@@ -53,6 +53,9 @@ class LocalStorage:
 
 
 class SupabaseStorage:
+    # 下載量統計（所有 clone 共用）：Supabase 免費方案每月傳輸量有限，每個指令結束時印出來
+    stats: dict = {"get_bytes": 0, "get_count": 0, "put_bytes": 0, "by_prefix": {}}
+
     def clone(self):
         """多執行緒上傳時，每個執行緒各用一份（requests.Session 不保證跨執行緒安全）。"""
         return SupabaseStorage(self._url, self._key, self.bucket)
@@ -93,6 +96,11 @@ class SupabaseStorage:
     def get(self, path: str) -> bytes | None:
         r = self._req("GET", f"{self.base}/object/{self.bucket}/{path}")
         if r.status_code == 200:
+            st, n = SupabaseStorage.stats, len(r.content)
+            st["get_bytes"] += n
+            st["get_count"] += 1
+            key = "/".join(path.split("/")[:2])
+            st["by_prefix"][key] = st["by_prefix"].get(key, 0) + n
             return r.content
         if r.status_code in (400, 404) and ("not_found" in r.text.lower() or "not found" in r.text.lower()
                                             or r.status_code == 404):
@@ -107,6 +115,28 @@ class SupabaseStorage:
 
     def exists(self, path: str) -> bool:
         return self.get(path) is not None
+
+    def sizes(self, prefix: str = "") -> dict:
+        """遞迴列出檔案大小（不下載內容）：{路徑: bytes}"""
+        out, stack = {}, [prefix.rstrip("/")]
+        while stack:
+            folder = stack.pop()
+            offset = 0
+            while True:
+                r = self._req("POST", f"{self.base}/object/list/{self.bucket}",
+                              json={"prefix": folder, "limit": 1000, "offset": offset})
+                r.raise_for_status()
+                items = r.json()
+                for it in items:
+                    full = f"{folder}/{it['name']}" if folder else it["name"]
+                    if it.get("id") is None:
+                        stack.append(full)
+                    else:
+                        out[full] = int((it.get("metadata") or {}).get("size") or 0)
+                if len(items) < 1000:
+                    break
+                offset += 1000
+        return out
 
     def list(self, prefix: str) -> list[str]:
         """遞迴列出 prefix 底下所有檔案路徑。"""

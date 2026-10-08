@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       job:
-        description: "daily / finmind / snapshot / extras / indices / smoke / migrate-check / migrate-merge / migrate-ignore / migrate-selftest"
+        description: "daily / finmind / snapshot / extras / indices / smoke / migrate-check / migrate-merge / migrate-ignore / migrate-selftest / storage-usage"
         default: smoke
       chain:
         description: "跑不完是否自動接力（true/false）"
@@ -57,6 +57,9 @@ jobs:
           python -m pipeline migrate-users --mode "${JOB#migrate-}" 2>&1 | tee -a run.log
         env:
           JOB: ${{ github.event.inputs.job }}
+      - name: 儲存空間統計
+        if: github.event.inputs.job == 'storage-usage'
+        run: python -m pipeline storage-usage 2>&1 | tee -a run.log
       - name: 試跑
         if: github.event.inputs.job == 'smoke'
         run: |
@@ -92,7 +95,7 @@ jobs:
           python -m pipeline snapshot 2>&1 | tee -a run.log
           python -m pipeline market 2>&1 | tee -a run.log
       - name: 資料檢查報告
-        if: always() && !startsWith(github.event.inputs.job, 'migrate-')
+        if: always() && !startsWith(github.event.inputs.job, 'migrate-') && github.event.inputs.job != 'storage-usage'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
