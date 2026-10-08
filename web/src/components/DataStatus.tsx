@@ -20,6 +20,11 @@ export default function DataStatus({ snap, error }: { snap: Snapshot | null; err
         資料日期：{snap.meta.asof.replaceAll("-", "/")}
         {late && "（今日資料尚未更新，可能休市或資料延遲）"}
       </span>
+      {snap.meta.margin_asof && snap.meta.margin_asof < snap.meta.asof && (
+        <span className="rounded-md bg-warn-bg px-2 py-0.5 text-sm text-warn-ink">
+          融資融券、外資持股還是 {snap.meta.margin_asof.slice(5).replace("-", "/")} 的資料（官方較晚公布，約 23:30 更新）
+        </span>
+      )}
       {!snap.meta.fin_complete && (
         <span className="rounded-md bg-warn-bg px-2 py-0.5 text-sm text-warn-ink">財報資料補齊中，基本面條件的結果可能不完整</span>
       )}

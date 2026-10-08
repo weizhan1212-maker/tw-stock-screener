@@ -24,8 +24,8 @@ export interface Alert {
 }
 export interface AlertConfig { alerts: Alert[]; lastRead?: string }
 export interface Note { t: string; asof: string; alertId: string; title: string; body: string; link?: string }
-export interface AlertState { asof?: string; on?: boolean; codes?: string[]; seen?: string[]; pos?: Record<string, { target?: boolean; stop?: boolean }> }
-export interface AlertStateFile { state: Record<string, AlertState>; inbox: Note[] }
+export interface AlertState { asof?: string; full?: boolean; on?: boolean; codes?: string[]; seen?: string[]; pos?: Record<string, { target?: boolean; stop?: boolean }> }
+export interface AlertStateFile { state: Record<string, AlertState>; inbox: Note[]; tgPending?: string[] }
 
 export interface EventsFile {
   asof: string;

@@ -14,9 +14,12 @@ export interface LiveQuote {
   volLots: number | null; value: number | null;
   bids: Level[]; asks: Level[];
   isClose: boolean; isTrial: boolean; limitUp: boolean; limitDown: boolean;
+  /** 額度用完或被富果限流時回傳的是快取：stale=true，fetchedAt＝那份資料抓到的時間 */
+  stale?: boolean; fetchedAt?: string;
 }
 
-export const fugleEnabled = () => !!process.env.FUGLE_API_KEY;
+/** 一鍵下架：Vercel 環境變數 LIVE_QUOTES=off（或刪掉 FUGLE_API_KEY）就整個隱藏 */
+export const fugleEnabled = () => !!process.env.FUGLE_API_KEY && process.env.LIVE_QUOTES !== "off";
 
 const cache = new Map<string, { t: number; q: LiveQuote }>();
 const hits: number[] = [];
@@ -68,13 +71,14 @@ export function normalize(code: string, j: any): LiveQuote {
 export async function quote(code: string): Promise<LiveQuote | null> {
   const c = cache.get(code);
   if (c && Date.now() - c.t < TTL) return c.q;
-  if (!budgetOk()) return c?.q ?? null;
+  const old = () => (c ? { ...c.q, stale: true } : null);
+  if (!budgetOk()) return old();
   const r = await fetch(`${BASE}/intraday/quote/${encodeURIComponent(code)}`, {
     headers: { "X-API-KEY": process.env.FUGLE_API_KEY ?? "" }, cache: "no-store",
   });
-  if (r.status === 429) return c?.q ?? null;
+  if (r.status === 429) return old();
   if (!r.ok) throw new Error(`富果 HTTP ${r.status}`);
-  const q = normalize(code, await r.json());
+  const q = { ...normalize(code, await r.json()), fetchedAt: new Date().toISOString() };
   cache.set(code, { t: Date.now(), q });
   return q;
 }

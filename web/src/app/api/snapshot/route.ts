@@ -19,6 +19,7 @@ export async function GET() {
     if (!res) return Response.json({ error: "還沒有篩選快照" }, { status: 404 });
     return new Response(await res.arrayBuffer(), { headers: HEADERS });
   } catch (e) {
-    return Response.json({ error: String((e as Error).message) }, { status: 502 });
+    console.error(e);                                         // 細節只留在伺服器紀錄，不回給瀏覽器
+    return Response.json({ error: "資料暫時讀不到，請稍後再試" }, { status: 502 });
   }
 }

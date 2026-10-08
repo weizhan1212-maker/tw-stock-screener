@@ -61,13 +61,15 @@ jobs:
           python -m pipeline stocks 2>&1 | tee -a run.log
       - name: 警報評估與通知
         if: success()
+        continue-on-error: true            # 警報失敗會在這一步顯示紅色，但不影響後面的回測資料
         env:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
           # 密鑰由 SUPABASE_SERVICE_KEY 衍生（網站端用同樣算法驗證），不用另設 Secret
           KEY=$(printf 'alerts-run:%s' "$SUPABASE_SERVICE_KEY" | sha256sum | cut -c1-40)
-          curl -sS --max-time 90 -X POST -H "Authorization: Bearer $KEY" \
-            https://tw-stock-screener-willy1212.vercel.app/api/alerts/run | tee -a run.log || true
+          set -o pipefail
+          curl -fsS --max-time 90 -X POST -H "Authorization: Bearer $KEY" \
+            https://tw-stock-screener-willy1212.vercel.app/api/alerts/run | tee -a run.log
           echo | tee -a run.log
       - name: 回測資料（增量）
         if: github.event.inputs.mode != 'light'

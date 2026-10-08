@@ -5,6 +5,8 @@ export type Row = Record<string, string | number | null>;
 
 export interface Snapshot {
   meta: { asof: string; generated_at: string; count: number; fin_complete: boolean;
+    /** 融資融券、外資持股的資料日（傍晚場會比 asof 早一天）；complete＝當天籌碼已到齊 */
+    margin_asof?: string | null; qfii_asof?: string | null; complete?: boolean;
     taiex?: number; taiex_ma200?: number; market_bull?: boolean };
   rows: Row[];
 }

@@ -72,6 +72,9 @@ export default function Watchlist() {
             收盤價、漲跌、量、金額為即時資料（{liveTime}，前 30 檔，每分鐘更新）
           </span>
         )}
+        {Object.values(live ?? {}).some((q) => q.stale) && (
+          <span className="rounded bg-warn-bg px-1.5 py-0.5 text-xs text-warn-ink">查詢額度暫時用完，部分報價是稍早的資料</span>
+        )}
         {!manual && (
           <button type="button" onClick={() => setSort({ key: "_order", dir: 1 })} className="text-sm text-accent underline-offset-2 hover:underline">
             改回我的排序

@@ -373,8 +373,22 @@ def build_snapshot(store: DataStore, asof=None, lookback_days: int = 420) -> tup
     base = base.reset_index().rename(columns={"index": "code"})
     meta = {"asof": asof.strftime("%Y-%m-%d"), "generated_at": util.now_tw().isoformat(timespec="seconds"),
             "count": int(len(base)), "fin_complete": bool(store.get_state("finmind_backfill", {}).get("_complete")),
+            **chips_asof(store, asof),
             **market_state(store, asof)}
     return base, meta
+
+
+def chips_asof(store: DataStore, asof: pd.Timestamp) -> dict:
+    """融資融券、外資持股晚到（約 21–23 點）。傍晚場的快照這兩項還是前一交易日，標出各自的資料日。
+    complete＝資料日當天的融資融券、外資持股都已到齊（警報用來決定夜間要不要再評估一次）。"""
+    out = {}
+    for key, name in (("margin_asof", "margin"), ("qfii_asof", "qfii")):
+        df = store.read_daily(name, asof - pd.Timedelta(days=10), asof)
+        out[key] = df["date"].max().strftime("%Y-%m-%d") if not df.empty else None
+    st = store.get_state("days", {}).get(asof.strftime("%Y-%m-%d"))
+    done = {"ok", "missing", "holiday"}
+    out["complete"] = isinstance(st, dict) and all(st.get(t) in done for t in ("twse_margin", "tpex_margin", "twse_qfii"))
+    return out
 
 
 def trading_columns(store: DataStore, asof: pd.Timestamp, base: pd.DataFrame) -> pd.DataFrame:

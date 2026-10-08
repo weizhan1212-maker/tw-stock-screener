@@ -114,3 +114,21 @@ def test_main_industry():
     assert main_industry(None, "其他電子類、半導體業") == "其他電子業"
     assert main_industry(None, "創新版股票、創新板股票、汽車工業") == "汽車工業"
     assert main_industry(None, None) is None
+
+
+def test_chips_asof_meta(fake, tmp_path):
+    import datetime as dt
+    from pipeline import jobs
+    from pipeline.snapshot import build_snapshot
+    from pipeline.storage import LocalStorage
+    from pipeline.store import DataStore
+    s = DataStore(LocalStorage(str(tmp_path)))
+    jobs.run_daily(s, fake, lookback_days=3, today=dt.date(2026, 10, 2))
+    _, meta = build_snapshot(s)
+    assert meta["margin_asof"] is not None and meta["qfii_asof"] is not None
+    assert isinstance(meta["complete"], bool)
+    days = s.get_state("days")
+    days[meta["asof"]]["twse_margin"] = "pending"            # 模擬傍晚場：融資還沒到
+    s.put_state("days", days)
+    _, meta2 = build_snapshot(s)
+    assert meta2["complete"] is False

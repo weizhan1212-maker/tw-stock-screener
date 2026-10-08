@@ -24,6 +24,11 @@ export default function LivePanel({ q }: { q: LiveQuote }) {
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-base font-bold text-ink">盤中即時</h2>
         <span className="text-xs text-muted">{liveLabel(q)}・{q.date.replaceAll("-", "/")}・資料來源：富果（免費額度大家共用，更新可能稍慢）</span>
+        {q.stale && (
+          <span className="w-full rounded-md bg-warn-bg px-2 py-1 text-xs text-warn-ink">
+            查詢額度暫時用完，顯示的是 {q.fetchedAt ? new Date(q.fetchedAt).toLocaleTimeString("zh-TW", { timeZone: "Asia/Taipei", hour12: false }) : "稍早"} 的報價，稍後會自動更新
+          </span>
+        )}
       </div>
       <div className="grid gap-4 md:grid-cols-[1fr_minmax(260px,340px)]">
         <dl className="num grid grid-cols-3 content-start gap-x-6 gap-y-2 text-sm sm:grid-cols-4">
