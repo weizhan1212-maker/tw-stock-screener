@@ -4,7 +4,7 @@
  *   並附上「比較對象」：五因子全市場百分位、同產業中位數、自己過去的位置，讓模型有東西可以解讀。
  * - 模型負責歸納：定位、看多理由、主要風險、什麼情況代表故事變了、接下來追蹤什麼。
  * - 數字只能來自事實資料（輸出後逐一檢查）；不給買賣建議、目標價、進出場、停損停利。
- * 金鑰：GEMINI_API_KEY；模型依序為 3.5 Flash → 2.5 Flash → 3.1 Flash-Lite → 2.5 Flash-Lite（GEMINI_MODELS 可改），額度用完或不支援就換下一個。
+ * 金鑰：GEMINI_API_KEY；模型依序為 3.5 Flash → 3.7 Flash → 3.6 Flash → 3.8 Flash，最後才用 3.1 Flash-Lite 保底（GEMINI_MODELS 可改），額度用完或不支援就換下一個。
  */
 import "server-only";
 import { readFile } from "node:fs/promises";
@@ -18,7 +18,7 @@ export const aiEnabled = () => !!process.env.GEMINI_API_KEY;
 export const aiModel = () => process.env.GEMINI_MODEL || "gemini-3.5-flash";
 /** 依序嘗試的模型：免費層每個模型各有每日次數上限（例如 3.5 Flash 每天 20 次），用完就換下一個。可用 GEMINI_MODELS（逗號分隔）覆蓋。 */
 export const aiModels = () => {
-  const list = (process.env.GEMINI_MODELS || `${aiModel()},gemini-2.5-flash,gemini-3.1-flash-lite,gemini-2.5-flash-lite`).split(",").map((x) => x.trim()).filter(Boolean);
+  const list = (process.env.GEMINI_MODELS || `${aiModel()},gemini-3.7-flash,gemini-3.6-flash,gemini-3.8-flash,gemini-3.1-flash-lite`).split(",").map((x) => x.trim()).filter(Boolean);
   return [...new Set(list)];
 };
 
