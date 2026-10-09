@@ -1,0 +1,44 @@
+2026-10-09 10:43:24,813 INFO 2026-10-09 → holiday
+2026-10-09 10:44:40,553 INFO ## 每日任務 2026-10-09
+
+| 日期 | 狀態 |
+|---|---|
+| 2026-09-29 | 完成 |
+| 2026-09-30 | 完成 |
+| 2026-10-01 | 完成 |
+| 2026-10-02 | 完成 |
+| 2026-10-05 | 完成 |
+| 2026-10-06 | 完成 |
+| 2026-10-07 | 完成 |
+| 2026-10-08 | 完成 |
+| 2026-10-09 | 休市 |
+
+寫入筆數：holders=3330, revenue=1977, income_periods=1934, qfii_tpex=893, securities=2420, company=1982, delisting=706, etf_info=271, events=179, extras_business_light=512, extras_pcr=21, extras_fut_large=1, extras_fut_insti=1, extras_fx=26, extras_taiex_ohlc=6, extras_dca_rank=40, extras_tpex_insti=1, extras_tpex_daytrade=6, extras_tpex_sbl=932, extras_tpex_block=8, extras_futures=2, extras_tpex_index=6, extras_twse_extra_days=0
+2026-10-09 10:44:40,554 INFO 下載量（daily）：0.5 MB／4 次，本機快取命中 20 次；master/_state 0.5 MB
+2026-10-09 10:44:40,554 INFO ## Supabase 下載量
+
+下載量（daily）：0.5 MB／4 次，本機快取命中 20 次；master/_state 0.5 MB
+2026-10-09 10:46:03,191 INFO 快照：2355 檔、138 欄，壓縮後 793 KB
+2026-10-09 10:46:03,197 INFO ## 篩選快照
+
+資料日 2026-10-08，2355 檔，138 欄
+2026-10-09 10:46:03,197 INFO 下載量（snapshot）：0.6 MB／3 次，本機快取命中 95 次；master/_state 0.6 MB
+2026-10-09 10:46:03,197 INFO ## Supabase 下載量
+
+下載量（snapshot）：0.6 MB／3 次，本機快取命中 95 次；master/_state 0.6 MB
+2026-10-09 10:47:51,154 INFO ## 市場總覽
+
+資料日 2026-10-08，指數 10 項，5 KB，指數歷史 192 KB，重大訊息 11 KB
+2026-10-09 10:47:51,154 INFO 下載量（market）：0.5 MB／4 次，本機快取命中 184 次；master/_state 0.5 MB
+2026-10-09 10:47:51,154 INFO ## Supabase 下載量
+
+下載量（market）：0.5 MB／4 次，本機快取命中 184 次；master/_state 0.5 MB
+2026-10-09 10:52:01,655 INFO 個股檔：{'asof': '2026-10-08', 'count': 2341, 'failed': [], 'n_failed': 0, 'avg_kb': 15.6, 'total_mb': 35.7}
+2026-10-09 10:52:01,706 INFO ## 個股檔
+
+2341 檔，平均 15.6 KB，合計 35.7 MB，失敗 0 檔
+2026-10-09 10:52:01,706 INFO 下載量（stocks）：0.2 MB／1 次，本機快取命中 219 次；master/_state 0.2 MB
+2026-10-09 10:52:01,706 INFO ## Supabase 下載量
+
+下載量（stocks）：0.2 MB／1 次，本機快取命中 219 次；master/_state 0.2 MB
+{"asof":"2026-10-08","full":true,"users":0,"notes":0,"telegram":0,"tgFailed":0,"errors":0}
