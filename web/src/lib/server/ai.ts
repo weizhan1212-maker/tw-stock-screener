@@ -285,7 +285,7 @@ const LEVELS = ["full", "no-thinking", "json-only"] as const;
 const levelOf = new Map<string, number>();
 
 export class AiError extends Error {
-  constructor(public code: "no_key" | "quota" | "bad_output" | "upstream" | "no_model", message: string, public detail?: string) { super(message); }
+  constructor(public code: "no_key" | "quota" | "bad_output" | "upstream" | "no_model" | "busy", message: string, public detail?: string) { super(message); }
 }
 
 /** 一種 AI 輸出的規格：指令、JSON 結構、輸出檢查；models＝指定優先使用的模型（額度用完才往下用共用清單）。 */
@@ -329,6 +329,7 @@ async function generate<T>(model: string, spec: AiSpec<T>, factsText: string, ex
     const daily = /PerDay|per day/i.test(r.body);         // Google 回覆裡會標明是每分鐘還是每日上限
     throw new AiError("quota", "Google 的免費額度暫時用完了，請稍後再試", `${model}${daily ? " per day" : ""} ${r.body.slice(0, 300)}`);
   }
+  if (r.status === 503 || r.status === 500) throw new AiError("busy", "AI 服務暫時忙碌，請稍後再試", `${model} ${r.status} ${r.body.slice(0, 300)}`);
   if (r.status === 404) throw new AiError("no_model", "AI 服務暫時無法使用，請稍後再試", `${model} ${r.body.slice(0, 300)}`);
   if (r.status !== 200) {
     console.error(`[ai] ${model} ${r.status}：${r.body.slice(0, 400)}`);
@@ -391,7 +392,7 @@ async function runWith<T>(model: string, spec: AiSpec<T>, factsText: string): Pr
 /** 額度用完的模型先跳過一段時間（同一台伺服器記憶體內），免得每次都先撞一次牆。 */
 const skipUntil = new Map<string, number>();
 
-/** 依規格產生：依序嘗試模型清單；某個模型額度用完（429）或不存在（404）就換下一個。檢查沒過就丟錯。 */
+/** 依規格產生：依序嘗試模型清單；某個模型額度用完（429）、忙碌（503）或不存在（404）就換下一個。檢查沒過就丟錯。 */
 export async function runAi<T>(spec: AiSpec<T>, factsText: string): Promise<{ out: T; usage: Usage; retried: boolean; model: string }> {
   const all = [...new Set([...(spec.models ?? []), ...aiModels()])];
   const ready = all.filter((m) => (skipUntil.get(m) ?? 0) < Date.now());
@@ -401,10 +402,10 @@ export async function runAi<T>(spec: AiSpec<T>, factsText: string): Promise<{ ou
     try {
       return { ...(await runWith(model, spec, factsText)), model };
     } catch (e) {
-      if (!(e instanceof AiError) || !["quota", "no_model"].includes(e.code)) throw e;
+      if (!(e instanceof AiError) || !["quota", "no_model", "busy"].includes(e.code)) throw e;
       // 每分鐘上限只等 1 分鐘；每日上限（訊息含 per day／PerDay）跳過 1 小時
       const daily = /per ?day|PerDay|daily/i.test(e.detail ?? "");
-      skipUntil.set(model, Date.now() + (e.code === "no_model" ? 6 * 3600_000 : daily ? 3600_000 : 60_000));
+      skipUntil.set(model, Date.now() + (e.code === "no_model" ? 6 * 3600_000 : daily ? 3600_000 : e.code === "busy" ? 120_000 : 60_000));
       console.warn(`[ai] ${model} ${e.code}${daily ? "（每日）" : ""}，換下一個模型`);
       last = e;
     }
