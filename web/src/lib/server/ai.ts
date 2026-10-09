@@ -288,8 +288,8 @@ export class AiError extends Error {
   constructor(public code: "no_key" | "quota" | "bad_output" | "upstream" | "no_model", message: string, public detail?: string) { super(message); }
 }
 
-/** 一種 AI 輸出的規格：指令、JSON 結構、輸出檢查。 */
-export interface AiSpec<T> { system: string; schema: object; validate: (o: T, factsText: string) => string[] }
+/** 一種 AI 輸出的規格：指令、JSON 結構、輸出檢查；models＝指定優先使用的模型（額度用完才往下用共用清單）。 */
+export interface AiSpec<T> { system: string; schema: object; validate: (o: T, factsText: string) => string[]; models?: string[] }
 
 async function callOnce(model: string, spec: AiSpec<unknown>, factsText: string, extra: string, lv: (typeof LEVELS)[number]) {
   const key = process.env.GEMINI_API_KEY;
@@ -393,7 +393,7 @@ const skipUntil = new Map<string, number>();
 
 /** 依規格產生：依序嘗試模型清單；某個模型額度用完（429）或不存在（404）就換下一個。檢查沒過就丟錯。 */
 export async function runAi<T>(spec: AiSpec<T>, factsText: string): Promise<{ out: T; usage: Usage; retried: boolean; model: string }> {
-  const all = aiModels();
+  const all = [...new Set([...(spec.models ?? []), ...aiModels()])];
   const ready = all.filter((m) => (skipUntil.get(m) ?? 0) < Date.now());
   const order = ready.length ? ready : all;              // 全部都在冷卻就全部再試一次
   let last: unknown = null;
