@@ -1,12 +1,13 @@
 /**
- * AI 個股摘要 API（只有登入且已核准的成員能呼叫，proxy.ts 把關）。
+ * AI 個股解讀 API（只有登入且已核准的成員能呼叫，proxy.ts 把關）。
  * GET  ?code=2330&asof=2026-10-09 → 是否啟用、有沒有現成的摘要、今天用了幾次（不呼叫模型）
  * GET  ?usage=1（僅管理員）        → 近 7 天模型用量，用來估費用
+ * GET  ?facts=2330（僅管理員）      → 送給 AI 的事實資料（不呼叫模型）
  * POST {code}                      → 有現成的就直接給（不扣次數）；沒有才呼叫模型，每人每天、全站每天各有上限
  * 同一檔同一個資料日只產生一次，結果存在 user_kv（user_hash="_ai"），所有人共用。
  */
 import { isAdmin } from "@/lib/allowlist";
-import { AiError, aiEnabled, aiModel, buildFacts, loadSnapshot, loadStock, summarize, type AiOutput } from "@/lib/server/ai";
+import { AiError, aiEnabled, aiModel, buildFacts, loadSnapshot, loadStock, summarize, type AiOutput, type Factor } from "@/lib/server/ai";
 import { kvGet, kvPut } from "@/lib/server/db";
 import { currentUser } from "@/lib/server/user";
 
@@ -16,7 +17,9 @@ const USER_LIMIT = Number(process.env.AI_USER_LIMIT) || 10;
 const DAY_LIMIT = Number(process.env.AI_DAILY_LIMIT) || 200;
 const NO_STORE = { "Cache-Control": "no-store" };
 
-export interface AiSummary extends AiOutput { code: string; name: string; asof: string; generatedAt: string; model: string }
+export interface AiSummary extends AiOutput { v: 2; code: string; name: string; asof: string; generatedAt: string; model: string; factors: Factor[] }
+/** 快取鍵（v2：解讀版；舊的 ai:sum:* 是描述版，不再使用） */
+const sumKey = (code: string, asof: string) => `ai:v2:${code}:${asof}` as const;
 interface Counter { n: number }
 interface UsageLog { n: number; inTokens: number; outTokens: number; thoughtTokens: number; retried: number; failed: number; codes: string[] }
 
@@ -37,10 +40,18 @@ export async function GET(req: Request) {
     }
     return json({ model: aiModel(), userLimit: USER_LIMIT, dayLimit: DAY_LIMIT, days });
   }
+  const fc = q.get("facts");
+  if (fc) {                                            // 管理員除錯：看送給 AI 的事實資料（不呼叫模型）
+    if (!isAdmin(u.email)) return json({ error: "只有管理員能看" }, 403);
+    if (!okCode(fc)) return json({ error: "代號格式不對" }, 400);
+    const [snap, stock] = await Promise.all([loadSnapshot(), loadStock(fc)]);
+    const f = snap && stock ? buildFacts(fc, snap, stock) : null;
+    return f ? new Response(`${f.text}\n\n${JSON.stringify(f.factors)}\n（${f.text.length} 字）`, { headers: { ...NO_STORE, "content-type": "text/plain; charset=utf-8" } }) : json({ error: "找不到資料" }, 404);
+  }
   if (!aiEnabled()) return json({ enabled: false });
   const code = q.get("code"), asof = q.get("asof");
   let cached: AiSummary | null = null;
-  if (okCode(code) && asof && /^\d{4}-\d{2}-\d{2}$/.test(asof)) cached = await kvGet<AiSummary | null>(SHARED, `ai:sum:${code}:${asof}`, null);
+  if (okCode(code) && asof && /^\d{4}-\d{2}-\d{2}$/.test(asof)) cached = await kvGet<AiSummary | null>(SHARED, sumKey(code, asof), null);
   const used = (await kvGet<Counter>(u.hash, `ai:quota:${today()}`, { n: 0 })).n;
   return json({ enabled: true, cached, used, limit: USER_LIMIT });
 }
@@ -58,7 +69,7 @@ export async function POST(req: Request) {
   const day = today();
   const mine = await kvGet<Counter>(u.hash, `ai:quota:${day}`, { n: 0 });
 
-  const have = await kvGet<AiSummary | null>(SHARED, `ai:sum:${code}:${asof}`, null);
+  const have = await kvGet<AiSummary | null>(SHARED, sumKey(code, asof), null);
   if (have) return json({ summary: have, cached: true, used: mine.n, limit: USER_LIMIT });
 
   if (mine.n >= USER_LIMIT) return json({ error: `今天的 AI 摘要次數用完了（每人每天 ${USER_LIMIT} 次）。已產生過的摘要仍可直接查看。` }, 429);
@@ -72,9 +83,13 @@ export async function POST(req: Request) {
   if (!facts) return json({ error: "快照裡沒有這檔股票" }, 404);
 
   try {
-    const { out, usage, retried } = await summarize(facts);
-    const summary: AiSummary = { code, name: facts.name, asof, generatedAt: new Date().toISOString(), model: aiModel(), headline: out.headline, sections: out.sections, overall: out.overall };
-    await kvPut(SHARED, `ai:sum:${code}:${asof}`, summary);
+    const r = await summarize(facts);
+    const { out, usage, retried, model } = r;
+    const summary: AiSummary = {
+      v: 2, code, name: facts.name, asof, generatedAt: new Date().toISOString(), model, factors: facts.factors,
+      positioning: out.positioning, headline: out.headline, bulls: out.bulls.slice(0, 3), risks: out.risks.slice(0, 3), change: out.change, watch: out.watch.slice(0, 3),
+    };
+    await kvPut(SHARED, sumKey(code, asof), summary);
     await kvPut(u.hash, `ai:quota:${day}`, { n: mine.n + 1 });
     await kvPut(SHARED, `ai:usage:${day}`, {
       n: log.n + 1, inTokens: log.inTokens + usage.inTokens, outTokens: log.outTokens + usage.outTokens,

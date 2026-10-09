@@ -1,9 +1,10 @@
 /**
- * AI 個股摘要（伺服器端）：
- * - 事實資料由伺服器自己從快照與個股檔算好（不採用瀏覽器傳來的內容，因為結果會共用給所有人）。
- * - 模型只負責把事實寫成平實的文字；數字一律照抄，輸出後逐一檢查，檢查不過就不給。
- * - 只描述事實，不給買賣建議（含目標價、進出場、停損停利）。
- * 金鑰：環境變數 GEMINI_API_KEY（Google AI Studio）；模型：GEMINI_MODEL（預設 gemini-3.1-flash-lite）。
+ * AI 個股解讀（伺服器端）：
+ * - 事實資料由伺服器自己從快照與個股檔算好（不採用瀏覽器傳來的內容，因為結果會共用給所有人），
+ *   並附上「比較對象」：五因子全市場百分位、同產業中位數、自己過去的位置，讓模型有東西可以解讀。
+ * - 模型負責歸納：定位、看多理由、主要風險、什麼情況代表故事變了、接下來追蹤什麼。
+ * - 數字只能來自事實資料（輸出後逐一檢查）；不給買賣建議、目標價、進出場、停損停利。
+ * 金鑰：GEMINI_API_KEY；模型：GEMINI_MODEL（預設 gemini-3.5-flash），額度用完或不支援時改用 GEMINI_FALLBACK_MODEL（預設 gemini-3.1-flash-lite）。
  */
 import "server-only";
 import { readFile } from "node:fs/promises";
@@ -14,7 +15,8 @@ import { focusTags, grade, industryRank, outlooks, type StockFile } from "@/lib/
 import { getCachedBytes } from "@/lib/storage";
 
 export const aiEnabled = () => !!process.env.GEMINI_API_KEY;
-export const aiModel = () => process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";
+export const aiModel = () => process.env.GEMINI_MODEL || "gemini-3.5-flash";
+export const aiFallbackModel = () => process.env.GEMINI_FALLBACK_MODEL || "gemini-3.1-flash-lite";
 
 const unzip = (buf: Buffer | ArrayBuffer) => {
   const b = Buffer.from(buf as ArrayBuffer);
@@ -36,23 +38,125 @@ export async function loadStock(code: string): Promise<StockFile | null> {
   return buf ? (unzip(buf) as StockFile) : null;
 }
 
+// ---------------- 比較對象：五因子、同業、全市場 ----------------
+
+type Dir = 1 | -1;
+interface FactorDef { key: FactorKey; label: string; basis: string; items: [string, Dir][] }
+export type FactorKey = "value" | "growth" | "quality" | "momentum" | "chips";
+export interface Factor { key: FactorKey; label: string; pct: number | null; basis: string }
+
+/** 每個因子由幾個欄位組成；每個欄位先算全市場百分位（越好越高），再取平均。 */
+const FACTORS: FactorDef[] = [
+  { key: "value", label: "價值", basis: "盈餘殖利率、本益比、股價淨值比、殖利率、股價營收比", items: [["earnings_yield", 1], ["pe", -1], ["pb", -1], ["dividend_yield", 1], ["psr", -1]] },
+  { key: "growth", label: "成長", basis: "月營收年增率、近 12 月營收年增率、單季 EPS 年增率、EPS 3 年年化成長率", items: [["rev_yoy", 1], ["rev_ttm_yoy", 1], ["eps_q_yoy", 1], ["eps_cagr3", 1]] },
+  { key: "quality", label: "品質", basis: "ROE、毛利率、營業利益率、F-Score、財務健康度、負債比", items: [["roe", 1], ["gross_margin", 1], ["op_margin", 1], ["f_score", 1], ["health_score", 1], ["debt_ratio", -1]] },
+  { key: "momentum", label: "動能", basis: "近 20／60／120／240 日漲幅", items: [["ret20", 1], ["ret60", 1], ["ret120", 1], ["ret240", 1]] },
+  { key: "chips", label: "籌碼", basis: "法人 20 日買賣超金額占市值、千張大戶週增減、外資持股比", items: [["_inst_cap", 1], ["big_pct_chg", 1], ["foreign_ratio", 1]] },
+];
+
+/** 本益比、股價淨值比、股價營收比只算正數（虧損或淨值為負時沒有意義）。 */
+const POSITIVE_ONLY = new Set(["pe", "pb", "psr"]);
+const val = (r: Row, key: string): number | null => {
+  if (key === "_inst_cap") {
+    const a = num(r.inst_amt20), c = num(r.market_cap);
+    return a != null && c != null && c > 0 ? a / c : null;
+  }
+  const v = num(r[key]);
+  if (v == null || (POSITIVE_ONLY.has(key) && v <= 0)) return null;
+  return v;
+};
+
+const median = (xs: number[]) => {
+  if (!xs.length) return null;
+  const s = [...xs].sort((a, b) => a - b);
+  const m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+};
+
+/** 百分位：比多少比例的股票好（0～100，整數）。 */
+const pctRank = (sorted: number[], x: number, dir: Dir) => {
+  let lo = 0, eq = 0;
+  for (const v of sorted) { if (v < x) lo++; else if (v === x) eq++; }
+  const below = (lo + eq / 2) / sorted.length;
+  return Math.round((dir === 1 ? below : 1 - below) * 100);
+};
+
+const cache = new WeakMap<Snapshot, Map<string, number[]>>();
+function columnSorted(snap: Snapshot, key: string): number[] {
+  let m = cache.get(snap);
+  if (!m) { m = new Map(); cache.set(snap, m); }
+  let arr = m.get(key);
+  if (!arr) {
+    arr = snap.rows.filter((r) => r.sec_type === "stock").map((r) => val(r, key)).filter((v): v is number => v != null).sort((a, b) => a - b);
+    m.set(key, arr);
+  }
+  return arr;
+}
+
+/** 五因子全市場百分位（伺服器計算，不經過 AI）。 */
+export function scorecard(snap: Snapshot, code: string): Factor[] {
+  const me = snap.rows.find((r) => r.code === code);
+  if (!me) return [];
+  return FACTORS.map((f) => {
+    const ps: number[] = [];
+    for (const [k, dir] of f.items) {
+      const x = val(me, k);
+      const col = columnSorted(snap, k);
+      if (x != null && col.length >= 50) ps.push(pctRank(col, x, dir));
+    }
+    // 至少要有一半的組成欄位才給分
+    const pct = ps.length * 2 >= f.items.length ? Math.round(ps.reduce((a, b) => a + b, 0) / ps.length) : null;
+    return { key: f.key, label: f.label, pct, basis: f.basis };
+  });
+}
+
+/** 跟同產業、全市場比的欄位（dir：數字越大越「高」的意思，用來說排第幾高）。 */
+const PEER_KEYS = ["pe", "pb", "psr", "dividend_yield", "roe", "gross_margin", "op_margin", "rev_yoy", "eps_q_yoy", "ret120", "dist_ma240", "atr_pct", "foreign_ratio"];
+
+function peerLines(snap: Snapshot, code: string): { lines: string[]; n: number; ind: string } | null {
+  const me = snap.rows.find((r) => r.code === code);
+  const ind = me?.ind ? String(me.ind) : "";
+  if (!me) return null;
+  const stocks = snap.rows.filter((r) => r.sec_type === "stock");
+  const peers = ind ? stocks.filter((r) => r.ind === ind) : [];
+  const usePeers = peers.length >= 5;
+  const lines: string[] = [];
+  for (const k of PEER_KEYS) {
+    const f = FIELD_MAP[k];
+    const x = val(me, k);
+    if (!f || x == null) continue;
+    const mv = stocks.map((r) => val(r, k)).filter((v): v is number => v != null);
+    const mkt = mv.length >= 50 ? median(mv) : null;
+    const pv = usePeers ? peers.map((r) => val(r, k)).filter((v): v is number => v != null) : [];
+    const pm = pv.length >= 5 ? median(pv) : null;
+    if (pm == null && mkt == null) continue;
+    const parts = [`本股 ${fmtUnit(x, f.format)}`];
+    if (pm != null) parts.push(`同業中位數 ${fmtUnit(pm, f.format)}`, `同業第 ${1 + pv.filter((v) => v > x).length} 高（共 ${pv.length} 檔）`);
+    if (mkt != null) parts.push(`全市場中位數 ${fmtUnit(mkt, f.format)}`);
+    lines.push(`${f.label}：${parts.join("｜")}`);
+  }
+  return { lines, n: peers.length, ind };
+}
+
 // ---------------- 事實資料 ----------------
 
 const SECTIONS: { title: string; keys: string[] }[] = [
   { title: "價量", keys: ["close", "chg_pct", "volume_lots", "value", "vol_ratio", "market_cap"] },
-  { title: "技術面", keys: ["ret5", "ret20", "ret60", "ret120", "ret240", "rs20", "rs60", "dist_high52", "dist_low52", "dist_ma240", "above_ma20", "above_ma60", "above_ma240", "bull_align", "k", "d", "rsi14", "macd_hist", "atr_pct"] },
-  { title: "估值", keys: ["pe", "pb", "dividend_yield", "psr"] },
-  { title: "基本面", keys: ["eps_ttm", "rev_yoy", "rev_yoy_min3", "rev_yoy_chg", "roe", "f_score", "health_score", "div_years"] },
+  { title: "技術面", keys: ["ret5", "ret20", "ret60", "ret120", "ret240", "rs20", "rs60", "dist_high52", "dist_low52", "dist_ma240", "above_ma20", "above_ma60", "above_ma240", "bull_align", "k", "d", "rsi14", "macd_hist", "boll_pctb", "atr_pct"] },
+  { title: "估值", keys: ["pe", "pb", "dividend_yield", "psr", "peg"] },
+  { title: "基本面", keys: ["eps_ttm", "eps_q", "eps_q_yoy", "eps_cagr3", "rev_yoy", "rev_yoy_min3", "rev_yoy_chg", "rev_ttm_yoy", "gross_margin", "op_margin", "net_margin", "roe", "debt_ratio", "fcf_ttm", "f_score", "health_score", "div_years"] },
 ];
 
-const line = (r: Row, key: string, signed = false) => {
+const SIGNED = /^(chg_pct|ret\d+|rs\d+|dist_|rev_yoy|rev_ttm_yoy|eps_q_yoy|eps_cagr3|macd_hist)|_net\d*$|_chg/;
+
+const line = (r: Row, key: string) => {
   const f = FIELD_MAP[key];
   const v = r[key];
   if (!f || v == null) return null;
-  return `${f.label}：${fmtUnit(v, f.format, signed)}`;
+  return `${f.label}：${fmtUnit(v, f.format, SIGNED.test(key))}`;
 };
 
-export interface Facts { code: string; name: string; asof: string; text: string }
+export interface Facts { code: string; name: string; asof: string; text: string; factors: Factor[] }
 
 /** 把一檔股票整理成給模型看的事實清單；找不到資料回傳 null。 */
 export function buildFacts(code: string, snap: Snapshot, s: StockFile): Facts | null {
@@ -60,10 +164,9 @@ export function buildFacts(code: string, snap: Snapshot, s: StockFile): Facts | 
   if (!row) return null;
   const name = String(row.name ?? s.info?.name ?? code);
   const out: string[] = [`股票：${name}（${code}）　市場：${s.info?.market ?? "—"}　產業：${row.ind ?? s.info?.industry ?? "—"}`, `價量與估值資料日：${snap.meta.asof}`];
-  const signedKeys = new Set(["chg_pct", "ret5", "ret20", "ret60", "ret120", "ret240", "rs20", "rs60", "dist_high52", "dist_low52", "dist_ma240", "rev_yoy", "rev_yoy_chg", "rev_yoy_min3"]);
 
   for (const sec of SECTIONS) {
-    const ls = sec.keys.map((k) => line(row, k, signedKeys.has(k))).filter(Boolean) as string[];
+    const ls = sec.keys.map((k) => line(row, k)).filter(Boolean) as string[];
     if (sec.title === "基本面" && num(row.health_score) != null) ls.push(`財務健康評級：${grade(num(row.health_score))}`);
     if (sec.title === "基本面") {
       const rk = industryRank(snap.rows, code);
@@ -73,14 +176,25 @@ export function buildFacts(code: string, snap: Snapshot, s: StockFile): Facts | 
     if (ls.length) out.push(`\n【${sec.title}】`, ...ls);
   }
 
-  // 籌碼：快照裡所有籌碼面欄位（有值的）
-  const chips = FIELDS.filter((f) => f.group === "籌碼面").map((f) => line(row, f.key, /net|_chg/.test(f.key))).filter(Boolean) as string[];
+  // 五因子
+  const factors = scorecard(snap, code);
+  const fl = factors.filter((f) => f.pct != null).map((f) => `${f.label}：贏過全市場 ${f.pct}% 的股票（依${f.basis}）`);
+  if (fl.length) out.push(`\n【五因子全市場百分位】（0～100，越高越好；價值高＝相對便宜）`, ...fl);
+
+  // 同業、全市場
+  const pr = peerLines(snap, code);
+  if (pr?.lines.length) out.push(pr.n >= 5 ? `\n【和同產業（${pr.ind}，${pr.n} 檔）及全市場比較】` : `\n【和全市場比較】`, ...pr.lines);
+
+  // 籌碼
+  const chips = FIELDS.filter((f) => f.group === "籌碼面").map((f) => line(row, f.key)).filter(Boolean) as string[];
   const margin = snap.meta.margin_asof && snap.meta.margin_asof < snap.meta.asof ? `（融資融券與外資持股資料到 ${snap.meta.margin_asof}，比價格晚一天）` : "";
   if (chips.length) out.push(`\n【籌碼面】${margin}`, ...chips);
+  const hold = (s.holders ?? []).slice(-4).filter((h) => h.big != null).map((h) => `${h.d}：${(h.big as number).toFixed(2)}%`);
+  if (hold.length >= 2) out.push(`\n【千張大戶持股比（週）】`, hold.join("；"));
   const tags = focusTags(snap.rows, code).slice(0, 6).map((t) => `${t.label}第 ${t.rank} 名`);
   if (tags.length) out.push(`\n【全市場排名】`, tags.join("、"));
 
-  // 月營收年增率（用同月比；單位不一，只給比率）
+  // 月營收：年增率與自己過去的位置
   const rev = s.revenue ?? [];
   const yoy: string[] = [];
   for (const [m, v] of rev.slice(-6)) {
@@ -89,66 +203,84 @@ export function buildFacts(code: string, snap: Snapshot, s: StockFile): Facts | 
     if (v != null && p != null && p > 0) yoy.push(`${m}：${(((v / p) - 1) * 100).toFixed(2)}%`);
   }
   if (yoy.length) out.push(`\n【近月營收年增率】`, yoy.join("；"));
+  const recent = rev.slice(-36).filter(([, v]) => v != null) as [string, number][];
+  if (recent.length >= 12) {
+    const [lm, lv] = recent[recent.length - 1];
+    const rank = 1 + recent.filter(([, v]) => v > lv).length;
+    out.push(`最新月營收（${lm}）在近 ${recent.length} 個月中排第 ${rank} 高`);
+  }
 
-  // 近 4 季財報
-  const qs = (s.quarters ?? []).slice(-4).map((q) => {
+  // 近 6 季財報（看趨勢）
+  const qs = (s.quarters ?? []).slice(-6).map((q) => {
     const parts = [q.eps != null ? `EPS ${q.eps.toFixed(2)} 元` : null, q.gm != null ? `毛利率 ${q.gm.toFixed(2)}%` : null, q.om != null ? `營益率 ${q.om.toFixed(2)}%` : null, q.nm != null ? `淨利率 ${q.nm.toFixed(2)}%` : null].filter(Boolean);
     return parts.length ? `${q.p}：${parts.join("，")}` : null;
   }).filter(Boolean);
-  if (qs.length) out.push(`\n【近 4 季財報】`, ...(qs as string[]));
+  if (qs.length) out.push(`\n【近幾季財報】`, ...(qs as string[]));
+
+  // 股利
+  const divs = (s.dividends ?? []).slice(-4).filter((d) => d.cash != null).map((d) => `${d.period}：現金 ${(d.cash as number).toFixed(2)} 元`);
+  if (divs.length) out.push(`\n【近幾次股利】`, divs.join("；"));
 
   // 公告與法說會
   const ev = s.events;
-  const recent = (ev?.recent ?? []).slice(0, 4).map((e) => `${e.d} ${e.s.replace(/\s+/g, " ").slice(0, 60)}`);
+  const news = (ev?.recent ?? []).slice(0, 4).map((e) => `${e.d} ${e.s.replace(/\s+/g, " ").slice(0, 60)}`);
   const conf = (ev?.conf ?? []).filter((c) => c.d >= snap.meta.asof).slice(0, 2).map((c) => `${c.d}${c.t ? ` ${c.t}` : ""} 法說會`);
-  if (recent.length || conf.length) out.push(`\n【近期公告與事件】`, ...recent, ...conf);
+  if (news.length || conf.length) out.push(`\n【近期公告與事件】`, ...news, ...conf);
 
-  return { code, name, asof: snap.meta.asof, text: out.join("\n") };
+  return { code, name, asof: snap.meta.asof, text: out.join("\n"), factors };
 }
 
 // ---------------- 呼叫模型 ----------------
 
-export interface AiSection { key: string; title: string; text: string }
-export interface AiOutput { headline: string; sections: AiSection[]; overall: string }
+export interface AiPoint { title: string; text: string }
+export interface AiOutput { positioning: string; headline: string; bulls: AiPoint[]; risks: AiPoint[]; change: string; watch: string[] }
 export interface Usage { inTokens: number; outTokens: number; thoughtTokens: number }
 
-const SYSTEM = `你是台股資料整理助手。請根據使用者提供的「事實資料」，寫一份中性、平實的個股摘要。
+const SYSTEM = `你是資深台股研究員，替一般散戶寫「個股解讀」。讀者在同一頁已經看得到所有原始數字，不需要你複述；你的價值在於解讀：把數字放到同業、全市場、自己過去裡比較，說出這代表什麼、哪些是真正的優勢、哪些是風險。
 規則：
-1. 只能使用事實資料裡出現的資訊與數字；數字一律原樣照抄（含小數與單位），不得四捨五入、換算、自己計算或推估。
-2. 只描述現況與變化。不得預測股價，也不得出現任何買賣建議、評分、目標價、進出場、加碼減碼、停損停利的字眼。
-3. 事實資料沒提供或標示「—」的項目視為資料不足，直接略過，不要猜測。
-4. 使用台灣慣用的繁體中文，語氣平實，句子簡短。
-5. sections 只放有資料可說的面向，key 只能是 tech（技術面）、valuation（估值與獲利）、revenue（營收與財報）、chips（籌碼）、events（公告與事件）；每段 text 約 60～110 字。
-6. headline 一句話（30 字內）點出最值得注意的事實；overall 約 80～120 字，把各面向的事實串成一段，不做結論性的買賣判斷。
-只輸出 JSON：{"headline":"","sections":[{"key":"","title":"","text":""}],"overall":""}`;
+1. 數字只能來自事實資料並原樣照抄（含小數與單位），不得自己計算、換算或四捨五入。只有 change 與 watch 可以用整數門檻（例如 50%）。
+2. 每一點都要有比較對象（同業中位數、全市場、五因子百分位、自己過去幾季或幾個月），並用一句話說明「這代表什麼」。只列數字不解讀的句子不要寫。
+3. 只挑最重要的。bulls 2～3 點、risks 2～3 點（依嚴重程度由高到低）；每點 title 14 字內、text 50～100 字。
+4. 不得出現任何操作字眼：買進、賣出、加碼、減碼、進場、出場、停損、停利、目標價、推薦、看好、看壞；也不要預測股價會漲或跌。可以說估值偏高或偏低、是否過熱、股價可能已反映多少。
+5. 資料不足或標示「—」的項目直接略過，不要猜。資料彼此矛盾時要點出來（例如營收大增但毛利率下滑、股價大漲但法人在賣）。
+6. positioning：2～3 個短詞描述這檔股票的樣貌，用「、」分隔，20 字內，例如「高成長、高估值、短線過熱」。
+7. headline：一句話（45 字內）說出最關鍵的觀察。
+8. change：出現什麼具體、可觀察的情況代表目前的狀況改變了（1～2 個條件，60 字內）。這是觀察條件，不是停損。
+9. watch：接下來最值得追蹤的 3 件事，每件 30 字內，具體寫出指標或時間點。
+10. 台灣慣用的繁體中文白話；必要的術語用括號簡短解釋。
+只輸出 JSON。`;
 
+const POINT = { type: "OBJECT", properties: { title: { type: "STRING" }, text: { type: "STRING" } }, required: ["title", "text"] };
 const SCHEMA = {
   type: "OBJECT",
   properties: {
+    positioning: { type: "STRING" },
     headline: { type: "STRING" },
-    sections: { type: "ARRAY", items: { type: "OBJECT", properties: { key: { type: "STRING" }, title: { type: "STRING" }, text: { type: "STRING" } }, required: ["key", "title", "text"] } },
-    overall: { type: "STRING" },
+    bulls: { type: "ARRAY", items: POINT },
+    risks: { type: "ARRAY", items: POINT },
+    change: { type: "STRING" },
+    watch: { type: "ARRAY", items: { type: "STRING" } },
   },
-  required: ["headline", "sections", "overall"],
+  required: ["positioning", "headline", "bulls", "risks", "change", "watch"],
 };
 
-/** 從寬到嚴的參數組合：模型或參數不被接受（400）時自動換下一組，並記住這次成功的那組。 */
+/** 從寬到嚴的參數組合：參數不被接受（400）時自動換下一組，並記住每個模型成功的那組。 */
 const LEVELS = ["full", "no-thinking", "json-only"] as const;
-let level = 0;
+const levelOf = new Map<string, number>();
 
 export class AiError extends Error {
-  constructor(public code: "no_key" | "quota" | "bad_output" | "upstream", message: string, public detail?: string) { super(message); }
+  constructor(public code: "no_key" | "quota" | "bad_output" | "upstream" | "no_model", message: string, public detail?: string) { super(message); }
 }
 
-async function callOnce(factsText: string, extra: string, lv: (typeof LEVELS)[number]) {
+async function callOnce(model: string, factsText: string, extra: string, lv: (typeof LEVELS)[number]) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new AiError("no_key", "尚未啟用 AI 摘要");
-  const gen: Record<string, unknown> = { temperature: 0.2, maxOutputTokens: 2500, responseMimeType: "application/json" };
+  const gen: Record<string, unknown> = { temperature: 0.4, maxOutputTokens: 6000, responseMimeType: "application/json" };
   if (lv === "full") { gen.responseSchema = SCHEMA; gen.thinkingConfig = { thinkingLevel: "low" }; }
   if (lv === "no-thinking") gen.responseSchema = SCHEMA;
   const base = (process.env.GEMINI_API_BASE || "https://generativelanguage.googleapis.com").replace(/\/$/, "");   // 只有測試時會改
-  const res = await fetch(`${base}/v1beta/models/${aiModel()}:generateContent`, {
-    method: "POST", cache: "no-store", signal: AbortSignal.timeout(45_000),
+  const res = await fetch(`${base}/v1beta/models/${model}:generateContent`, {
+    method: "POST", cache: "no-store", signal: AbortSignal.timeout(50_000),
     headers: { "x-goog-api-key": key, "content-type": "application/json" },
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: SYSTEM }] },
@@ -165,23 +297,26 @@ interface GeminiResp {
   usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number };
 }
 
-async function generate(factsText: string, extra = ""): Promise<{ out: AiOutput; usage: Usage }> {
-  let r = await callOnce(factsText, extra, LEVELS[level]);
-  while (r.status === 400 && level < LEVELS.length - 1) {
-    console.warn(`[ai] 400（${LEVELS[level]}）：${r.body.slice(0, 300)}`);
-    level++;
-    r = await callOnce(factsText, extra, LEVELS[level]);
+async function generate(model: string, factsText: string, extra = ""): Promise<{ out: AiOutput; usage: Usage }> {
+  let lv = levelOf.get(model) ?? 0;
+  let r = await callOnce(model, factsText, extra, LEVELS[lv]);
+  while (r.status === 400 && lv < LEVELS.length - 1) {
+    console.warn(`[ai] ${model} 400（${LEVELS[lv]}）：${r.body.slice(0, 300)}`);
+    lv++;
+    r = await callOnce(model, factsText, extra, LEVELS[lv]);
   }
-  if (r.status === 429) throw new AiError("quota", "Google 的免費額度暫時用完了，請稍後再試", r.body.slice(0, 300));
+  levelOf.set(model, lv);
+  if (r.status === 429) throw new AiError("quota", "Google 的免費額度暫時用完了，請稍後再試", `${model} ${r.body.slice(0, 300)}`);
+  if (r.status === 404) throw new AiError("no_model", "AI 服務暫時無法使用，請稍後再試", `${model} ${r.body.slice(0, 300)}`);
   if (r.status !== 200) {
-    console.error(`[ai] ${r.status}：${r.body.slice(0, 400)}`);
-    throw new AiError("upstream", "AI 服務暫時無法使用，請稍後再試", `${r.status} ${r.body.slice(0, 300)}`);
+    console.error(`[ai] ${model} ${r.status}：${r.body.slice(0, 400)}`);
+    throw new AiError("upstream", "AI 服務暫時無法使用，請稍後再試", `${model} ${r.status} ${r.body.slice(0, 300)}`);
   }
   const j = JSON.parse(r.body) as GeminiResp;
   const text = (j.candidates?.[0]?.content?.parts ?? []).filter((p) => !p.thought).map((p) => p.text ?? "").join("").trim();
   let out: AiOutput;
   try { out = JSON.parse(text.replace(/^```(?:json)?\s*|\s*```$/g, "")) as AiOutput; }
-  catch { throw new AiError("bad_output", "AI 回覆的格式不對，請再試一次", `finish=${j.candidates?.[0]?.finishReason} ${text.slice(0, 200)}`); }
+  catch { throw new AiError("bad_output", "AI 回覆的格式不對，請再試一次", `${model} finish=${j.candidates?.[0]?.finishReason} ${text.slice(0, 200)}`); }
   const u = j.usageMetadata ?? {};
   return { out, usage: { inTokens: u.promptTokenCount ?? 0, outTokens: u.candidatesTokenCount ?? 0, thoughtTokens: u.thoughtsTokenCount ?? 0 } };
 }
@@ -190,35 +325,54 @@ async function generate(factsText: string, extra = ""): Promise<{ out: AiOutput;
 
 const BANNED = /(建議(?:買|賣|進|出|加|減|持|布局|投資人|停|您|大家)|買進|賣出|買入|加碼|減碼|進場|出場|停損|停利|目標價|值得買|不要買|可以買|應該買|推薦|看好|看壞|看漲|看跌|必漲|必跌|穩賺|保證|轉強可期|有望|預期將|預計將|可望)/;
 
-/** 檢查：結構完整、沒有買賣建議字眼、文字裡的數字都出現在事實資料中。回傳問題清單（空＝通過）。 */
+const isPoints = (x: unknown): x is AiPoint[] => Array.isArray(x) && x.every((p) => p && typeof p.title === "string" && typeof p.text === "string");
+
+/** 檢查：結構完整、沒有操作字眼、數字都出現在事實資料中。回傳問題清單（空＝通過）。 */
 export function validate(o: AiOutput, factsText: string): string[] {
+  if (!o || typeof o.positioning !== "string" || typeof o.headline !== "string" || typeof o.change !== "string"
+    || !isPoints(o.bulls) || !isPoints(o.risks) || !o.bulls.length || !o.risks.length
+    || !Array.isArray(o.watch) || !o.watch.every((w) => typeof w === "string")) return ["結構不完整"];
   const problems: string[] = [];
-  if (!o || typeof o.headline !== "string" || typeof o.overall !== "string" || !Array.isArray(o.sections) || !o.sections.length) return ["結構不完整"];
-  const all = [o.headline, o.overall, ...o.sections.flatMap((s) => [s.title ?? "", s.text ?? ""])];
-  const hit = all.map((t) => t.match(BANNED)?.[0]).filter(Boolean);
+  const strict = [o.positioning, o.headline, ...o.bulls.flatMap((p) => [p.title, p.text]), ...o.risks.flatMap((p) => [p.title, p.text])];
+  const loose = [o.change, ...o.watch];                 // 觀察條件可以用整數門檻
+  const hit = [...strict, ...loose].map((t) => t.match(BANNED)?.[0]).filter(Boolean);
   if (hit.length) problems.push(`出現不允許的字眼：${[...new Set(hit)].join("、")}`);
   const pool = factsText.replace(/,/g, "");
   const bad = new Set<string>();
-  for (const t of all) {
+  const check = (t: string, allowRound: boolean) => {
     for (const m of t.replace(/,/g, "").matchAll(/-?\d+(?:\.\d+)?/g)) {
       const n = m[0].replace(/^-/, "");
-      if (/^\d{1,2}$/.test(n)) continue;                 // 「5 日」「20 日線」這類期間、順位的小整數不查
+      if (/^\d{1,2}$/.test(n)) continue;                 // 期間、順位、百分位這類小整數不查
+      if (allowRound && /^\d+$/.test(n) && Number(n) % 10 === 0) continue;
       if (!pool.includes(n)) bad.add(m[0]);
     }
-  }
+  };
+  strict.forEach((t) => check(t, false));
+  loose.forEach((t) => check(t, true));
   if (bad.size) problems.push(`這些數字不在事實資料裡：${[...bad].join("、")}`);
   return problems;
 }
 
-/** 產生摘要；檢查沒過就把問題告訴模型重寫一次，仍沒過就丟錯（不快取、不扣次數）。 */
-export async function summarize(facts: Facts): Promise<{ out: AiOutput; usage: Usage; retried: boolean }> {
-  let { out, usage } = await generate(facts.text);
+async function summarizeWith(model: string, facts: Facts): Promise<{ out: AiOutput; usage: Usage; retried: boolean }> {
+  let { out, usage } = await generate(model, facts.text);
   let problems = validate(out, facts.text);
   if (!problems.length) return { out, usage, retried: false };
   const first = usage;
-  ({ out, usage } = await generate(facts.text, `\n\n上一次的輸出有問題：${problems.join("；")}。請修正：數字只能照抄事實資料，且不得出現買賣建議的字眼。`));
+  ({ out, usage } = await generate(model, facts.text, `\n\n上一次的輸出有問題：${problems.join("；")}。請修正：數字只能照抄事實資料，且不得出現操作字眼。`));
   usage = { inTokens: usage.inTokens + first.inTokens, outTokens: usage.outTokens + first.outTokens, thoughtTokens: usage.thoughtTokens + first.thoughtTokens };
   problems = validate(out, facts.text);
-  if (problems.length) throw new AiError("bad_output", "這次產生的內容沒通過檢查，請稍後再試", problems.join("；"));
+  if (problems.length) throw new AiError("bad_output", "這次產生的內容沒通過檢查，請稍後再試", `${model} ${problems.join("；")}`);
   return { out, usage, retried: true };
+}
+
+/** 產生解讀：先用主要模型；額度用完或模型不存在時改用備用模型。檢查沒過就丟錯（不快取、不扣次數）。 */
+export async function summarize(facts: Facts): Promise<{ out: AiOutput; usage: Usage; retried: boolean; model: string }> {
+  const main = aiModel(), alt = aiFallbackModel();
+  try {
+    return { ...(await summarizeWith(main, facts)), model: main };
+  } catch (e) {
+    if (!(e instanceof AiError) || !["quota", "no_model"].includes(e.code) || alt === main) throw e;
+    console.warn(`[ai] ${main} ${e.code}，改用 ${alt}`);
+    return { ...(await summarizeWith(alt, facts)), model: alt };
+  }
 }
