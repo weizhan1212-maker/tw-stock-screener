@@ -12,7 +12,7 @@ import type { Snapshot } from "@/lib/screener";
 import { getCachedBytes } from "@/lib/storage";
 import { runAi, textProblems, type AiSpec } from "@/lib/server/ai";
 
-interface Card { label: string; name?: string; date: string; close: number | null; chg: number | null; chg_pct: number | null }
+interface Card { label: string; name?: string; date: string; close: number | null; chg: number | null; chg_pct: number | null; spark?: (number | null)[] }
 export interface MarketData {
   asof: string;
   indices: Card[];
@@ -57,6 +57,13 @@ export function buildMarketFacts(m: MarketData, snap: Snapshot): MarketFacts {
 
   out.push("\n【指數】");
   for (const c of m.indices) out.push(`${c.label}：${f2(c.close)}，漲跌 ${sg(c.chg)}（${sg(c.chg_pct)}%）${c.date !== m.asof ? `（資料日 ${md(c.date)}）` : ""}`);
+  // 加權指數近幾日收盤與每日漲跌幅，讓「比前幾天」有根據
+  const tw = m.indices.find((c) => c.label.includes("加權"));
+  const sp = (tw?.spark ?? []).filter((v): v is number => v != null).slice(-6);
+  if (sp.length >= 3) {
+    const moves = sp.slice(1).map((v, i) => `${sg(((v / sp[i]) - 1) * 100)}%`);
+    out.push(`加權指數近 ${sp.length - 1} 個交易日每日漲跌幅（舊到新）：${moves.join("、")}`);
+  }
 
   const b = m.breadth;
   if (b) out.push("\n【漲跌家數】", ...(["all", "TWSE", "TPEX"] as const).map((k) => `${{ all: "全部", TWSE: "上市", TPEX: "上櫃" }[k]}：上漲 ${b[k].up} 家、平盤 ${b[k].flat} 家、下跌 ${b[k].down} 家`));
@@ -87,7 +94,7 @@ export function buildMarketFacts(m: MarketData, snap: Snapshot): MarketFacts {
   if (se) {
     const ls: string[] = [];
     if (se.fear_greed) ls.push(`恐懼貪婪指數 ${f2(se.fear_greed.score)}（${se.fear_greed.label}）`);
-    if (se.pcr?.oi != null) ls.push(`選擇權 Put/Call 未平倉比 ${f2(se.pcr.oi)}（${md(se.pcr.date)}）`);
+    if (se.pcr?.oi != null) ls.push(`選擇權 Put/Call 未平倉比 ${f2(se.pcr.oi)}%（${md(se.pcr.date)}）`);
     if (se.fut_insti?.foreign_oi_net != null) ls.push(`外資台指期未平倉淨額 ${se.fut_insti.foreign_oi_net.toLocaleString("en-US")} 口（${md(se.fut_insti.date)}）`);
     if (se.fx?.usd_twd != null) ls.push(`美元兌新台幣 ${f2(se.fx.usd_twd)}，20 日變化 ${sg(se.fx.chg20)}%（${md(se.fx.date)}）`);
     if (ls.length) out.push("\n【市場情緒】", ...ls);
@@ -119,7 +126,7 @@ const SYSTEM = `你是資深台股盤後分析師，替一般散戶寫「今日�
 規則：
 1. 數字只能來自事實資料並原樣照抄（含小數與單位），不得自己計算、換算或四捨五入。只有 watch 可以用整數門檻。
 2. 不得出現任何操作字眼：買進、賣出、加碼、減碼、進場、出場、停損、停利、目標價、推薦、看好、看壞；不要預測明天或之後的漲跌，不寫「支撐」「轉機」「上漲空間」「後市」這類暗示後市的說法。
-3. 「連續」「持續」「創高」這類趨勢詞，只能在資料直接看得出來時使用。不得推測原因或資料裡沒有的事（新聞、政策、國際情勢、財報內容等）。
+3. 「連續」「持續」「創高」這類趨勢詞，只能在資料直接看得出來時使用；要和「前幾天」比較，只能用有提供前幾天數字的項目（加權指數每日漲跌幅、法人近 5 日）。不得推測原因或資料裡沒有的事（新聞、政策、國際情勢、財報內容、資金「避險」或「撤出台股」等動機）；只說資金流向哪裡，不說為什麼。
 4. tone：只能是「偏多」「中性」「偏空」其中之一，描述「今天」的市場氣氛（綜合指數、漲跌家數、法人方向），不是預測。
 5. headline：一句話（40 字內）點出今天最重要的事。
 6. summary：80～130 字，把大盤、廣度、籌碼串成一段；指數與多數股票方向不一致時要點出來。
@@ -147,7 +154,11 @@ function validate(o: MarketAi, factsText: string): string[] {
   if (!o || !["偏多", "中性", "偏空"].includes(o.tone) || typeof o.headline !== "string" || typeof o.summary !== "string" || typeof o.rotation !== "string"
     || !Array.isArray(o.points) || !o.points.length || !o.points.every((p) => p && typeof p.title === "string" && typeof p.text === "string")
     || !Array.isArray(o.watch) || !o.watch.every((w) => typeof w === "string")) return ["結構不完整"];
-  return textProblems([o.headline, o.summary, o.rotation, ...o.points.flatMap((p) => [p.title, p.text])], o.watch, factsText);
+  const strict = [o.headline, o.summary, o.rotation, ...o.points.flatMap((p) => [p.title, p.text])];
+  const probs = textProblems(strict, o.watch, factsText);
+  const guess = strict.map((t) => t.match(/避險|撤出台股|資金外逃|恐慌性/)?.[0]).filter(Boolean);
+  if (guess.length) probs.push(`出現資料無法佐證的動機推測：${[...new Set(guess)].join("、")}（只說資金流向哪裡，不說原因）`);
+  return probs;
 }
 
 const SPEC: AiSpec<MarketAi> = { system: SYSTEM, schema: SCHEMA, validate };
