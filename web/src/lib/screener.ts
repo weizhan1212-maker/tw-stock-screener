@@ -109,8 +109,8 @@ export function fmt(v: unknown, format: Format, signed = false): string {
       return `${signed && v > 0 ? "+" : ""}${N2.format(v)}`;
     case "lots":
       return N0.format(v);
-    case "yi":
-      return N2.format(v / 1e8);
+    case "yi":                                        // 表格欄名已標「億」；太小的金額顯示 < 0.01，免得看起來像 0
+      return v !== 0 && Math.abs(v) < 1e6 ? (v > 0 ? "< 0.01" : "> -0.01") : N2.format(v / 1e8);
     case "yiRaw":
       return v >= 100 ? N0.format(v) : N1.format(v);
     case "days":
@@ -122,7 +122,17 @@ export function fmt(v: unknown, format: Format, signed = false): string {
   }
 }
 
+/** 金額（元）自動換單位：1,000 萬以上用「億」，1 萬以上用「萬」，再小就用「元」，不會變成 0.00 億。 */
+export function fmtMoney(v: unknown): string {
+  if (v == null || typeof v !== "number" || Number.isNaN(v)) return "—";
+  const a = Math.abs(v);
+  if (a >= 1e7 || a === 0) return `${N2.format(v / 1e8)} 億`;
+  if (a >= 1e4) return `${(a >= 1e6 ? N0 : N1).format(v / 1e4)} 萬`;
+  return `${N0.format(v)} 元`;
+}
+
 export function fmtUnit(v: unknown, format: Format, signed = false): string {
+  if (format === "yi") return fmtMoney(v);
   const s = fmt(v, format, signed);
   const u = UNIT[format];
   return s === "—" || !u || format === "bool" ? s : `${s} ${u}`;

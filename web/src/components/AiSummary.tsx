@@ -92,7 +92,7 @@ export default function AiSummaryCard({ code, asof }: { code: string; asof: stri
 
           {s.factors?.some((f) => f.pct != null) && (
             <div className="rounded-md bg-surface-2/60 p-3">
-              <div className="mb-2 text-xs text-muted">五因子體檢（全市場百分位，越長越好；由本站計算，非 AI）</div>
+              <div className="mb-2 text-xs text-muted">五因子體檢</div>
               <div className="space-y-1.5">{s.factors.map((f) => <Bar key={f.key} f={f} />)}</div>
             </div>
           )}

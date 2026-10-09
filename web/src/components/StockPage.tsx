@@ -14,7 +14,7 @@ import NewsList from "@/components/NewsList";
 import WatchStar from "@/components/WatchStar";
 import { useLiveQuotes } from "@/hooks/useLiveQuotes";
 import { useSnapshot } from "@/hooks/useSnapshot";
-import { num, type Row } from "@/lib/screener";
+import { fmtMoney, num, type Row } from "@/lib/screener";
 import {
   chipStamp, dailyBars, focusTags, grade, industryRank, outlooks, quarterStamp, revenueStamp, type StockFile, supportResistance,
 } from "@/lib/stock";
@@ -123,7 +123,7 @@ export default function StockPage({ code }: { code: string }) {
         <dl className={`num ${showLive ? "mt-1" : "mt-4"} grid grid-cols-2 gap-x-6 gap-y-2 rounded-lg border border-line bg-surface p-4 text-sm sm:grid-cols-4 lg:grid-cols-8`}>
           {[
             ["成交量", `${n(row.volume_lots, 0)} 張`],
-            ["成交金額", `${n((num(row.value) ?? 0) / 1e8)} 億`],
+            ["成交金額", fmtMoney(num(row.value) ?? 0)],
             ["量比", `${n(row.vol_ratio)} 倍`],
             ["市值", row.market_cap != null ? `${n(row.market_cap, 0)} 億` : "—"],
             ["本益比", n(row.pe)],
