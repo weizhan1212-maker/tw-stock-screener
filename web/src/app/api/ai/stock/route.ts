@@ -3,7 +3,7 @@
  * GET  ?code=2330&asof=2026-10-09 → 是否啟用、有沒有現成的摘要、今天用了幾次（不呼叫模型）
  * GET  ?usage=1（僅管理員）        → 近 7 天模型用量，用來估費用
  * GET  ?facts=2330（僅管理員）      → 送給 AI 的事實資料（不呼叫模型）
- * POST {code}                      → 有現成的就直接給（不扣次數）；沒有才呼叫模型，每人每天、全站每天各有上限
+ * POST {code, refresh?}            → 有現成的就直接給（不扣次數；管理員 refresh:true 可重新產生）；沒有才呼叫模型，每人每天、全站每天各有上限
  * 同一檔同一個資料日只產生一次，結果存在 user_kv（user_hash="_ai"），所有人共用。
  */
 import { isAdmin } from "@/lib/allowlist";
@@ -60,7 +60,9 @@ export async function POST(req: Request) {
   const u = await currentUser();
   if (!u) return json({ error: "請先登入" }, 401);
   if (!aiEnabled()) return json({ error: "尚未啟用 AI 摘要" }, 503);
-  const code = ((await req.json().catch(() => ({}))) as { code?: unknown }).code;
+  const body = (await req.json().catch(() => ({}))) as { code?: unknown; refresh?: unknown };
+  const code = body.code;
+  const refresh = body.refresh === true && isAdmin(u.email);   // 管理員調整指令後重新產生用
   if (!okCode(code)) return json({ error: "代號格式不對" }, 400);
 
   const snap = await loadSnapshot();
@@ -70,7 +72,7 @@ export async function POST(req: Request) {
   const mine = await kvGet<Counter>(u.hash, `ai:quota:${day}`, { n: 0 });
 
   const have = await kvGet<AiSummary | null>(SHARED, sumKey(code, asof), null);
-  if (have) return json({ summary: have, cached: true, used: mine.n, limit: USER_LIMIT });
+  if (have && !refresh) return json({ summary: have, cached: true, used: mine.n, limit: USER_LIMIT });
 
   if (mine.n >= USER_LIMIT) return json({ error: `今天的 AI 摘要次數用完了（每人每天 ${USER_LIMIT} 次）。已產生過的摘要仍可直接查看。` }, 429);
   const log = await kvGet<UsageLog>(SHARED, `ai:usage:${day}`, { n: 0, inTokens: 0, outTokens: 0, thoughtTokens: 0, retried: 0, failed: 0, codes: [] });
