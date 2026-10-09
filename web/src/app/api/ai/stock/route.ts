@@ -11,9 +11,11 @@ import { AiError, aiEnabled, aiModel, buildFacts, loadSnapshot, loadStock, summa
 import { kvGet, kvPut } from "@/lib/server/db";
 import { currentUser } from "@/lib/server/user";
 
-export const maxDuration = 60;
+export const maxDuration = 120;                           // 最多重寫兩次，加上備用模型，預留時間
 const SHARED = "_ai";
 const USER_LIMIT = Number(process.env.AI_USER_LIMIT) || 10;
+const ADMIN_LIMIT = 999;                                  // 管理員測試用，不受每人上限（全站上限照舊）
+const limitFor = (email: string | null | undefined) => (isAdmin(email) ? ADMIN_LIMIT : USER_LIMIT);
 const DAY_LIMIT = Number(process.env.AI_DAILY_LIMIT) || 200;
 const NO_STORE = { "Cache-Control": "no-store" };
 
@@ -53,7 +55,7 @@ export async function GET(req: Request) {
   let cached: AiSummary | null = null;
   if (okCode(code) && asof && /^\d{4}-\d{2}-\d{2}$/.test(asof)) cached = await kvGet<AiSummary | null>(SHARED, sumKey(code, asof), null);
   const used = (await kvGet<Counter>(u.hash, `ai:quota:${today()}`, { n: 0 })).n;
-  return json({ enabled: true, cached, used, limit: USER_LIMIT });
+  return json({ enabled: true, cached, used, limit: limitFor(u.email) });
 }
 
 export async function POST(req: Request) {
@@ -72,9 +74,10 @@ export async function POST(req: Request) {
   const mine = await kvGet<Counter>(u.hash, `ai:quota:${day}`, { n: 0 });
 
   const have = await kvGet<AiSummary | null>(SHARED, sumKey(code, asof), null);
-  if (have && !refresh) return json({ summary: have, cached: true, used: mine.n, limit: USER_LIMIT });
+  const limit = limitFor(u.email);
+  if (have && !refresh) return json({ summary: have, cached: true, used: mine.n, limit });
 
-  if (mine.n >= USER_LIMIT) return json({ error: `今天的 AI 摘要次數用完了（每人每天 ${USER_LIMIT} 次）。已產生過的摘要仍可直接查看。` }, 429);
+  if (mine.n >= limit) return json({ error: `今天的 AI 摘要次數用完了（每人每天 ${USER_LIMIT} 次）。已產生過的摘要仍可直接查看。` }, 429);
   const log = await kvGet<UsageLog>(SHARED, `ai:usage:${day}`, { n: 0, inTokens: 0, outTokens: 0, thoughtTokens: 0, retried: 0, failed: 0, codes: [] });
   if (log.n >= DAY_LIMIT) return json({ error: "今天全站的 AI 額度用完了，明天再來。已產生過的摘要仍可直接查看。" }, 429);
 
@@ -97,7 +100,7 @@ export async function POST(req: Request) {
       n: log.n + 1, inTokens: log.inTokens + usage.inTokens, outTokens: log.outTokens + usage.outTokens,
       thoughtTokens: log.thoughtTokens + usage.thoughtTokens, retried: log.retried + (retried ? 1 : 0), failed: log.failed, codes: [...log.codes, code].slice(-300),
     });
-    return json({ summary, cached: false, used: mine.n + 1, limit: USER_LIMIT });
+    return json({ summary, cached: false, used: mine.n + 1, limit });
   } catch (e) {
     const err = e instanceof AiError ? e : new AiError("upstream", "AI 服務暫時無法使用，請稍後再試", String(e));
     console.error(`[ai] ${code} ${err.code}：${err.detail ?? err.message}`);
