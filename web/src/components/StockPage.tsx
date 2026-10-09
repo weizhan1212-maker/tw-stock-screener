@@ -3,7 +3,7 @@
 /** 個股頁：報價、焦點標籤、K 線、多空、支撐壓力、財務健康、籌碼、營收、財報、股利、大戶。 */
 import Link from "next/link";
 import BackLink from "@/components/BackLink";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import AiSummaryCard from "@/components/AiSummary";
 import DataStatus from "@/components/DataStatus";
 import Section from "@/components/Section";
@@ -13,6 +13,7 @@ import LivePanel, { liveLabel } from "@/components/LivePanel";
 import NewsList from "@/components/NewsList";
 import WatchStar from "@/components/WatchStar";
 import { useLiveQuotes } from "@/hooks/useLiveQuotes";
+import { useUrlState } from "@/hooks/useUrlState";
 import { useSnapshot } from "@/hooks/useSnapshot";
 import { fmtMoney, num, type Row } from "@/lib/screener";
 import {
@@ -72,6 +73,19 @@ export default function StockPage({ code }: { code: string }) {
   useEffect(() => {
     if (name) document.title = `${code} ${name}｜股見未來`;
   }, [code, name]);
+
+  const TABS = ["ana", "chips", "fin", "info"] as const;
+  const [tab, setTab] = useUrlState<(typeof TABS)[number]>("tab", "ana", TABS);
+  const tabs: [(typeof TABS)[number], string][] = [["ana", "分析"], ["chips", "籌碼"], ["fin", isStock ? "財務" : "配息"], ["info", "資訊"]];
+  const tabsRef = useRef<HTMLDivElement>(null);
+  // 切換分頁時，如果已經捲過分頁列，就捲回分頁列，讓新內容從頂端開始
+  const pick = (k: (typeof TABS)[number]) => {
+    setTab(k);
+    const el = tabsRef.current;
+    if (el && el.getBoundingClientRect().top <= (window.innerWidth >= 1024 ? 57 : 1)) {
+      window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - (window.innerWidth >= 1024 ? 56 : 0) });
+    }
+  };
 
   return (
     <div className="mx-auto max-w-[1440px] px-4 py-5">
@@ -165,34 +179,63 @@ export default function StockPage({ code }: { code: string }) {
 
       {error && <p className="mt-4 rounded-lg border border-line bg-surface p-4 text-sm text-up">個股資料載入失敗：{error}</p>}
 
-      <div className="mt-4 space-y-4">
+      <div className="mt-4">
         {data ? <KChart s={data} /> : !error && <div className="h-[420px] animate-pulse rounded-lg border border-line bg-surface" />}
+      </div>
 
-        {isStock && snap && <AiSummaryCard key={code} code={code} asof={snap.meta.asof} />}
-
-        <div className="grid gap-4 lg:grid-cols-2">
-          {row && <OutlookCard row={row} />}
-          {data && <LevelsCard s={data} />}
+      {/* 分頁：不用一路往下捲；分頁列捲動時固定在上方 */}
+      <div ref={tabsRef} className="sticky top-0 z-20 -mx-4 mt-4 border-b border-line bg-paper/95 px-4 backdrop-blur lg:top-14">
+        <div role="tablist" aria-label="個股內容" className="flex gap-1 overflow-x-auto">
+          {tabs.map(([k, label]) => (
+            <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => pick(k)}
+              className={`shrink-0 border-b-2 px-3 py-2.5 text-sm ${tab === k ? "border-accent font-bold text-accent" : "border-transparent text-muted hover:text-ink"}`}>
+              {label}
+            </button>
+          ))}
         </div>
+      </div>
 
-        {!isStock && row && <EtfInfoCard row={row} s={data} />}
-        {data && <RiskCard s={data} row={row} />}
-        {isStock && data && <NoticesCard s={data} />}
-        {isStock && data && row && <ValuationCard s={data} row={row} />}
-        {isStock && snap && row && <HealthCard rows={snap.rows} row={row} code={code} s={data} />}
-        {data && <ChipsCard s={data} row={row} />}
-        {data?.revenue && data.revenue.length > 0 && <RevenueCard s={data} />}
-        {data?.quarters && data.quarters.length > 0 && <QuartersCard s={data} />}
-        {data?.dividends && data.dividends.length > 0 && <DividendCard s={data} />}
-        {data && <EventStatsCard s={data} />}
-        {name && (
-          <Section id="news" title="相關新聞" note="來源：Google 新聞，點標題到原網站閱讀">
-            <NewsList q={`${name} ${code}`} fallback={name} limit={10} />
-          </Section>
+      <div className="mt-4 space-y-4">
+        {tab === "ana" && (
+          <>
+            {isStock && snap && <AiSummaryCard key={code} code={code} asof={snap.meta.asof} />}
+            <div className="grid gap-4 lg:grid-cols-2">
+              {row && <OutlookCard row={row} />}
+              {data && <LevelsCard s={data} />}
+            </div>
+            {!isStock && row && <EtfInfoCard row={row} s={data} />}
+            {data && <RiskCard s={data} row={row} />}
+            {isStock && data && row && <ValuationCard s={data} row={row} />}
+          </>
+        )}
+        {tab === "chips" && (data ? <ChipsCard s={data} row={row} /> : <Loading />)}
+        {tab === "fin" && (
+          <>
+            {isStock && snap && row && <HealthCard rows={snap.rows} row={row} code={code} s={data} />}
+            {data?.revenue && data.revenue.length > 0 && <RevenueCard s={data} />}
+            {data?.quarters && data.quarters.length > 0 && <QuartersCard s={data} />}
+            {data?.dividends && data.dividends.length > 0 && <DividendCard s={data} />}
+            {!data && <Loading />}
+          </>
+        )}
+        {tab === "info" && (
+          <>
+            {isStock && data && <NoticesCard s={data} />}
+            {data && <EventStatsCard s={data} />}
+            {name && (
+              <Section id="news" title="相關新聞" note="來源：Google 新聞，點標題到原網站閱讀">
+                <NewsList q={`${name} ${code}`} fallback={name} limit={10} />
+              </Section>
+            )}
+          </>
         )}
       </div>
     </div>
   );
+}
+
+function Loading() {
+  return <div className="h-40 animate-pulse rounded-lg border border-line bg-surface" />;
 }
 
 // ---------------- 短中長線 ----------------
