@@ -1,5 +1,7 @@
-import StrategyHome from "@/components/StrategyHome";
+import { Suspense } from "react";
+import MarketOverview from "@/components/MarketOverview";
 
+/** 首頁＝市場總覽（一打開網站先看大盤、資金輪動與 AI 市場摘要）。策略選股移到 /strategy。 */
 export default function Page() {
-  return <StrategyHome />;
+  return <Suspense><MarketOverview /></Suspense>;
 }

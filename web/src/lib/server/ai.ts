@@ -284,18 +284,21 @@ export class AiError extends Error {
   constructor(public code: "no_key" | "quota" | "bad_output" | "upstream" | "no_model", message: string, public detail?: string) { super(message); }
 }
 
-async function callOnce(model: string, factsText: string, extra: string, lv: (typeof LEVELS)[number]) {
+/** 一種 AI 輸出的規格：指令、JSON 結構、輸出檢查。 */
+export interface AiSpec<T> { system: string; schema: object; validate: (o: T, factsText: string) => string[] }
+
+async function callOnce(model: string, spec: AiSpec<unknown>, factsText: string, extra: string, lv: (typeof LEVELS)[number]) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new AiError("no_key", "尚未啟用 AI 摘要");
   const gen: Record<string, unknown> = { temperature: 0.4, maxOutputTokens: 6000, responseMimeType: "application/json" };
-  if (lv === "full") { gen.responseSchema = SCHEMA; gen.thinkingConfig = { thinkingLevel: "low" }; }
-  if (lv === "no-thinking") gen.responseSchema = SCHEMA;
+  if (lv === "full") { gen.responseSchema = spec.schema; gen.thinkingConfig = { thinkingLevel: "low" }; }
+  if (lv === "no-thinking") gen.responseSchema = spec.schema;
   const base = (process.env.GEMINI_API_BASE || "https://generativelanguage.googleapis.com").replace(/\/$/, "");   // 只有測試時會改
   const res = await fetch(`${base}/v1beta/models/${model}:generateContent`, {
     method: "POST", cache: "no-store", signal: AbortSignal.timeout(50_000),
     headers: { "x-goog-api-key": key, "content-type": "application/json" },
     body: JSON.stringify({
-      systemInstruction: { parts: [{ text: SYSTEM }] },
+      systemInstruction: { parts: [{ text: spec.system }] },
       contents: [{ role: "user", parts: [{ text: `事實資料：\n${factsText}${extra}` }] }],
       generationConfig: gen,
     }),
@@ -309,13 +312,13 @@ interface GeminiResp {
   usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number };
 }
 
-async function generate(model: string, factsText: string, extra = ""): Promise<{ out: AiOutput; usage: Usage }> {
+async function generate<T>(model: string, spec: AiSpec<T>, factsText: string, extra = ""): Promise<{ out: T; usage: Usage }> {
   let lv = levelOf.get(model) ?? 0;
-  let r = await callOnce(model, factsText, extra, LEVELS[lv]);
+  let r = await callOnce(model, spec as AiSpec<unknown>, factsText, extra, LEVELS[lv]);
   while (r.status === 400 && lv < LEVELS.length - 1) {
     console.warn(`[ai] ${model} 400（${LEVELS[lv]}）：${r.body.slice(0, 300)}`);
     lv++;
-    r = await callOnce(model, factsText, extra, LEVELS[lv]);
+    r = await callOnce(model, spec as AiSpec<unknown>, factsText, extra, LEVELS[lv]);
   }
   levelOf.set(model, lv);
   if (r.status === 429) throw new AiError("quota", "Google 的免費額度暫時用完了，請稍後再試", `${model} ${r.body.slice(0, 300)}`);
@@ -326,8 +329,8 @@ async function generate(model: string, factsText: string, extra = ""): Promise<{
   }
   const j = JSON.parse(r.body) as GeminiResp;
   const text = (j.candidates?.[0]?.content?.parts ?? []).filter((p) => !p.thought).map((p) => p.text ?? "").join("").trim();
-  let out: AiOutput;
-  try { out = JSON.parse(text.replace(/^```(?:json)?\s*|\s*```$/g, "")) as AiOutput; }
+  let out: T;
+  try { out = JSON.parse(text.replace(/^```(?:json)?\s*|\s*```$/g, "")) as T; }
   catch { throw new AiError("bad_output", "AI 回覆的格式不對，請再試一次", `${model} finish=${j.candidates?.[0]?.finishReason} ${text.slice(0, 200)}`); }
   const u = j.usageMetadata ?? {};
   return { out, usage: { inTokens: u.promptTokenCount ?? 0, outTokens: u.candidatesTokenCount ?? 0, thoughtTokens: u.thoughtsTokenCount ?? 0 } };
@@ -337,19 +340,12 @@ async function generate(model: string, factsText: string, extra = ""): Promise<{
 
 const BANNED = /(建議(?:買|賣|進|出|加|減|持|布局|投資人|停|您|大家)|買進|賣出|買入|加碼|減碼|進場|出場|停損|停利|目標價|值得買|不要買|可以買|應該買|推薦|看好|看壞|看漲|看跌|必漲|必跌|穩賺|保證|轉強可期|有望|預期將|預計將|可望)/;
 
-/** 看多理由與風險裡不允許的說法：沒有逐期資料佐證的趨勢詞、暗示後市的字眼。 */
+/** 重點段落裡不允許的說法：沒有逐期資料佐證的趨勢詞、暗示後市的字眼。 */
 const STRICT_BANNED = /((持續|連續|不斷)(增溫|加溫|下滑|減少|增加|上升|回升|成長|衰退|走高|走低|攀升|流出|流入)|支撐|轉機|下檔有限|上漲空間|後市)/;
 
-const isPoints = (x: unknown): x is AiPoint[] => Array.isArray(x) && x.every((p) => p && typeof p.title === "string" && typeof p.text === "string");
-
-/** 檢查：結構完整、沒有操作字眼、數字都出現在事實資料中。回傳問題清單（空＝通過）。 */
-export function validate(o: AiOutput, factsText: string): string[] {
-  if (!o || typeof o.positioning !== "string" || typeof o.headline !== "string" || typeof o.change !== "string"
-    || !isPoints(o.bulls) || !isPoints(o.risks) || !o.bulls.length || !o.risks.length
-    || !Array.isArray(o.watch) || !o.watch.every((w) => typeof w === "string")) return ["結構不完整"];
+/** 共用檢查：strict＝重點段落（數字必須照抄、不得有趨勢詞與暗示後市）；loose＝觀察條件（可用 10 的倍數門檻）。 */
+export function textProblems(strict: string[], loose: string[], factsText: string): string[] {
   const problems: string[] = [];
-  const strict = [o.positioning, o.headline, ...o.bulls.flatMap((p) => [p.title, p.text]), ...o.risks.flatMap((p) => [p.title, p.text])];
-  const loose = [o.change, ...o.watch];                 // 觀察條件可以用整數門檻
   const hit = [...strict, ...loose].map((t) => t.match(BANNED)?.[0]).filter(Boolean);
   if (hit.length) problems.push(`出現不允許的字眼：${[...new Set(hit)].join("、")}`);
   const soft = strict.map((t) => t.match(STRICT_BANNED)?.[0]).filter(Boolean);
@@ -370,29 +366,45 @@ export function validate(o: AiOutput, factsText: string): string[] {
   return problems;
 }
 
-async function summarizeWith(model: string, facts: Facts): Promise<{ out: AiOutput; usage: Usage; retried: boolean }> {
-  let { out, usage } = await generate(model, facts.text);
-  let problems = validate(out, facts.text);
+async function runWith<T>(model: string, spec: AiSpec<T>, factsText: string): Promise<{ out: T; usage: Usage; retried: boolean }> {
+  let { out, usage } = await generate(model, spec, factsText);
+  let problems = spec.validate(out, factsText);
   // 檢查沒過：把問題告訴模型重寫，最多兩次
   for (let i = 0; i < 2 && problems.length; i++) {
     const prev = usage;
-    ({ out, usage } = await generate(model, facts.text, `\n\n上一次的輸出有問題：${problems.join("；")}。請修正後重寫整份：數字只能照抄事實資料，不得出現操作字眼、沒有根據的趨勢詞或暗示後市的說法。`));
+    ({ out, usage } = await generate(model, spec, factsText, `\n\n上一次的輸出有問題：${problems.join("；")}。請修正後重寫整份：數字只能照抄事實資料，不得出現操作字眼、沒有根據的趨勢詞或暗示後市的說法。`));
     usage = { inTokens: usage.inTokens + prev.inTokens, outTokens: usage.outTokens + prev.outTokens, thoughtTokens: usage.thoughtTokens + prev.thoughtTokens };
-    problems = validate(out, facts.text);
+    problems = spec.validate(out, factsText);
     if (!problems.length) return { out, usage, retried: true };
   }
   if (problems.length) throw new AiError("bad_output", "這次產生的內容沒通過檢查，請稍後再試", `${model} ${problems.join("；")}`);
   return { out, usage, retried: false };
 }
 
-/** 產生解讀：先用主要模型；額度用完或模型不存在時改用備用模型。檢查沒過就丟錯（不快取、不扣次數）。 */
-export async function summarize(facts: Facts): Promise<{ out: AiOutput; usage: Usage; retried: boolean; model: string }> {
+/** 依規格產生：先用主要模型；額度用完或模型不存在時改用備用模型。檢查沒過就丟錯。 */
+export async function runAi<T>(spec: AiSpec<T>, factsText: string): Promise<{ out: T; usage: Usage; retried: boolean; model: string }> {
   const main = aiModel(), alt = aiFallbackModel();
   try {
-    return { ...(await summarizeWith(main, facts)), model: main };
+    return { ...(await runWith(main, spec, factsText)), model: main };
   } catch (e) {
     if (!(e instanceof AiError) || !["quota", "no_model"].includes(e.code) || alt === main) throw e;
     console.warn(`[ai] ${main} ${e.code}，改用 ${alt}`);
-    return { ...(await summarizeWith(alt, facts)), model: alt };
+    return { ...(await runWith(alt, spec, factsText)), model: alt };
   }
 }
+
+// ---------------- 個股解讀 ----------------
+
+const isPoints = (x: unknown): x is AiPoint[] => Array.isArray(x) && x.every((p) => p && typeof p.title === "string" && typeof p.text === "string");
+
+export function validate(o: AiOutput, factsText: string): string[] {
+  if (!o || typeof o.positioning !== "string" || typeof o.headline !== "string" || typeof o.change !== "string"
+    || !isPoints(o.bulls) || !isPoints(o.risks) || !o.bulls.length || !o.risks.length
+    || !Array.isArray(o.watch) || !o.watch.every((w) => typeof w === "string")) return ["結構不完整"];
+  const strict = [o.positioning, o.headline, ...o.bulls.flatMap((p) => [p.title, p.text]), ...o.risks.flatMap((p) => [p.title, p.text])];
+  return textProblems(strict, [o.change, ...o.watch], factsText);
+}
+
+const STOCK_SPEC: AiSpec<AiOutput> = { system: SYSTEM, schema: SCHEMA, validate };
+
+export const summarize = (facts: Facts) => runAi(STOCK_SPEC, facts.text);

@@ -89,7 +89,7 @@ export default function Watchlist() {
           <p className="mt-2 text-sm leading-relaxed text-muted">
             在任何股票列表或個股頁按 <span className="text-warn-ink">☆</span> 就會加進來；也可以用右上角搜尋找股票。
           </p>
-          <Link href="/" className="mt-4 inline-block rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white">去看策略選股</Link>
+          <Link href="/strategy" className="mt-4 inline-block rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white">去看策略選股</Link>
         </div>
       ) : (
         <Results

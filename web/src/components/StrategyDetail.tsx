@@ -33,7 +33,7 @@ export default function StrategyDetail({ id }: { id: string }) {
 
   return (
     <div className="mx-auto max-w-[1440px] px-4 py-5">
-      <nav className="mb-2 text-sm"><Link href="/" className="text-muted hover:text-ink">← 策略選股</Link></nav>
+      <nav className="mb-2 text-sm"><Link href="/strategy" className="text-muted hover:text-ink">← 策略選股</Link></nav>
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h1 className="text-2xl font-bold text-ink">{s.name}</h1>
         {s.author && <span className="text-sm text-muted">{s.author}</span>}

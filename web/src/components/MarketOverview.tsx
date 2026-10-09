@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useUrlState } from "@/hooks/useUrlState";
 import { useEffect, useMemo, useState } from "react";
+import AiMarket from "@/components/AiMarket";
 import NewsList from "@/components/NewsList";
+import Rotation from "@/components/Rotation";
 import Sentiment, { type SentimentData } from "@/components/Sentiment";
 import Sparkline from "@/components/Sparkline";
 import { Seg } from "@/components/Screener";
@@ -106,6 +108,8 @@ export default function MarketOverview() {
         <span className="num text-sm text-muted">資料日期：{m.asof.replaceAll("-", "/")}</span>
       </div>
 
+      <AiMarket />
+
       {/* 指數全覽 */}
       <ul className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         {m.indices.map((c) => (
@@ -126,6 +130,8 @@ export default function MarketOverview() {
           </li>
         ))}
       </ul>
+
+      {snap && <Rotation rows={snap.rows} asof={snap.meta.asof} />}
 
       <div className="mt-4 grid gap-3 lg:grid-cols-4">
         <Panel title="漲跌家數" date={m.asof} asof={m.asof} freq="每日盤後">

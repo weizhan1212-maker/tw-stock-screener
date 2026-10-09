@@ -75,7 +75,7 @@ export default function StockPage({ code }: { code: string }) {
 
   return (
     <div className="mx-auto max-w-[1440px] px-4 py-5">
-      <nav className="mb-2 text-sm"><BackLink fallback="/" fallbackLabel="策略選股" /></nav>
+      <nav className="mb-2 text-sm"><BackLink fallback="/" fallbackLabel="市場總覽" /></nav>
 
       {/* 標頭：左邊名稱、價格上下對齊；右邊三個同樣大小的動作按鈕 */}
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">

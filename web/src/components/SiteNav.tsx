@@ -3,16 +3,16 @@
 /**
  * 站內導覽：
  * - 電腦（寬 1024 以上）：頁首一排連結，目前頁面加底色
- * - 手機、平板：底部分頁列（策略、篩選、市場、自選、更多），往下捲收起、往上捲回來；「更多」從底部展開其他頁面
+ * - 手機、平板：底部分頁列（市場、策略、篩選、自選、更多），往下捲收起、往上捲回來；「更多」從底部展開其他頁面
  */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export const NAV: { href: string; label: string; short?: string }[] = [
-  { href: "/", label: "策略選股", short: "策略" },
+  { href: "/", label: "市場總覽", short: "市場" },
+  { href: "/strategy", label: "策略選股", short: "策略" },
   { href: "/screener", label: "自訂篩選", short: "篩選" },
-  { href: "/market", label: "市場總覽", short: "市場" },
   { href: "/industry", label: "產業" },
   { href: "/etf", label: "ETF" },
   { href: "/ranking", label: "排行榜" },
@@ -22,7 +22,7 @@ export const NAV: { href: string; label: string; short?: string }[] = [
   { href: "/alerts", label: "警報" },
 ];
 
-const isActive = (path: string, href: string) => (href === "/" ? path === "/" || path.startsWith("/strategy") : path.startsWith(href));
+const isActive = (path: string, href: string) => (href === "/" ? path === "/" || path.startsWith("/market") : path.startsWith(href));
 
 export function DesktopNav() {
   const path = usePathname();
@@ -39,9 +39,9 @@ export function DesktopNav() {
 }
 
 const ICON: Record<string, React.ReactNode> = {
-  "/": <path d="M4 19V9m5 10V5m5 14v-7m5 7V8" />,
+  "/": <path d="M3 17l5-5 4 4 8-9M14 7h6v6" />,
+  "/strategy": <path d="M4 19V9m5 10V5m5 14v-7m5 7V8" />,
   "/screener": <path d="M3 5h18l-7 8v6l-4-2v-4z" />,
-  "/market": <path d="M3 17l5-5 4 4 8-9M14 7h6v6" />,
   "/watchlist": <path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" />,
   more: <path d="M5 12h.01M12 12h.01M19 12h.01" strokeWidth={3} />,
 };

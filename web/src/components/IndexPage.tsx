@@ -121,7 +121,7 @@ export default function IndexPage({ name: asked }: { name: string }) {
 
   return (
     <div className="mx-auto max-w-[1440px] px-4 py-5">
-      <nav className="mb-2 text-sm"><BackLink fallback="/market" fallbackLabel="市場總覽" /></nav>
+      <nav className="mb-2 text-sm"><BackLink fallback="/" fallbackLabel="市場總覽" /></nav>
       <div className="flex flex-wrap items-end gap-x-5 gap-y-2">
         <h1 className="text-2xl font-bold text-ink">{label(name)}</h1>
         {stats && (

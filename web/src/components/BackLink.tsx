@@ -10,7 +10,7 @@ import { useEffect, useSyncExternalStore } from "react";
 
 const KEY = "nav-stack";
 const NAMES: [RegExp, string][] = [
-  [/^\/$/, "策略選股"], [/^\/strategy\//, "策略"], [/^\/screener/, "自訂篩選"], [/^\/market\/index/, "指數"], [/^\/market/, "市場總覽"],
+  [/^\/$/, "市場總覽"], [/^\/strategy$/, "策略選股"], [/^\/strategy\//, "策略"], [/^\/screener/, "自訂篩選"], [/^\/market\/index/, "指數"], [/^\/market/, "市場總覽"],
   [/^\/industry/, "產業"], [/^\/etf/, "ETF"], [/^\/ranking/, "排行榜"], [/^\/backtest/, "回測"],
   [/^\/watchlist/, "自選股"], [/^\/portfolio/, "投資組合"], [/^\/alerts/, "警報"], [/^\/compare/, "比較"], [/^\/stock\//, "上一檔股票"],
 ];
