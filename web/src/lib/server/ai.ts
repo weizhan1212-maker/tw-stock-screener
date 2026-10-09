@@ -4,7 +4,7 @@
  *   並附上「比較對象」：五因子全市場百分位、同產業中位數、自己過去的位置，讓模型有東西可以解讀。
  * - 模型負責歸納：定位、看多理由、主要風險、什麼情況代表故事變了、接下來追蹤什麼。
  * - 數字只能來自事實資料（輸出後逐一檢查）；不給買賣建議、目標價、進出場、停損停利。
- * 金鑰：GEMINI_API_KEY；模型：GEMINI_MODEL（預設 gemini-3.5-flash），額度用完或不支援時改用 GEMINI_FALLBACK_MODEL（預設 gemini-3.1-flash-lite）。
+ * 金鑰：GEMINI_API_KEY；模型依序為 3.5 Flash → 2.5 Flash → 3.1 Flash-Lite → 2.5 Flash-Lite（GEMINI_MODELS 可改），額度用完或不支援就換下一個。
  */
 import "server-only";
 import { readFile } from "node:fs/promises";
@@ -16,7 +16,11 @@ import { getCachedBytes } from "@/lib/storage";
 
 export const aiEnabled = () => !!process.env.GEMINI_API_KEY;
 export const aiModel = () => process.env.GEMINI_MODEL || "gemini-3.5-flash";
-export const aiFallbackModel = () => process.env.GEMINI_FALLBACK_MODEL || "gemini-3.1-flash-lite";
+/** 依序嘗試的模型：免費層每個模型各有每日次數上限（例如 3.5 Flash 每天 20 次），用完就換下一個。可用 GEMINI_MODELS（逗號分隔）覆蓋。 */
+export const aiModels = () => {
+  const list = (process.env.GEMINI_MODELS || `${aiModel()},gemini-2.5-flash,gemini-3.1-flash-lite,gemini-2.5-flash-lite`).split(",").map((x) => x.trim()).filter(Boolean);
+  return [...new Set(list)];
+};
 
 const unzip = (buf: Buffer | ArrayBuffer) => {
   const b = Buffer.from(buf as ArrayBuffer);
@@ -321,7 +325,10 @@ async function generate<T>(model: string, spec: AiSpec<T>, factsText: string, ex
     r = await callOnce(model, spec as AiSpec<unknown>, factsText, extra, LEVELS[lv]);
   }
   levelOf.set(model, lv);
-  if (r.status === 429) throw new AiError("quota", "Google 的免費額度暫時用完了，請稍後再試", `${model} ${r.body.slice(0, 300)}`);
+  if (r.status === 429) {
+    const daily = /PerDay|per day/i.test(r.body);         // Google 回覆裡會標明是每分鐘還是每日上限
+    throw new AiError("quota", "Google 的免費額度暫時用完了，請稍後再試", `${model}${daily ? " per day" : ""} ${r.body.slice(0, 300)}`);
+  }
   if (r.status === 404) throw new AiError("no_model", "AI 服務暫時無法使用，請稍後再試", `${model} ${r.body.slice(0, 300)}`);
   if (r.status !== 200) {
     console.error(`[ai] ${model} ${r.status}：${r.body.slice(0, 400)}`);
@@ -381,16 +388,28 @@ async function runWith<T>(model: string, spec: AiSpec<T>, factsText: string): Pr
   return { out, usage, retried: false };
 }
 
-/** 依規格產生：先用主要模型；額度用完或模型不存在時改用備用模型。檢查沒過就丟錯。 */
+/** 額度用完的模型先跳過一段時間（同一台伺服器記憶體內），免得每次都先撞一次牆。 */
+const skipUntil = new Map<string, number>();
+
+/** 依規格產生：依序嘗試模型清單；某個模型額度用完（429）或不存在（404）就換下一個。檢查沒過就丟錯。 */
 export async function runAi<T>(spec: AiSpec<T>, factsText: string): Promise<{ out: T; usage: Usage; retried: boolean; model: string }> {
-  const main = aiModel(), alt = aiFallbackModel();
-  try {
-    return { ...(await runWith(main, spec, factsText)), model: main };
-  } catch (e) {
-    if (!(e instanceof AiError) || !["quota", "no_model"].includes(e.code) || alt === main) throw e;
-    console.warn(`[ai] ${main} ${e.code}，改用 ${alt}`);
-    return { ...(await runWith(alt, spec, factsText)), model: alt };
+  const all = aiModels();
+  const ready = all.filter((m) => (skipUntil.get(m) ?? 0) < Date.now());
+  const order = ready.length ? ready : all;              // 全部都在冷卻就全部再試一次
+  let last: unknown = null;
+  for (const model of order) {
+    try {
+      return { ...(await runWith(model, spec, factsText)), model };
+    } catch (e) {
+      if (!(e instanceof AiError) || !["quota", "no_model"].includes(e.code)) throw e;
+      // 每分鐘上限只等 1 分鐘；每日上限（訊息含 per day／PerDay）跳過 1 小時
+      const daily = /per ?day|PerDay|daily/i.test(e.detail ?? "");
+      skipUntil.set(model, Date.now() + (e.code === "no_model" ? 6 * 3600_000 : daily ? 3600_000 : 60_000));
+      console.warn(`[ai] ${model} ${e.code}${daily ? "（每日）" : ""}，換下一個模型`);
+      last = e;
+    }
   }
+  throw last instanceof AiError ? last : new AiError("quota", "Google 的免費額度暫時用完了，請稍後再試");
 }
 
 // ---------------- 個股解讀 ----------------
