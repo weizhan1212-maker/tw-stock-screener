@@ -149,10 +149,18 @@ const SECTIONS: { title: string; keys: string[] }[] = [
 
 const SIGNED = /^(chg_pct|ret\d+|rs\d+|dist_|rev_yoy|rev_ttm_yoy|eps_q_yoy|eps_cagr3|macd_hist)|_net\d*$|_chg/;
 
+/** 「變化量」欄位改寫成白話，免得模型把變化量誤讀成前期的數值。 */
+const POINT_CHANGE: Record<string, string> = {
+  rev_yoy_chg: "月營收年增率與 3 個月前的年增率相比",
+  big_pct_chg: "千張大戶持股比與上週相比",
+};
+
 const line = (r: Row, key: string) => {
   const f = FIELD_MAP[key];
   const v = r[key];
   if (!f || v == null) return null;
+  const pc = POINT_CHANGE[key];
+  if (pc && typeof v === "number") return `${pc}：${v > 0 ? "高" : v < 0 ? "低" : "持平"} ${fmtUnit(Math.abs(v), "num")} 個百分點`;
   return `${f.label}：${fmtUnit(v, f.format, SIGNED.test(key))}`;
 };
 
@@ -190,7 +198,7 @@ export function buildFacts(code: string, snap: Snapshot, s: StockFile): Facts | 
   const margin = snap.meta.margin_asof && snap.meta.margin_asof < snap.meta.asof ? `（融資融券與外資持股資料到 ${snap.meta.margin_asof}，比價格晚一天）` : "";
   if (chips.length) out.push(`\n【籌碼面】${margin}`, ...chips);
   const hold = (s.holders ?? []).slice(-4).filter((h) => h.big != null).map((h) => `${h.d}：${(h.big as number).toFixed(2)}%`);
-  if (hold.length >= 2) out.push(`\n【千張大戶持股比（週）】`, hold.join("；"));
+  if (hold.length >= 3) out.push(`\n【千張大戶持股比（週）】`, hold.join("；"));
   const tags = focusTags(snap.rows, code).slice(0, 6).map((t) => `${t.label}第 ${t.rank} 名`);
   if (tags.length) out.push(`\n【全市場排名】`, tags.join("、"));
 
@@ -329,6 +337,9 @@ async function generate(model: string, factsText: string, extra = ""): Promise<{
 
 const BANNED = /(建議(?:買|賣|進|出|加|減|持|布局|投資人|停|您|大家)|買進|賣出|買入|加碼|減碼|進場|出場|停損|停利|目標價|值得買|不要買|可以買|應該買|推薦|看好|看壞|看漲|看跌|必漲|必跌|穩賺|保證|轉強可期|有望|預期將|預計將|可望)/;
 
+/** 看多理由與風險裡不允許的說法：沒有逐期資料佐證的趨勢詞、暗示後市的字眼。 */
+const STRICT_BANNED = /((持續|連續|不斷)(增溫|加溫|下滑|減少|增加|上升|回升|成長|衰退|走高|走低|攀升|流出|流入)|支撐|轉機|下檔有限|上漲空間|後市)/;
+
 const isPoints = (x: unknown): x is AiPoint[] => Array.isArray(x) && x.every((p) => p && typeof p.title === "string" && typeof p.text === "string");
 
 /** 檢查：結構完整、沒有操作字眼、數字都出現在事實資料中。回傳問題清單（空＝通過）。 */
@@ -341,6 +352,8 @@ export function validate(o: AiOutput, factsText: string): string[] {
   const loose = [o.change, ...o.watch];                 // 觀察條件可以用整數門檻
   const hit = [...strict, ...loose].map((t) => t.match(BANNED)?.[0]).filter(Boolean);
   if (hit.length) problems.push(`出現不允許的字眼：${[...new Set(hit)].join("、")}`);
+  const soft = strict.map((t) => t.match(STRICT_BANNED)?.[0]).filter(Boolean);
+  if (soft.length) problems.push(`出現沒有根據的趨勢詞或暗示後市的說法：${[...new Set(soft)].join("、")}（請改成只描述資料裡看得到的比較，例如「較上週減少」）`);
   const pool = factsText.replace(/,/g, "");
   const bad = new Set<string>();
   const check = (t: string, allowRound: boolean) => {
@@ -360,13 +373,16 @@ export function validate(o: AiOutput, factsText: string): string[] {
 async function summarizeWith(model: string, facts: Facts): Promise<{ out: AiOutput; usage: Usage; retried: boolean }> {
   let { out, usage } = await generate(model, facts.text);
   let problems = validate(out, facts.text);
-  if (!problems.length) return { out, usage, retried: false };
-  const first = usage;
-  ({ out, usage } = await generate(model, facts.text, `\n\n上一次的輸出有問題：${problems.join("；")}。請修正：數字只能照抄事實資料，且不得出現操作字眼。`));
-  usage = { inTokens: usage.inTokens + first.inTokens, outTokens: usage.outTokens + first.outTokens, thoughtTokens: usage.thoughtTokens + first.thoughtTokens };
-  problems = validate(out, facts.text);
+  // 檢查沒過：把問題告訴模型重寫，最多兩次
+  for (let i = 0; i < 2 && problems.length; i++) {
+    const prev = usage;
+    ({ out, usage } = await generate(model, facts.text, `\n\n上一次的輸出有問題：${problems.join("；")}。請修正後重寫整份：數字只能照抄事實資料，不得出現操作字眼、沒有根據的趨勢詞或暗示後市的說法。`));
+    usage = { inTokens: usage.inTokens + prev.inTokens, outTokens: usage.outTokens + prev.outTokens, thoughtTokens: usage.thoughtTokens + prev.thoughtTokens };
+    problems = validate(out, facts.text);
+    if (!problems.length) return { out, usage, retried: true };
+  }
   if (problems.length) throw new AiError("bad_output", "這次產生的內容沒通過檢查，請稍後再試", `${model} ${problems.join("；")}`);
-  return { out, usage, retried: true };
+  return { out, usage, retried: false };
 }
 
 /** 產生解讀：先用主要模型；額度用完或模型不存在時改用備用模型。檢查沒過就丟錯（不快取、不扣次數）。 */
