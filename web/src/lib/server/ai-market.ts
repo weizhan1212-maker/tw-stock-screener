@@ -157,7 +157,7 @@ function validate(o: MarketAi, factsText: string): string[] {
     || !Array.isArray(o.watch) || !o.watch.every((w) => typeof w === "string")) return ["結構不完整"];
   const strict = [o.headline, o.summary, o.rotation, ...o.points.flatMap((p) => [p.title, p.text])];
   const probs = textProblems(strict, o.watch, factsText);
-  const guess = strict.map((t) => t.match(/避險|撤出台股|資金外逃|恐慌性/)?.[0]).filter(Boolean);
+  const guess = strict.map((t) => t.match(/避險|避風|撤出台股|資金外逃|恐慌性|防禦性轉向/)?.[0]).filter(Boolean);
   if (guess.length) probs.push(`出現資料無法佐證的動機推測：${[...new Set(guess)].join("、")}（只說資金流向哪裡，不說原因）`);
   return probs;
 }
