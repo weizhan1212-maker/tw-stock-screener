@@ -113,26 +113,69 @@ export function EtfHoldingsCard({ s }: { s: StockFile | null }) {
     );
   }
   const total = t.rows.reduce((a, r) => a + (r.pct ?? 0), 0);
-  const max = Math.max(...t.rows.map((r) => r.pct ?? 0), 1);
   return (
     <Section id="etf-holdings" title="成分股（前十大）" note={`來源：投信投顧公會（資料來源為各投信），${ymText(t.ym)} 月底`}>
-      <table className="num w-full text-sm">
-        <thead><tr className="text-xs text-muted"><th className="py-1.5 text-left font-normal">名次</th><th className="text-left font-normal">股票</th>
-          <th className="w-[40%] font-normal" /><th className="text-right font-normal">占淨值</th><th className="hidden text-right font-normal sm:table-cell">金額（億）</th></tr></thead>
-        <tbody>
-          {t.rows.map((r, i) => (
-            <tr key={`${r.code}-${i}`} className="border-t border-line">
-              <td className="py-1.5 text-muted">{i + 1}</td>
-              <td>{/^\d{4,6}[A-Z]?$/.test(r.code) ? <Link href={`/stock/${r.code}`} className="text-ink hover:text-accent">{r.name} <span className="text-xs text-muted">{r.code}</span></Link> : <span className="text-ink">{r.name}</span>}</td>
-              <td className="px-2"><div className="h-2 rounded-full bg-surface-2"><div className="h-full rounded-full bg-accent" style={{ width: `${((r.pct ?? 0) / max) * 100}%` }} /></div></td>
-              <td className="text-right text-ink">{f(r.pct)}%</td>
-              <td className="hidden text-right text-muted sm:table-cell">{r.amt == null ? "—" : f(r.amt / 1e8, 1)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <p className="mt-2 text-xs text-muted">前十大合計占淨值 {f(total)}%。公會每月公布一次（約晚一個多月），完整持股與每日異動請看發行投信官網。</p>
+      <div className="grid items-center gap-6 md:grid-cols-[minmax(0,1fr)_260px]">
+        <table className="num w-full text-sm">
+          <thead><tr className="text-xs text-muted"><th className="py-1.5 text-left font-normal">名次</th><th className="text-left font-normal">股票</th>
+            <th className="text-right font-normal">占淨值</th><th className="hidden text-right font-normal sm:table-cell">金額（億）</th></tr></thead>
+          <tbody>
+            {t.rows.map((r, i) => (
+              <tr key={`${r.code}-${i}`} className="border-t border-line">
+                <td className="py-1.5 text-muted">{i + 1}</td>
+                <td>
+                  <span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm align-middle" style={{ background: PIE[i % PIE.length] }} aria-hidden />
+                  {/^\d{4,6}[A-Z]?$/.test(r.code) ? <Link href={`/stock/${r.code}`} className="text-ink hover:text-accent">{r.name} <span className="text-xs text-muted">{r.code}</span></Link> : <span className="text-ink">{r.name}</span>}
+                </td>
+                <td className="text-right text-ink">{f(r.pct)}%</td>
+                <td className="hidden text-right text-muted sm:table-cell">{r.amt == null ? "—" : f(r.amt / 1e8, 1)}</td>
+              </tr>
+            ))}
+            {total < 99.9 && (
+              <tr className="border-t border-line text-muted">
+                <td className="py-1.5" />
+                <td><span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm bg-line align-middle" aria-hidden />其他</td>
+                <td className="text-right">{f(100 - total)}%</td>
+                <td className="hidden sm:table-cell" />
+              </tr>
+            )}
+          </tbody>
+        </table>
+        <Donut rows={t.rows} total={total} />
+      </div>
+      <p className="mt-2 text-xs text-muted">前十大合計占淨值 {f(total)}%，其餘 {f(Math.max(0, 100 - total))}% 為其他持股與現金。公會每月公布一次（約晚一個多月），完整持股與每日異動請看發行投信官網。</p>
     </Section>
+  );
+}
+
+/** 圓餅（甜甜圈）圖的顏色：10 種好分辨的顏色，「其他」用灰色 */
+const PIE = ["#2563eb", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16", "#f97316", "#64748b"];
+
+function Donut({ rows, total }: { rows: { name: string; pct: number | null }[]; total: number }) {
+  const R = 70, W = 26, C = 2 * Math.PI * R;
+  const vals = rows.map((r) => Math.max(0, r.pct ?? 0));
+  const segs = vals.map((v, i) => ({ name: rows[i].name, v, color: PIE[i % PIE.length], off: vals.slice(0, i).reduce((a, b) => a + b, 0) }));
+  const acc = vals.reduce((a, b) => a + b, 0);
+  const rest = Math.max(0, 100 - total);
+  return (
+    <svg viewBox="0 0 200 200" className="mx-auto h-56 w-56" role="img" aria-label={`前十大持股占淨值 ${f(total)}%`}>
+      <g transform="rotate(-90 100 100)">
+        <circle cx="100" cy="100" r={R} fill="none" strokeWidth={W} className="stroke-line" />
+        {segs.map((s) => (
+          <circle key={s.name + s.off} cx="100" cy="100" r={R} fill="none" stroke={s.color} strokeWidth={W}
+            strokeDasharray={`${(s.v / 100) * C} ${C}`} strokeDashoffset={-(s.off / 100) * C}>
+            <title>{`${s.name} ${f(s.v)}%`}</title>
+          </circle>
+        ))}
+        {rest > 0 && (
+          <circle cx="100" cy="100" r={R} fill="none" strokeWidth={W} className="stroke-line" strokeDasharray={`${(rest / 100) * C} ${C}`} strokeDashoffset={-(acc / 100) * C}>
+            <title>{`其他 ${f(rest)}%`}</title>
+          </circle>
+        )}
+      </g>
+      <text x="100" y="94" textAnchor="middle" className="fill-muted text-[11px]">前十大合計</text>
+      <text x="100" y="116" textAnchor="middle" className="num fill-ink text-[20px] font-bold">{f(total, 1)}%</text>
+    </svg>
   );
 }
 
