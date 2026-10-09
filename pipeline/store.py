@@ -37,6 +37,7 @@ DAILY_KEYS = {
     "fut_large": ["date"],                # 台指期大額交易人
     "fut_insti": ["date"],                # 三大法人台指期未平倉
     "fx": ["date"],                       # 美元兌新台幣
+    "etf_nav": ["date", "code"],          # ETF 市價、投信預估淨值、折溢價（證交所淨值表）
 }
 
 TABLE_KEYS = {
@@ -49,6 +50,7 @@ TABLE_KEYS = {
     "securities": ["code"],
     "company": ["code"],
     "etf_info": ["code"],
+    "etf_top10": ["ym", "etf", "rank"],                # ETF 每月前十大持股（投信投顧公會）
     "events": ["code", "spoke_date", "spoke_time", "subject"],   # 重大訊息（每日累積，來源只給最近一天）
     "delisting": ["code"],
     "income_periods": ["code", "year", "quarter"],

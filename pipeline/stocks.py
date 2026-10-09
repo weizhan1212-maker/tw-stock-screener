@@ -211,6 +211,43 @@ def build_all(store: DataStore, asof=None, codes: list[str] | None = None, worke
             i["shares"] = _r(c.get("shares_issued"), 0)
         return i
 
+    # ---- ETF：淨值與折溢價、前十大持股、基本資料；個股：被哪些 ETF 列入前十大 ----
+    nav = store.read_daily("etf_nav", asof - pd.Timedelta(days=200), asof)
+    nav_by = _groups(nav)
+    top = store.read_table("etf_top10")
+    etf_info = store.read_table("etf_info")
+    info_by = etf_info.set_index("code").to_dict("index") if not etf_info.empty else {}
+    top_by, held_by = {}, {}
+    if not top.empty:
+        latest = top.groupby("etf")["ym"].transform("max")
+        cur = top[top["ym"] == latest].sort_values(["etf", "rank"])
+        for e, g in cur.groupby("etf"):
+            top_by[e] = {"ym": str(g["ym"].iloc[0]), "rows": [
+                {"code": str(r.stock), "name": str(r.name), "pct": _r(r.pct, 2), "amt": _r(r.amount, 0), "kind": str(r.kind)}
+                for r in g.itertuples()]}
+        for r in cur.itertuples():
+            held_by.setdefault(str(r.stock), []).append({"etf": str(r.etf), "name": str(names.get(r.etf, "") or r.fund),
+                                                         "pct": _r(r.pct, 2), "rank": int(r.rank), "ym": str(r.ym)})
+
+    def extra_for(code):
+        if util.security_type(code) == "etf":
+            e = {}
+            i = info_by.get(code)
+            if i:
+                e["info"] = {k: (None if pd.isna(v) else v) for k, v in i.items()
+                             if k in ("etf_type", "etf_index", "etf_fullname", "etf_foreign", "etf_listed", "etf_founded",
+                                      "etf_manager", "etf_benchmark", "etf_custom_index", "etf_mix")}
+            g = nav_by.get(code)
+            if g is not None and not g.empty:
+                g = g.sort_values("date").tail(120)
+                e["nav"] = {"d": g["date"].dt.strftime("%Y-%m-%d").tolist(), "p": _col(g, "price", 2),
+                            "n": _col(g, "nav", 2), "pr": _col(g, "premium", 2), "u": _col(g, "units", 0)}
+            if code in top_by:
+                e["top10"] = top_by[code]
+            return {"etf": e} if e else {}
+        h = held_by.get(code)
+        return {"held_by": sorted(h, key=lambda x: -(x["pct"] or 0))} if h else {}
+
     local = threading.local()
 
     def upload(code):
@@ -218,6 +255,7 @@ def build_all(store: DataStore, asof=None, codes: list[str] | None = None, worke
         if st is None:
             st = local.st = store.st.clone()
         payload = build_one(code, by_code[code], parts, info_for(code), asof_s)
+        payload.update(extra_for(code))
         raw = gzip.compress(json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
         st.put(f"{PREFIX}/{code}.json.gz", raw, "application/gzip")
         return len(raw)

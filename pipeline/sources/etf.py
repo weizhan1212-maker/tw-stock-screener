@@ -32,6 +32,7 @@ def parse_nav(body) -> pd.DataFrame:
                 continue
             recs.append({
                 "date": pd.Timestamp(dt.date(int(d[:4]), int(d[4:6]), int(d[6:]))), "code": code,
+                "name": re.sub(r"[（(].*$", "", str(x.get("b") or "")).strip(),
                 "units": _num(x.get("c")), "units_chg": _num(x.get("d")),
                 "price": _num(x.get("e")), "nav": _num(x.get("f")), "premium": _num(x.get("g")),
                 "nav_prev": _num(x.get("h")),

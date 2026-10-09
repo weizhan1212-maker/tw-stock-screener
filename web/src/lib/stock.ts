@@ -12,6 +12,15 @@ export interface StockFile {
   holders?: { d: string; big: N; big400: N; retail: N; n: N }[];
   /** 重大訊息（recent，新到舊）與法說會（conf：開會日期 d、時間 t）。來源只給最近一天，從上線日起累積 */
   events?: { recent: { d: string; t: string; s: string; c: number | null; f: string | null; b: string }[]; conf: { d: string; t: string | null; s: string; spoke: string }[] };
+  /** ETF 才有：基本資料（證交所）、近 120 日市價／預估淨值／折溢價（證交所 ETF 淨值表）、月前十大持股（投信投顧公會） */
+  etf?: {
+    info?: { etf_type?: string; etf_index?: string; etf_fullname?: string; etf_foreign?: string; etf_listed?: string; etf_founded?: string;
+      etf_manager?: string; etf_benchmark?: string; etf_custom_index?: string; etf_mix?: string };
+    nav?: { d: string[]; p: N[]; n: N[]; pr: N[]; u: N[] };
+    top10?: { ym: string; rows: { code: string; name: string; pct: N; amt: N; kind: string }[] };
+  };
+  /** 個股才有：被哪些 ETF 列入最近一個月的前十大持股 */
+  held_by?: { etf: string; name: string; pct: N; rank: number; ym: string }[];
 }
 type N = number | null;
 

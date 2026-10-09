@@ -410,7 +410,7 @@ def trading_columns(store: DataStore, asof: pd.Timestamp, base: pd.DataFrame) ->
 
 
 def etf_columns(store: DataStore, asof: pd.Timestamp, base: pd.DataFrame) -> pd.DataFrame:
-    """ETF：類型、追蹤指數、規模（估算＝發行單位數 × 收盤價）、近一年配息與殖利率。"""
+    """ETF：類型、追蹤指數、規模（估算＝發行單位數 × 收盤價）、淨值與折溢價、近一年配息與殖利率。"""
     is_etf = base.index.to_series().map(util.security_type) == "etf"
     info = store.read_table("etf_info")
     if not info.empty:
@@ -418,6 +418,14 @@ def etf_columns(store: DataStore, asof: pd.Timestamp, base: pd.DataFrame) -> pd.
         for c in ("etf_type", "etf_index", "etf_listed"):
             base[c] = info[c].reindex(base.index).where(is_etf)
         base["etf_aum"] = (info["etf_units"].reindex(base.index) * base["close"] / 1e8).where(is_etf)
+    # 淨值與折溢價（證交所 ETF 淨值表，上市上櫃都有）：用資料日當天或之前最近一筆
+    nav = store.read_daily("etf_nav", asof - pd.Timedelta(days=10), asof)
+    if not nav.empty:
+        last = nav.sort_values("date").groupby("code").last()
+        base["etf_nav"] = last["nav"].reindex(base.index).where(is_etf)
+        base["etf_premium"] = last["premium"].reindex(base.index).where(is_etf)
+        aum = (last["units"].reindex(base.index) * base["close"] / 1e8).where(is_etf)
+        base["etf_aum"] = aum.fillna(base["etf_aum"]) if "etf_aum" in base else aum
     ex = store.read_daily("exright", asof - pd.Timedelta(days=365), asof)
     if not ex.empty and "value" in ex:
         ex = ex[ex["code"].map(util.security_type) == "etf"]

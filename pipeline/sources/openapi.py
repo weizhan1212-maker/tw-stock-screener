@@ -49,8 +49,16 @@ def parse_company(rows, market: str) -> pd.DataFrame:
     return pd.DataFrame.from_records(recs)
 
 
+def _roc(v):
+    try:
+        d = roc_to_date(v)
+        return d.isoformat() if d else None
+    except (ValueError, TypeError):
+        return None
+
+
 def parse_etf_info(rows) -> pd.DataFrame:
-    """上市 ETF 基本資料：類型、追蹤指數、上市日、發行單位數。"""
+    """上市 ETF 基本資料：類型、追蹤指數、上市日、發行單位數、經理人、績效指標（主動式）、成立日。"""
     recs = []
     for r in rows or []:
         code = clean_code(_g(r, "基金代號"))
@@ -68,6 +76,12 @@ def parse_etf_info(rows) -> pd.DataFrame:
             "etf_foreign": str(_g(r, "是否包含國外成分股") or "").strip(),
             "etf_listed": ld.isoformat() if ld else None,
             "etf_units": to_num(_g(r, "發行單位數/轉換數")),
+            "etf_name": str(_g(r, "基金簡稱") or "").strip(),
+            "etf_manager": str(_g(r, "基金經理人") or "").strip(),
+            "etf_benchmark": str(_g(r, "績效指標中文名稱") or "").strip(),
+            "etf_custom_index": str(_g(r, "標的指數是否為客製化或需揭露相關資訊之指數") or "").strip(),
+            "etf_mix": str(_g(r, "股票及債券投資比例說明") or "").strip(),
+            "etf_founded": _roc(_g(r, "成立日期")),
         })
     return pd.DataFrame.from_records(recs)
 

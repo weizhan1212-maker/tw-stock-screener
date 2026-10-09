@@ -57,6 +57,24 @@ class Fetcher:
                     time.sleep(self.backoff[min(attempt, len(self.backoff) - 1)])
         raise FetchError(f"{url}: {err}")
 
+    def post_text(self, url: str, data: dict, delay: float | None = None) -> str:
+        """POST 表單、回傳文字（投信投顧公會等 ASP.NET 查詢頁）。"""
+        host = urlparse(url).netloc
+        err = None
+        for attempt in range(self.retries + 1):
+            self._wait(host, self.delay if delay is None else delay)
+            try:
+                r = self.session.post(url, data=data, timeout=self.timeout)
+                self.count += 1
+                if r.status_code != 200:
+                    raise FetchError(f"HTTP {r.status_code}")
+                return r.content.decode("utf-8", errors="replace")
+            except (requests.RequestException, FetchError) as e:
+                err = e
+                if attempt < self.retries:
+                    time.sleep(self.backoff[min(attempt, len(self.backoff) - 1)])
+        raise FetchError(f"{url}: {err}")
+
     def get_json(self, url: str, params: dict | None = None, delay: float | None = None):
         """回傳解析後的 JSON；重試用完仍失敗則丟 FetchError。"""
         host = urlparse(url).netloc

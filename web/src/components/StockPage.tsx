@@ -6,6 +6,7 @@ import BackLink from "@/components/BackLink";
 import { useEffect, useMemo, useRef, useState } from "react";
 import AiSummaryCard from "@/components/AiSummary";
 import DataStatus from "@/components/DataStatus";
+import { EtfHoldingsCard, etfHeadline, EtfMethodCard, EtfPremiumCard, HeldByEtfCard } from "@/components/EtfCards";
 import Section from "@/components/Section";
 import { EtfInfoCard, EventStatsCard, HealthExplain, NoticesCard, RiskCard, ValuationCard } from "@/components/StockRisk";
 import KChart from "@/components/KChart";
@@ -74,9 +75,11 @@ export default function StockPage({ code }: { code: string }) {
     if (name) document.title = `${code} ${name}｜股見未來`;
   }, [code, name]);
 
-  const TABS = ["ana", "chips", "fin", "info"] as const;
+  const TABS = ["ana", "hold", "chips", "fin", "info"] as const;
   const [tab, setTab] = useUrlState<(typeof TABS)[number]>("tab", "ana", TABS);
-  const tabs: [(typeof TABS)[number], string][] = [["ana", "分析"], ["chips", "籌碼"], ["fin", isStock ? "財務" : "配息"], ["info", "資訊"]];
+  const tabs: [(typeof TABS)[number], string][] = isStock
+    ? [["ana", "分析"], ["chips", "籌碼"], ["fin", "財務"], ["info", "資訊"]]
+    : [["ana", "概況"], ["hold", "成分股"], ["chips", "籌碼"], ["fin", "配息"], ["info", "資訊"]];
   const tabsRef = useRef<HTMLDivElement>(null);
   // 切換分頁時，如果已經捲過分頁列，就捲回分頁列，讓新內容從頂端開始
   const pick = (k: (typeof TABS)[number]) => {
@@ -135,7 +138,7 @@ export default function StockPage({ code }: { code: string }) {
       {showLive && snap && <p className="mt-4 text-xs text-muted">以下為 {snap.meta.asof.replaceAll("-", "/")} 盤後資料</p>}
       {row && (
         <dl className={`num ${showLive ? "mt-1" : "mt-4"} grid grid-cols-2 gap-x-6 gap-y-2 rounded-lg border border-line bg-surface p-4 text-sm sm:grid-cols-4 lg:grid-cols-8`}>
-          {[
+          {(isStock ? [
             ["成交量", `${n(row.volume_lots, 0)} 張`],
             ["成交金額", fmtMoney(num(row.value) ?? 0)],
             ["量比", `${n(row.vol_ratio)} 倍`],
@@ -144,7 +147,12 @@ export default function StockPage({ code }: { code: string }) {
             ["股價淨值比", n(row.pb)],
             ["殖利率", row.dividend_yield != null ? `${n(row.dividend_yield)}%` : "—"],
             ["距 52 週高點", row.dist_high52 != null ? `${signed(row.dist_high52)}%` : "—"],
-          ].map(([k, v]) => (
+          ] : [
+            ["成交量", `${n(row.volume_lots, 0)} 張`],
+            ["成交金額", fmtMoney(num(row.value) ?? 0)],
+            ...etfHeadline(row),
+            ["距 52 週高點", row.dist_high52 != null ? `${signed(row.dist_high52)}%` : "—"],
+          ]).map(([k, v]) => (
             <div key={k}><dt className="text-xs text-muted">{k}</dt><dd className="text-ink">{v}</dd></div>
           ))}
         </dl>
@@ -199,6 +207,12 @@ export default function StockPage({ code }: { code: string }) {
         {tab === "ana" && (
           <>
             {isStock && snap && <AiSummaryCard key={code} code={code} asof={snap.meta.asof} />}
+            {!isStock && (
+              <div className="grid gap-4 lg:grid-cols-2">
+                <EtfMethodCard s={data} row={row ?? null} />
+                <EtfPremiumCard s={data} />
+              </div>
+            )}
             <div className="grid gap-4 lg:grid-cols-2">
               {row && <OutlookCard row={row} />}
               {data && <LevelsCard s={data} />}
@@ -208,7 +222,13 @@ export default function StockPage({ code }: { code: string }) {
             {isStock && data && row && <ValuationCard s={data} row={row} />}
           </>
         )}
-        {tab === "chips" && (data ? <ChipsCard s={data} row={row} /> : <Loading />)}
+        {tab === "hold" && !isStock && (data ? <EtfHoldingsCard s={data} /> : <Loading />)}
+        {tab === "chips" && (data ? (
+          <>
+            <ChipsCard s={data} row={row} />
+            {isStock && <HeldByEtfCard s={data} />}
+          </>
+        ) : <Loading />)}
         {tab === "fin" && (
           <>
             {isStock && snap && row && <HealthCard rows={snap.rows} row={row} code={code} s={data} />}

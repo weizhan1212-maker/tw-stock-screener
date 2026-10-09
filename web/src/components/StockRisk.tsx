@@ -294,10 +294,7 @@ function fmtMetric(k: string, v: number | null) {
 export function EtfInfoCard({ row, s }: { row: Row; s?: StockFile | null }) {
   const div = [...(s?.dividends ?? [])].sort((a, b) => (b.ex ?? b.period).localeCompare(a.ex ?? a.period));
   const items: [string, string][] = [
-    ["類型", (row.etf_type as string) || "—"],
-    ["追蹤指數", (row.etf_index as string) || "—"],
-    ["上市日", (row.etf_listed as string) || "—"],
-    ["規模（估算）", num(row.etf_aum) == null ? "—（上櫃 ETF 無資料）" : `${f(num(row.etf_aum), 0)} 億`],
+    ["規模（估算）", num(row.etf_aum) == null ? "—" : `${f(num(row.etf_aum), 0)} 億`],
     ["受益人數", num(row.holders) == null ? "—" : `${Math.round(num(row.holders)!).toLocaleString()} 人`],
     ["近一年配息", num(row.etf_div12m) == null ? "—" : `${f(num(row.etf_div12m))} 元（${f(num(row.etf_div_count), 0)} 次）`],
     ["殖利率（近一年）", num(row.dividend_yield) == null ? "—" : `${f(num(row.dividend_yield))}%`],
@@ -309,7 +306,6 @@ export function EtfInfoCard({ row, s }: { row: Row; s?: StockFile | null }) {
         {items.map(([k, v]) => <div key={k}><dt className="text-xs text-muted">{k}</dt><dd className="text-ink">{v}</dd></div>)}
       </dl>
       {div.length > 0 && <p className="num mt-3 text-xs text-muted">最近配息：{div.slice(0, 6).map((d) => `${d.ex ?? d.period} ${f(d.cash, 3)} 元`).join("、")}</p>}
-      <p className="mt-2 text-xs text-muted">折溢價、即時淨值與持股明細沒有可合法自動取得的開放資料，請到發行投信官網查詢。</p>
     </Section>
   );
 }

@@ -15,7 +15,7 @@ import requests
 
 from . import util
 from .http import FetchError, Fetcher
-from .sources import finmind, openapi, tdcc, tpex, twse
+from .sources import etf, finmind, openapi, tdcc, tpex, twse
 from .store import DataStore
 
 log = logging.getLogger(__name__)
@@ -261,6 +261,39 @@ def refresh_reference(store: DataStore, fetcher: Fetcher) -> dict:
     def etf_info():
         return store.upsert_table("etf_info", openapi.parse_etf_info(fetcher.get_json(openapi.URLS["twse_etf"])), replace=True)
 
+    def etf_nav():
+        return store.upsert_daily("etf_nav", etf.parse_nav(fetcher.get_json(etf.NAV_URL, delay=1)))
+
+    def etf_top10():
+        """投信投顧公會月前十大：有新月份才抓（每月一次）。"""
+        st = store.get_state("etf_top10", {})
+        page = fetcher.get_text(etf.SITCA_TOP10, delay=2)
+        months = etf.sitca_months(page)
+        if not months:
+            return "公會頁面沒有月份選單"
+        ym = months[-1]
+        if st.get("ym") == ym and st.get("mapped", 0) > 0:
+            return f"{ym} 已有"
+        hidden = etf.sitca_form(page)
+        frames = []
+        for cls in etf.SITCA_CLASSES:
+            html = fetcher.post_text(etf.SITCA_TOP10, etf.sitca_payload(hidden, ym, cls), delay=3)
+            frames.append(etf.parse_top10(html, ym, cls))
+        df = pd.concat(frames, ignore_index=True)
+        if df.empty:
+            return f"{ym} 解析不到資料"
+        nav = store.read_daily("etf_nav", pd.Timestamp.today() - pd.Timedelta(days=14))
+        nav_names = nav.sort_values("date").groupby("code")["name"].last().to_dict() if not nav.empty and "name" in nav else {}
+        mapping = etf.map_funds(df["fund"].unique(), store.read_table("etf_info"), nav_names)
+        unmatched = sorted(set(df["fund"]) - set(mapping))
+        if unmatched:
+            log.warning("月前十大：%d 檔基金對不到代號：%s", len(unmatched), "、".join(unmatched))
+        df["etf"] = df["fund"].map(mapping)
+        df = df[df["etf"].notna()].rename(columns={"code": "stock"})
+        n = store.upsert_table("etf_top10", df)
+        store.put_state("etf_top10", {"ym": ym, "funds": int(df["etf"].nunique()), "mapped": len(mapping), "unmatched": unmatched})
+        return f"{ym}：{df['etf'].nunique()} 檔 ETF、{n} 筆（{len(unmatched)} 檔對不到）"
+
     def events():
         frames = [openapi.parse_events(fetcher.get_json(openapi.URLS[f"{m}_events"]), m.upper()) for m in ("twse", "tpex")]
         return store.upsert_table("events", pd.concat(frames, ignore_index=True))
@@ -269,7 +302,8 @@ def refresh_reference(store: DataStore, fetcher: Fetcher) -> dict:
         return store.upsert_daily("holders", tdcc.parse(fetcher.get_text(tdcc.URL, delay=1)))
 
     for name, fn in (("holders", holders), ("revenue", revenue), ("income_periods", income_periods), ("qfii_tpex", tpex_qfii),
-                     ("securities", securities), ("company", company), ("delisting", delisting), ("etf_info", etf_info), ("events", events)):
+                     ("securities", securities), ("company", company), ("delisting", delisting), ("etf_info", etf_info), ("etf_nav", etf_nav), ("etf_top10", etf_top10),
+                     ("events", events)):
         safe(name, fn)
     return counts
 
