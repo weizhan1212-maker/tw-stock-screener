@@ -398,10 +398,13 @@ export async function runAi<T>(spec: AiSpec<T>, factsText: string): Promise<{ ou
   const ready = all.filter((m) => (skipUntil.get(m) ?? 0) < Date.now());
   const order = ready.length ? ready : all;              // 全部都在冷卻就全部再試一次
   let last: unknown = null;
+  let badTries = 0;
   for (const model of order) {
     try {
       return { ...(await runWith(model, spec, factsText)), model };
     } catch (e) {
+      // 內容一直沒過檢查：換下一個模型再試一次（最多一次），不再試就丟錯
+      if (e instanceof AiError && e.code === "bad_output" && badTries++ < 1) { console.warn(`[ai] ${model} 內容沒過檢查，換下一個模型`); last = e; continue; }
       if (!(e instanceof AiError) || !["quota", "no_model", "busy"].includes(e.code)) throw e;
       // 每分鐘上限只等 1 分鐘；每日上限（訊息含 per day／PerDay）跳過 1 小時
       const daily = /per ?day|PerDay|daily/i.test(e.detail ?? "");
