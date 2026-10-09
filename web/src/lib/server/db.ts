@@ -29,7 +29,7 @@ async function rest<T>(path: string, init: RequestInit & { prefer?: string } = {
 const enc = encodeURIComponent;
 
 // ---------- 每人資料（user_kv） ----------
-export type UserKey = "watchlist" | "screens" | "portfolio" | "alerts" | "alert_state" | "telegram";
+export type UserKey = "watchlist" | "screens" | "portfolio" | "alerts" | "alert_state" | "telegram" | `ai:${string}`;   // ai: 開頭＝AI 摘要的快取與次數（共用快取放在 user_hash="_ai"）
 
 export async function kvGet<T>(hash: string, key: UserKey, fallback: T): Promise<T> {
   const rows = await rest<{ value: T }[]>(`user_kv?select=value&user_hash=eq.${enc(hash)}&key=eq.${key}`);

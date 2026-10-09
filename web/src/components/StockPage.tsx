@@ -4,6 +4,7 @@
 import Link from "next/link";
 import BackLink from "@/components/BackLink";
 import { useEffect, useMemo, useState } from "react";
+import AiSummaryCard from "@/components/AiSummary";
 import DataStatus from "@/components/DataStatus";
 import Section from "@/components/Section";
 import { EtfInfoCard, EventStatsCard, HealthExplain, NoticesCard, RiskCard, ValuationCard } from "@/components/StockRisk";
@@ -166,6 +167,8 @@ export default function StockPage({ code }: { code: string }) {
 
       <div className="mt-4 space-y-4">
         {data ? <KChart s={data} /> : !error && <div className="h-[420px] animate-pulse rounded-lg border border-line bg-surface" />}
+
+        {isStock && snap && <AiSummaryCard key={code} code={code} asof={snap.meta.asof} />}
 
         <div className="grid gap-4 lg:grid-cols-2">
           {row && <OutlookCard row={row} />}

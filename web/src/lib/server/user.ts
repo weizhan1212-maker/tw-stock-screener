@@ -7,6 +7,8 @@ export const userHash = (email: string) => createHash("sha256").update(email.toL
 export const userPath = (hash: string, file: string) => `users/${hash}/${file}`;
 
 export async function currentUser(): Promise<{ email: string; hash: string } | null> {
+  // 本機測試用：與 proxy.ts 相同的條件（非 Vercel 且明確設定 SKIP_AUTH=1）
+  if (process.env.SKIP_AUTH === "1" && !process.env.VERCEL) return { email: "dev@local.test", hash: userHash("dev@local.test") };
   const s = await auth();
   const u = s?.user as { email?: string; status?: string } | undefined;
   if (!u?.email || u.status !== "approved") return null;
