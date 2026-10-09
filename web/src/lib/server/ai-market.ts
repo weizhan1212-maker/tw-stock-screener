@@ -114,7 +114,8 @@ export function buildMarketFacts(m: MarketData, snap: Snapshot): MarketFacts {
     out.push(`\n【三大法人近 ${m.industry_flow!.days} 日產業資金（估算）】`, `買超：${top.join("、") || "無"}`, `賣超：${bot.join("、") || "無"}`);
   }
 
-  return { asof: m.asof, key: `${m.asof}_${snap.meta.generated_at}`, text: out.join("\n") };
+  // 快取鍵：市場資料日＋快照產生時間（每次盤後更新換一版）；只留英數，避免網址編碼問題
+  return { asof: m.asof, key: `${m.asof}_${String(snap.meta.generated_at ?? "").replace(/[^0-9A-Za-z]/g, "")}`, text: out.join("\n") };
 }
 
 // ---------------- AI 規格 ----------------

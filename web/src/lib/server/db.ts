@@ -32,7 +32,7 @@ const enc = encodeURIComponent;
 export type UserKey = "watchlist" | "screens" | "portfolio" | "alerts" | "alert_state" | "telegram" | `ai:${string}`;   // ai: 開頭＝AI 摘要的快取與次數（共用快取放在 user_hash="_ai"）
 
 export async function kvGet<T>(hash: string, key: UserKey, fallback: T): Promise<T> {
-  const rows = await rest<{ value: T }[]>(`user_kv?select=value&user_hash=eq.${enc(hash)}&key=eq.${key}`);
+  const rows = await rest<{ value: T }[]>(`user_kv?select=value&user_hash=eq.${enc(hash)}&key=eq.${enc(key)}`);
   return rows.length ? rows[0].value : fallback;
 }
 
