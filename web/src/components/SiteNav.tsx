@@ -9,30 +9,36 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
-export const NAV: { href: string; label: string; short?: string }[] = [
-  { href: "/", label: "市場總覽", short: "市場" },
-  { href: "/strategy", label: "策略選股", short: "策略" },
-  { href: "/screener", label: "自訂篩選", short: "篩選" },
-  { href: "/industry", label: "產業" },
-  { href: "/etf", label: "ETF" },
-  { href: "/ranking", label: "排行榜" },
-  { href: "/backtest", label: "回測" },
-  { href: "/watchlist", label: "自選股", short: "自選" },
-  { href: "/portfolio", label: "投資組合" },
-  { href: "/alerts", label: "警報" },
+export type NavGroup = "行情" | "選股" | "我的";
+export const NAV: { href: string; label: string; short?: string; group: NavGroup }[] = [
+  { href: "/", label: "市場總覽", short: "市場", group: "行情" },
+  { href: "/industry", label: "產業", group: "行情" },
+  { href: "/etf", label: "ETF", group: "行情" },
+  { href: "/ranking", label: "排行榜", group: "行情" },
+  { href: "/strategy", label: "策略選股", short: "策略", group: "選股" },
+  { href: "/screener", label: "自訂篩選", short: "篩選", group: "選股" },
+  { href: "/backtest", label: "回測", group: "選股" },
+  { href: "/watchlist", label: "自選股", short: "自選", group: "我的" },
+  { href: "/portfolio", label: "投資組合", group: "我的" },
+  { href: "/alerts", label: "警報", group: "我的" },
 ];
+const GROUPS: NavGroup[] = ["行情", "選股", "我的"];
 
 const isActive = (path: string, href: string) => (href === "/" ? path === "/" || path.startsWith("/market") : path.startsWith(href));
 
 export function DesktopNav() {
   const path = usePathname();
   return (
-    <nav aria-label="主選單" className="hidden min-w-0 flex-1 gap-0.5 overflow-x-auto whitespace-nowrap text-sm lg:flex">
-      {NAV.map((n) => (
-        <Link key={n.href} href={n.href} aria-current={isActive(path, n.href) ? "page" : undefined}
-          className={`rounded-md px-2.5 py-1 ${isActive(path, n.href) ? "bg-accent-soft font-medium text-accent" : "text-ink hover:bg-surface-2"}`}>
-          {n.label}
-        </Link>
+    <nav aria-label="主選單" className="hidden min-w-0 flex-1 items-center overflow-x-auto whitespace-nowrap text-sm lg:flex">
+      {GROUPS.map((g, gi) => (
+        <div key={g} role="group" aria-label={g} className={`flex items-center gap-0.5 ${gi ? "ml-2 border-l border-line pl-2" : ""}`}>
+          {NAV.filter((n) => n.group === g).map((n) => (
+            <Link key={n.href} href={n.href} aria-current={isActive(path, n.href) ? "page" : undefined}
+              className={`rounded-md px-2.5 py-1 ${isActive(path, n.href) ? "bg-accent-soft font-medium text-accent" : "text-ink hover:bg-surface-2"}`}>
+              {n.label}
+            </Link>
+          ))}
+        </div>
       ))}
     </nav>
   );
@@ -75,11 +81,18 @@ export function MobileTabBar() {
       {open && <button type="button" aria-label="關閉" onClick={() => setOpen(false)} className="fixed inset-0 z-40 bg-black/30 lg:hidden" />}
       {open && (
         <div className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-50 rounded-t-2xl border-t border-line bg-surface p-3 shadow-2xl lg:hidden">
-          <div className="grid grid-cols-3 gap-2">
-            {more.map((n) => (
-              <Link key={n.href} href={n.href} className={`rounded-lg border px-2 py-3 text-center text-sm ${isActive(path, n.href) ? "border-accent bg-accent-soft text-accent" : "border-line text-ink"}`}>
-                {n.label}
-              </Link>
+          <div className="space-y-3">
+            {GROUPS.map((g) => (
+              <div key={g}>
+                <div className="mb-1.5 text-xs font-medium text-muted">{g}</div>
+                <div className="grid grid-cols-4 gap-2">
+                  {NAV.filter((n) => n.group === g).map((n) => (
+                    <Link key={n.href} href={n.href} className={`rounded-lg border px-1 py-2.5 text-center text-sm ${isActive(path, n.href) ? "border-accent bg-accent-soft text-accent" : "border-line text-ink"}`}>
+                      {n.label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         </div>

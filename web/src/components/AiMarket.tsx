@@ -47,42 +47,41 @@ export default function AiMarket() {
 
   if (state === "off" || state === "loading") return null;
   return (
-    <section className="mt-4 rounded-lg border border-line bg-surface p-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-bold text-accent">AI 市場摘要</span>
-        {s && <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${TONE[s.tone] ?? TONE["中性"]}`}>{s.asof.slice(5).replace("-", "/")} 氣氛：{s.tone}</span>}
-        {state === "working" && <span className="text-sm text-muted">AI 正在整理今天的市場…（約 15–30 秒）</span>}
+    <section className="mt-3 rounded-lg border border-line bg-surface px-4 py-3">
+      {/* 收合時只有一行：標籤、氣氛、一句話重點、展開 */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="shrink-0 rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-bold text-accent">AI 市場摘要</span>
+        {s && <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${TONE[s.tone] ?? TONE["中性"]}`}>{s.asof.slice(5).replace("-", "/")} {s.tone}</span>}
+        {s && <span className="min-w-0 flex-1 text-sm font-medium text-ink">{s.headline}</span>}
+        {s && (
+          <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="shrink-0 text-sm text-accent hover:underline">
+            {open ? "收起" : "展開"}
+          </button>
+        )}
+        {state === "working" && <span className="text-sm text-muted">AI 正在整理最近交易日的市場…（約 15–30 秒）</span>}
         {state === "error" && err && <span className="text-sm text-muted">{err.msg}{err.detail && <span className="ml-1 break-all text-xs">（管理員除錯）{err.detail}</span>}</span>}
       </div>
-      {s && (
-        <>
-          <p className="mt-2 text-base font-bold leading-snug text-ink">{s.headline}</p>
-          <p className="mt-1.5 text-sm leading-relaxed text-ink/85">{s.summary}</p>
-          <div className="mt-3 rounded-md bg-surface-2/60 p-3">
+      {s && open && (
+        <div className="mt-3 space-y-3">
+          <p className="text-sm leading-relaxed text-ink/85">{s.summary}</p>
+          <div className="rounded-md bg-surface-2/60 p-3">
             <div className="mb-1 text-xs font-bold text-ink">資金輪動</div>
             <p className="text-sm leading-relaxed text-ink/85">{s.rotation}</p>
           </div>
-          {open && (
-            <div className="mt-3 grid gap-3 md:grid-cols-3">
-              {s.points.map((p) => (
-                <div key={p.title} className="rounded-md border border-line p-3 text-sm leading-relaxed">
-                  <div className="mb-1 font-bold text-ink">{p.title}</div>
-                  <p className="text-ink/85">{p.text}</p>
-                </div>
-              ))}
-              <div className="rounded-md border border-line p-3 text-sm leading-relaxed md:col-span-3">
-                <div className="mb-1 font-bold text-ink">接下來留意</div>
-                <ul className="list-disc space-y-0.5 pl-5 text-ink/85">{s.watch.map((w, i) => <li key={i}>{w}</li>)}</ul>
+          <div className="grid gap-3 md:grid-cols-3">
+            {s.points.map((p) => (
+              <div key={p.title} className="rounded-md border border-line p-3 text-sm leading-relaxed">
+                <div className="mb-1 font-bold text-ink">{p.title}</div>
+                <p className="text-ink/85">{p.text}</p>
               </div>
+            ))}
+            <div className="rounded-md border border-line p-3 text-sm leading-relaxed md:col-span-3">
+              <div className="mb-1 font-bold text-ink">接下來留意</div>
+              <ul className="list-disc space-y-0.5 pl-5 text-ink/85">{s.watch.map((w, i) => <li key={i}>{w}</li>)}</ul>
             </div>
-          )}
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-            <button type="button" onClick={() => setOpen((v) => !v)} className="text-sm text-accent hover:underline">
-              {open ? "收起" : "看完整解讀（大盤、籌碼、情緒、接下來留意）"}
-            </button>
-            <span className="num text-xs text-muted">資料日 {s.asof.replaceAll("-", "/")}・產生於 {when(s.generatedAt)}・{s.model}・AI 生成，僅供參考，不構成投資建議</span>
           </div>
-        </>
+          <p className="num text-xs text-muted">資料日 {s.asof.replaceAll("-", "/")}・產生於 {when(s.generatedAt)}・{s.model}・AI 生成，僅供參考，不構成投資建議</p>
+        </div>
       )}
     </section>
   );

@@ -55,6 +55,11 @@ const daysBetween = (a: string, b: string) => Math.round((Date.parse(b) - Date.p
 
 type StopMode = "atr" | "support" | "custom";
 
+/** 已經發生的「看法失效」條件 */
+function Hit() {
+  return <span className="ml-1 rounded bg-up px-1.5 py-0.5 text-xs font-medium text-white">⚠ 已觸發</span>;
+}
+
 export function RiskCard({ s, row }: { s: StockFile; row?: Row }) {
   const bars = useMemo(() => dailyBars(s, true), [s]);
   const m = useMemo(() => {
@@ -106,9 +111,9 @@ export function RiskCard({ s, row }: { s: StockFile; row?: Row }) {
         <div className="rounded-md bg-surface-2 p-3 text-sm leading-relaxed text-ink">
           <h3 className="font-bold">看法失效的訊號（參考）</h3>
           <ul className="mt-1 space-y-1">
-            {m.support && <li>· 收盤跌破最近支撐區 {f(m.support.lo)}（距今 {f((m.support.lo / m.last - 1) * 100, 1)}%）：短線支撐失守</li>}
-            {m.ma20 && <li>· 收盤跌破月線 {f(m.ma20)}（{m.last >= m.ma20 ? "目前在上方" : "目前已在下方"}）：短線轉弱</li>}
-            {m.ma60 && <li>· 收盤跌破季線 {f(m.ma60)}（{m.last >= m.ma60 ? "目前在上方" : "目前已在下方"}）：中期趨勢轉弱</li>}
+            {m.support && <li>· 收盤跌破最近支撐區 {f(m.support.lo)}：短線支撐失守 {m.last < m.support.lo ? <Hit /> : <span className="text-xs text-muted">（距今 {f((m.support.lo / m.last - 1) * 100, 1)}%）</span>}</li>}
+            {m.ma20 && <li>· 收盤跌破月線 {f(m.ma20)}：短線轉弱 {m.last < m.ma20 ? <Hit /> : <span className="text-xs text-muted">（目前在上方）</span>}</li>}
+            {m.ma60 && <li>· 收盤跌破季線 {f(m.ma60)}：中期趨勢轉弱 {m.last < m.ma60 ? <Hit /> : <span className="text-xs text-muted">（目前在上方）</span>}</li>}
             {m.atr && <li>· 一天跌超過 {f(2 * m.atr)} 元（2 倍 ATR）：波動明顯放大</li>}
           </ul>
           {m.resistance && <p className="mt-2 text-xs text-muted">上方最近壓力 {f(m.resistance.lo)}（距今 +{f((m.resistance.lo / m.last - 1) * 100, 1)}%），突破前可能遇到賣壓。</p>}

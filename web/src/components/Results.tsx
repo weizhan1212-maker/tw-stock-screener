@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { FIELD_MAP, UNIT } from "@/lib/fields";
 import WatchStar from "@/components/WatchStar";
 import { useSnapshot } from "@/hooks/useSnapshot";
@@ -24,6 +24,36 @@ export function sortRows(rows: Row[], sort: Sort) {
 export function toneClass(v: unknown) {
   const t = tone(v);
   return t === "up" ? "text-up" : t === "down" ? "text-down" : "text-muted";
+}
+
+/** 漲跌停（漲跌幅 ±9.5% 以上，近似值）：依台股慣例漲停紅底白字、跌停綠底白字 */
+export function limitClass(v: unknown) {
+  const x = typeof v === "number" ? v : null;
+  if (x == null) return null;
+  return x >= 9.5 ? "rounded bg-up px-1 font-medium text-white" : x <= -9.5 ? "rounded bg-down px-1 font-medium text-white" : null;
+}
+
+/** 表頭跟著整頁捲動「黏」在網站頁首下方（表格可以橫向捲，所以不能用 CSS sticky） */
+function useStickyHead(top = 56) {
+  const wrap = useRef<HTMLDivElement>(null);
+  const head = useRef<HTMLTableSectionElement>(null);
+  useEffect(() => {
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const w = wrap.current, h = head.current;
+      if (!w || !h) return;
+      const r = w.getBoundingClientRect();
+      const y = Math.max(0, Math.min(top - r.top, r.height - h.offsetHeight));
+      h.style.transform = y > 0 ? `translateY(${y}px)` : "";
+    };
+    const on = () => { if (!raf) raf = requestAnimationFrame(update); };
+    window.addEventListener("scroll", on, { passive: true });
+    window.addEventListener("resize", on);
+    update();
+    return () => { window.removeEventListener("scroll", on); window.removeEventListener("resize", on); if (raf) cancelAnimationFrame(raf); };
+  }, [top]);
+  return { wrap, head };
 }
 
 const label = (k: string) => FIELD_MAP[k]?.label ?? k;
@@ -62,6 +92,7 @@ export default function Results({
     URL.revokeObjectURL(a.href);
   }
 
+  const { wrap, head } = useStickyHead();
   return (
     <section aria-live="polite">
       <div className="mb-2 flex flex-wrap items-center gap-3">
@@ -89,22 +120,22 @@ export default function Results({
 
       {!loading && rows.length === 0 && empty}
 
-      {/* 表格自己捲動，表頭固定在上方（捲很長也看得到每欄是什麼） */}
-      <div className="hidden max-h-[calc(100dvh-96px)] overflow-auto rounded-lg border border-line bg-surface lg:block">
+      {/* 表格跟著整頁捲動（不再有內層捲軸）；太寬時可橫向捲，代號／名稱欄固定在左邊，表頭固定在頁首下方 */}
+      <div ref={wrap} className="hidden overflow-x-auto rounded-lg border border-line bg-surface lg:block">
         <table className="w-full text-sm">
-          <thead className="sticky top-0 z-10 bg-surface-2 text-left text-xs text-muted shadow-[0_1px_0_var(--line)]">
+          <thead ref={head} className="relative z-20 bg-surface-2 text-left text-xs text-muted shadow-[0_1px_0_var(--line)]">
             <tr>
-              <th scope="col" className="w-8 px-1"><span className="sr-only">自選</span></th>
-              <Th label="代號／名稱" k="code" sort={sort} setSort={setSort} left />
+              <th scope="col" className="sticky left-0 z-10 w-8 bg-surface-2 px-1"><span className="sr-only">自選</span></th>
+              <Th label="代號／名稱" k="code" sort={sort} setSort={setSort} left sticky />
               {cols.map((k) => <Th key={k} label={headLabel(k)} k={k} sort={sort} setSort={setSort} />)}
               {actions && <th scope="col"><span className="sr-only">操作</span></th>}
             </tr>
           </thead>
           <tbody>
             {sorted.slice(0, limit).map((r) => (
-              <tr key={r.code as string} className="border-t border-line hover:bg-surface-2">
-                <td className="px-1 py-2 text-center"><WatchStar code={r.code as string} name={r.name as string} /></td>
-                <td className="whitespace-nowrap px-3 py-2">
+              <tr key={r.code as string} className="group/row border-t border-line hover:bg-surface-2">
+                <td className="sticky left-0 z-10 w-8 bg-surface px-1 py-2 text-center group-hover/row:bg-surface-2"><WatchStar code={r.code as string} name={r.name as string} /></td>
+                <td className="sticky left-8 z-10 whitespace-nowrap bg-surface px-3 py-2 shadow-[1px_0_0_var(--line)] group-hover/row:bg-surface-2">
                   <Link href={`/stock/${r.code}`} className="group">
                     <span className="num mr-2 text-muted">{r.code}</span>
                     <span className="text-ink group-hover:text-accent group-hover:underline">{r.name}</span>
@@ -133,7 +164,7 @@ export default function Results({
               </Link>
               <div className="num text-right">
                 <span className="text-ink">{fmt(r.close, "price")}</span>
-                <span className={`ml-2 text-sm ${toneClass(r.chg_pct)}`}>{fmt(r.chg_pct, "pct", true)}%</span>
+                <span className={`ml-2 text-sm ${limitClass(r.chg_pct) ?? toneClass(r.chg_pct)}`}>{fmt(r.chg_pct, "pct", true)}%</span>
               </div>
             </div>
             {badge && <div className="mt-1">{badge(r)}</div>}
@@ -163,8 +194,8 @@ export default function Results({
 // 融資融券、外資持股官方較晚公布（約 23:30）：傍晚到深夜這段時間，這些欄位還是前一交易日
 const MARGIN_FIELDS = /^(margin_|short_|foreign_ratio)/;
 
-function Th({ label, k, sort, setSort, left }: {
-  label: string; k: string; sort: Sort; setSort: (s: Sort) => void; left?: boolean;
+function Th({ label, k, sort, setSort, left, sticky }: {
+  label: string; k: string; sort: Sort; setSort: (s: Sort) => void; left?: boolean; sticky?: boolean;
 }) {
   const active = sort.key === k;
   const { snap } = useSnapshot();
@@ -172,7 +203,7 @@ function Th({ label, k, sort, setSort, left }: {
   const lag = MARGIN_FIELDS.test(k) && m?.margin_asof && m.margin_asof < m.asof ? m.margin_asof : null;
   return (
     <th scope="col" aria-sort={active ? (sort.dir === 1 ? "ascending" : "descending") : "none"}
-      className={`whitespace-nowrap px-3 py-2 font-medium ${left ? "text-left" : "text-right"}`}>
+      className={`whitespace-nowrap px-3 py-2 font-medium ${left ? "text-left" : "text-right"} ${sticky ? "sticky left-8 z-10 bg-surface-2 shadow-[1px_0_0_var(--line)]" : ""}`}>
       <button type="button" onClick={() => setSort({ key: k, dir: active ? (sort.dir === 1 ? -1 : 1) : -1 })}
         title={FIELD_MAP[k]?.help ? `${FIELD_MAP[k].help}${UNIT[FIELD_MAP[k].format] ? `（單位：${UNIT[FIELD_MAP[k].format]}）` : ""}` : undefined}
         className={`inline-flex items-center gap-1 hover:text-ink ${active ? "text-ink" : ""} ${FIELD_MAP[k]?.help ? "cursor-help underline decoration-dotted decoration-1 underline-offset-4" : ""}`}>
@@ -186,9 +217,12 @@ function Th({ label, k, sort, setSort, left }: {
 
 function Cell({ r, k }: { r: Row; k: string }) {
   const colored = isSigned(k);
+  const lim = k === "chg_pct" ? limitClass(r[k]) : null;
+  const fill = k === "div_fill" && r[k] === "貼息" ? "text-down" : null;
   return (
-    <td className={`num whitespace-nowrap px-3 py-2 text-right ${colored ? toneClass(r[k]) : "text-ink"}`}>
-      {fmt(r[k], FIELD_MAP[k]?.format ?? "num", colored)}
+    <td className={`num whitespace-nowrap px-3 py-2 text-right ${fill ?? (colored && !lim ? toneClass(r[k]) : "text-ink")}`}>
+      {lim ? <span className={lim} title={(r[k] as number) > 0 ? "漲停" : "跌停"}>{fmt(r[k], FIELD_MAP[k]?.format ?? "num", colored)}</span>
+        : fmt(r[k], FIELD_MAP[k]?.format ?? "num", colored)}
     </td>
   );
 }

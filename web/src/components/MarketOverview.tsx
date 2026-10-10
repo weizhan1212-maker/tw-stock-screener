@@ -107,8 +107,6 @@ export default function MarketOverview() {
         <span className="num text-sm text-muted">資料日期：{m.asof.replaceAll("-", "/")}</span>
       </div>
 
-      <AiMarket />
-
       {/* 指數全覽 */}
       <ul className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         {m.indices.map((c) => (
@@ -129,6 +127,8 @@ export default function MarketOverview() {
           </li>
         ))}
       </ul>
+
+      <AiMarket />
 
       <div className="mt-4 grid gap-3 lg:grid-cols-4">
         <Panel title="漲跌家數" date={m.asof} asof={m.asof} freq="每日盤後">
@@ -227,7 +227,7 @@ export default function MarketOverview() {
 
       <Sentiment s={m.sentiment} asof={m.asof} />
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_420px]">
+      <div className="mt-4 grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_420px]">
         <Panel title={`三大法人近 ${m.industry_flow?.days ?? 5} 日產業資金（估算）`} date={m.asof} asof={m.asof} freq="每日盤後・估算">
           <div className="grid gap-4 sm:grid-cols-2">
             {[["買超", inflow], ["賣超", outflow]].map(([title, rows]) => (
@@ -250,7 +250,7 @@ export default function MarketOverview() {
           <p className="mt-3 text-xs text-muted">以每天各股三大法人買賣超股數 × 收盤價估算，再依產業加總。</p>
         </Panel>
         <Panel title="台股新聞" asof={m.asof} freq="即時">
-          <NewsList q="台股" />
+          <NewsList q="台股" limit={10} more />
         </Panel>
       </div>
     </div>
