@@ -332,7 +332,7 @@ export default function Screener() {
           )}
         </aside>
 
-        <Results
+        <Results mobileCount={false}
           key={`${universe}-${market}-${encodeConds(conds)}`}
           rows={result} cols={cols} sort={sort} setSort={setSort} loading={!snap}
           csvName={`選股結果_${snap?.meta.asof ?? ""}`}

@@ -9,6 +9,7 @@ import { fmt, fmtUnit, isSigned, type Row, tone } from "@/lib/screener";
 
 export type Sort = { key: string; dir: 1 | -1 };
 const PAGE = 100;
+const MOBILE_PAGE = 20;
 
 export function sortRows(rows: Row[], sort: Sort) {
   const k = sort.key;
@@ -66,8 +67,10 @@ const headLabel = (k: string) => {
 };
 
 export default function Results({
-  rows, cols, sort, setSort, csvName, loading, empty, countLabel = "符合條件", badge, actions,
+  rows, cols, sort, setSort, csvName, loading, empty, countLabel = "符合條件", badge, actions, mobileCount = true,
 }: {
+  /** 手機上顯示「符合 N 檔」（頁面已有固定列顯示時傳 false） */
+  mobileCount?: boolean;
   rows: Row[]; cols: string[]; sort: Sort; setSort: (s: Sort) => void; csvName: string;
   loading?: boolean; empty?: ReactNode; countLabel?: string;
   /** 名稱下方額外顯示的內容（例如符合的策略） */
@@ -76,6 +79,7 @@ export default function Results({
   actions?: (r: Row) => ReactNode;
 }) {
   const [limit, setLimit] = useState(PAGE);
+  const [mLimit, setMLimit] = useState(MOBILE_PAGE);           // 手機一次 20 檔
   const sorted = useMemo(() => sortRows(rows, sort), [rows, sort]);
 
   function exportCsv() {
@@ -96,7 +100,7 @@ export default function Results({
   return (
     <section aria-live="polite">
       <div className="mb-2 flex flex-wrap items-center gap-3">
-        <p className="text-sm text-ink">
+        <p className={`text-sm text-ink ${mobileCount ? "" : "hidden lg:block"}`}>
           {loading ? "載入中…" : <>{countLabel} <b className="num text-base">{rows.length.toLocaleString()}</b> 檔</>}
         </p>
         <label className="ml-auto flex items-center gap-1.5 text-sm text-muted lg:hidden">
@@ -113,9 +117,16 @@ export default function Results({
           </select>
         </label>
         <button type="button" onClick={exportCsv} disabled={!rows.length}
-          className="rounded-md border border-line px-2.5 py-1 text-sm text-ink hover:border-accent disabled:opacity-40 lg:ml-auto">
+          className="hidden rounded-md border border-line px-2.5 py-1 text-sm text-ink hover:border-accent disabled:opacity-40 lg:ml-auto lg:block">
           下載 CSV
         </button>
+        {/* 手機：不常用的功能收進 ⋯ */}
+        <details className="relative lg:hidden">
+          <summary aria-label="更多功能" className="cursor-pointer list-none rounded-md border border-line px-2 py-0.5 text-ink">⋯</summary>
+          <div className="absolute right-0 z-30 mt-1 w-32 rounded-md border border-line bg-surface p-1 shadow-lg">
+            <button type="button" onClick={exportCsv} disabled={!rows.length} className="w-full rounded px-2 py-1.5 text-left text-sm text-ink hover:bg-surface-2 disabled:opacity-40">下載 CSV</button>
+          </div>
+        </details>
       </div>
 
       {!loading && rows.length === 0 && empty}
@@ -152,38 +163,47 @@ export default function Results({
         </table>
       </div>
 
-      <ul className="space-y-2 lg:hidden">
-        {sorted.slice(0, limit).map((r) => (
-          <li key={r.code as string} className="rounded-lg border border-line bg-surface p-3">
-            <div className="flex items-baseline justify-between gap-2">
+      {/* 手機：兩行緊湊列。第一行代號、名稱、股價、漲跌；第二行只放目前排序的指標（完整數據點進個股頁看） */}
+      <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface lg:hidden">
+        {sorted.slice(0, mLimit).map((r) => {
+          const k = ["close", "chg_pct", "code"].includes(sort.key) ? cols.find((c) => c !== "close" && c !== "chg_pct") : sort.key;
+          const lim = limitClass(r.chg_pct);
+          return (
+            <li key={r.code as string} className="flex items-center gap-2 px-3 py-2">
               <WatchStar code={r.code as string} name={r.name as string} />
               <Link href={`/stock/${r.code}`} className="min-w-0 flex-1">
-                <span className="num mr-2 text-sm text-muted">{r.code}</span>
-                <span className="font-medium text-ink underline-offset-2 hover:underline">{r.name}</span>
-                {r.market === "TPEX" && <span className="ml-1.5 text-xs text-muted">櫃</span>}
-              </Link>
-              <div className="num text-right">
-                <span className="text-ink">{fmt(r.close, "price")}</span>
-                <span className={`ml-2 text-sm ${limitClass(r.chg_pct) ?? toneClass(r.chg_pct)}`}>{fmt(r.chg_pct, "pct", true)}%</span>
-              </div>
-            </div>
-            {badge && <div className="mt-1">{badge(r)}</div>}
-            <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-              {cols.filter((k) => k !== "close" && k !== "chg_pct").map((k) => (
-                <div key={k} className="flex justify-between gap-2">
-                  <dt className="truncate text-muted">{label(k)}</dt>
-                  <dd className="num text-ink">{fmtUnit(r[k], FIELD_MAP[k]?.format ?? "num", isSigned(k))}</dd>
+                <div className="flex items-baseline gap-2">
+                  <span className="num text-xs text-muted">{r.code}</span>
+                  <span className="truncate font-medium text-ink">{r.name}</span>
+                  {r.market === "TPEX" && <span className="text-[10px] text-muted">櫃</span>}
+                  <span className="num ml-auto shrink-0 text-ink">{fmt(r.close, "price")}</span>
+                  <span className={`num w-16 shrink-0 text-right text-sm ${lim ? "" : toneClass(r.chg_pct)}`}>
+                    <span className={lim ?? ""}>{fmt(r.chg_pct, "pct", true)}%</span>
+                  </span>
                 </div>
-              ))}
-            </dl>
-            {actions && <div className="mt-2 flex justify-end gap-1">{actions(r)}</div>}
-          </li>
-        ))}
+                {k && (
+                  <div className="mt-0.5 flex justify-between gap-2 text-xs">
+                    <span className="truncate text-muted">{label(k)}</span>
+                    <span className={`num ${isSigned(k) ? toneClass(r[k]) : "text-ink"}`}>{fmtUnit(r[k], FIELD_MAP[k]?.format ?? "num", isSigned(k))}</span>
+                  </div>
+                )}
+                {badge && <div className="mt-0.5">{badge(r)}</div>}
+              </Link>
+              {actions && <div className="flex shrink-0 gap-1">{actions(r)}</div>}
+            </li>
+          );
+        })}
       </ul>
+      {sorted.length > mLimit && (
+        <button type="button" onClick={() => setMLimit((l) => l + MOBILE_PAGE)}
+          className="mt-2 w-full rounded-md border border-line bg-surface py-2 text-sm text-ink lg:hidden">
+          載入更多（還有 {(sorted.length - mLimit).toLocaleString()} 檔）
+        </button>
+      )}
 
       {sorted.length > limit && (
         <button type="button" onClick={() => setLimit((l) => l + PAGE)}
-          className="mt-3 w-full rounded-md border border-line bg-surface py-2 text-sm text-ink hover:border-accent">
+          className="mt-3 hidden w-full rounded-md border border-line bg-surface py-2 text-sm text-ink hover:border-accent lg:block">
           顯示更多（還有 {(sorted.length - limit).toLocaleString()} 檔）
         </button>
       )}

@@ -28,6 +28,7 @@ export default function StrategyDetail({ id }: { id: string }) {
     return c;
   }, [s]);
   const changed = s.params.some((x) => p[x.key] !== x.value);
+  const [showCond, setShowCond] = useState(false);
   const template = s.toConditions
     ? `/screener?u=stock&c=${encodeURIComponent(encodeConds(s.toConditions(p).map((c, i) => ({ ...c, id: String(i) }))))}`
     : null;
@@ -41,10 +42,16 @@ export default function StrategyDetail({ id }: { id: string }) {
         {s.category && <span className="text-sm text-muted">單一條件・{s.category}</span>}
         <DataStatus snap={snap} error={error} />
       </div>
-      <p className="mt-3 max-w-3xl text-[15px] leading-relaxed text-ink">{s.plain}</p>
+      <p className="mt-3 line-clamp-2 max-w-3xl text-[15px] leading-relaxed text-ink lg:line-clamp-none">{s.plain}</p>
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-[340px_minmax(0,1fr)]">
-        <aside className="space-y-4">
+      <div className="mt-4 grid gap-4 lg:mt-5 lg:grid-cols-[340px_minmax(0,1fr)]">
+        {/* 手機：結果放最前面，條件與設定點了才展開 */}
+        <button type="button" onClick={() => setShowCond((v) => !v)} aria-expanded={showCond}
+          className="flex items-center justify-between rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink lg:hidden">
+          <span>條件與設定（{s.rules(p).length} 條{changed ? "，已調整" : ""}）・回測・通知</span>
+          <span className="text-muted">{showCond ? "收起 ▴" : "展開 ▾"}</span>
+        </button>
+        <aside className={`${showCond ? "" : "hidden"} space-y-4 lg:block`}>
           <div className="rounded-lg border border-line bg-surface p-4">
             <h2 className="text-sm font-bold text-ink">條件</h2>
             <ul className="mt-2 space-y-1.5 text-sm leading-relaxed text-ink">

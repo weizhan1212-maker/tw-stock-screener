@@ -126,6 +126,7 @@ export default function KChart({ s }: { s: StockFile }) {
   const [panes, setPanes] = useStored<PaneId[]>("chart:panes", ["vol", "kd"]);
   const [drawings, setDrawings] = useStored<Drawing[]>(`draw:${s.code}`, []);
   const [tool, setTool] = useState<"none" | "h" | "t">("none");
+  const [moreTools, setMoreTools] = useState(false);          // 手機：指標與畫線工具預設收起
   const [pending, setPending] = useState<{ t: string; p: number } | null>(null);
   const [hover, setHover] = useState<number | null>(null);
   const [paneTops, setPaneTops] = useState<number[]>([]);
@@ -294,6 +295,10 @@ export default function KChart({ s }: { s: StockFile }) {
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <Seg label="週期" value={period} onChange={setPeriod} options={[["D", "日"], ["W", "週"], ["M", "月"]]} />
         <Seg label="價格" value={adjusted ? "adj" : "raw"} onChange={(v) => setAdjusted(v === "adj")} options={[["raw", "原始價"], ["adj", "還原價"]]} />
+        {/* 手機只顯示週期與還原價；指標與畫線收進「更多」 */}
+        <button type="button" onClick={() => setMoreTools((v) => !v)} aria-expanded={moreTools}
+          className="ml-auto rounded-md border border-line px-2 py-1 text-xs text-muted lg:hidden">{moreTools ? "收起" : "指標・畫線"}</button>
+        <div className={`${moreTools ? "flex" : "hidden"} w-full flex-wrap items-center gap-2 lg:flex lg:w-auto`}>
         <Popover label="主圖指標">
           <fieldset>
             <legend className="mb-1.5 text-xs text-muted">均線</legend>
@@ -337,6 +342,7 @@ export default function KChart({ s }: { s: StockFile }) {
             className="rounded px-2 py-1 text-muted hover:text-ink disabled:opacity-40">復原</button>
           <button type="button" disabled={!drawings.length} onClick={() => setDrawings([])}
             className="rounded px-2 py-1 text-muted hover:text-ink disabled:opacity-40">清除</button>
+        </div>
         </div>
       </div>
       {tool !== "none" && (

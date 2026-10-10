@@ -107,8 +107,55 @@ export default function MarketOverview() {
         <span className="num text-sm text-muted">資料日期：{m.asof.replaceAll("-", "/")}</span>
       </div>
 
-      {/* 指數全覽 */}
-      <ul className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+      {/* 手機第一屏：三個最重要的數字＋漲跌家數；類股指數改成緊湊列表 */}
+      {(() => {
+        const key = m.indices.filter((c) => /加權/.test(c.label) || /櫃買/.test(c.label) || c.label === "台指期");
+        const rest = m.indices.filter((c) => !key.includes(c));
+        const all = m.breadth?.all;
+        const tot = all ? all.up + all.flat + all.down : 0;
+        return (
+          <div className="mt-3 lg:hidden">
+            <ul className="grid grid-cols-3 gap-2">
+              {key.map((c) => (
+                <li key={c.label}>
+                  <Link href={`/market/index/${encodeURIComponent(c.name ?? c.label)}`} className="block rounded-lg border border-line bg-surface px-2 py-2">
+                    <div className="truncate text-xs text-muted">{c.label.replace("發行量加權股價指數", "加權指數")}</div>
+                    <div className={`num text-base font-bold leading-tight ${toneCls(c.chg)}`}>{fmt(c.close, "price").replace(/\.\d+$/, "")}</div>
+                    <div className={`num text-xs ${toneCls(c.chg)}`}>{sign(c.chg_pct)}{fmt(c.chg_pct, "num")}%</div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            {all && tot > 0 && (
+              <div className="mt-2 rounded-lg border border-line bg-surface px-3 py-2">
+                <div className="num flex justify-between text-xs"><span className="text-up">上漲 {all.up}</span><span className="text-muted">平盤 {all.flat}</span><span className="text-down">下跌 {all.down}</span></div>
+                <div className="mt-1.5 flex h-1.5 overflow-hidden rounded-full" aria-hidden>
+                  <div className="bg-up" style={{ width: `${(all.up / tot) * 100}%` }} /><div className="bg-line" style={{ width: `${(all.flat / tot) * 100}%` }} /><div className="bg-down" style={{ width: `${(all.down / tot) * 100}%` }} />
+                </div>
+              </div>
+            )}
+            <details className="group mt-2 rounded-lg border border-line bg-surface">
+              <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-sm text-ink">
+                類股與其他指數（{rest.length}）<span className="text-xs text-muted group-open:hidden">展開</span><span className="hidden text-xs text-muted group-open:inline">收起</span>
+              </summary>
+              <ul className="divide-y divide-line border-t border-line">
+                {rest.map((c) => (
+                  <li key={c.label}>
+                    <Link href={`/market/index/${encodeURIComponent(c.name ?? c.label)}`} className="num grid grid-cols-[1fr_auto_4.5rem] gap-2 px-3 py-1.5 text-sm">
+                      <span className="truncate text-ink">{c.label}</span>
+                      <span className="text-right text-ink">{fmt(c.close, "price")}</span>
+                      <span className={`text-right ${toneCls(c.chg)}`}>{sign(c.chg_pct)}{fmt(c.chg_pct, "num")}%</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          </div>
+        );
+      })()}
+
+      {/* 指數全覽（電腦版） */}
+      <ul className="mt-4 hidden grid-cols-2 gap-2 sm:grid-cols-3 lg:grid lg:grid-cols-5">
         {m.indices.map((c) => (
           <li key={c.label}>
             <Link href={`/market/index/${encodeURIComponent(c.name ?? c.label)}`}
