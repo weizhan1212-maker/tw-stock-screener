@@ -53,8 +53,8 @@ export interface Strategy {
   needs?: { field: string; msg: string };
 }
 
-/** 流動性門檻（只影響畫面顯示，回測不套用）：20 日均成交值至少 0.1 億 */
-export const MIN_AVG_VALUE = 0.1;
+/** 流動性門檻（只影響畫面顯示，回測不套用）：20 日均成交值至少 0.3 億（約一天 3,000 萬，太低的股票不好進出） */
+export const MIN_AVG_VALUE = 0.3;
 export const isLiquid = (r: Row) => (num(r.avg_value20) ?? 0) >= MIN_AVG_VALUE;
 /** 全市場都還沒有累積資料 */
 export const pending = (s: Strategy, rows: Row[]) => !!s.needs && !rows.some((r) => num(r[s.needs!.field]) != null);
@@ -111,7 +111,7 @@ const BASE_LIST: Strategy[] = [
       { key: "years", label: "連續配息至少", value: 5, unit: "年" },
     ],
     rules: (p) => [`現金殖利率 ≥ ${p.yield}%`, `連續配息 ≥ ${p.years} 年`, "近四季 EPS > 0"],
-    cols: ["close", "chg_pct", "dividend_yield", "div_years", "cash_div_last", "eps_ttm", "pe", "market_cap"],
+    cols: ["close", "chg_pct", "dividend_yield", "payout_ratio", "div_fill", "cash_div_12m", "div_years", "eps_ttm", "pe", "market_cap"],
     sort: { key: "dividend_yield", dir: -1 },
     run: (c, p) => c.stocks.filter((r) => ge(r, "dividend_yield", p.yield) && ge(r, "div_years", p.years) && gt(r, "eps_ttm", 0)),
     toConditions: (p) => [

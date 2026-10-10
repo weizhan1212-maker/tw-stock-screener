@@ -174,6 +174,8 @@ def save_days(store: DataStore, updates: dict):
 def run_daily(store: DataStore, fetcher: Fetcher, lookback_days: int = 10, today: dt.date | None = None):
     today = today or util.today_tw()
     holidays = _holidays(fetcher)
+    if holidays:   # 給網站判斷「最新交易日」用（週末、國定假日不算資料落後）
+        store.put_state("holidays", sorted(d.isoformat() for d in holidays))
     state = store.get_state("days", {})
     frames: dict = {}
     touched = []

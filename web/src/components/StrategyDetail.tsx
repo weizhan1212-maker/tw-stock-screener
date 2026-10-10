@@ -23,7 +23,8 @@ export default function StrategyDetail({ id }: { id: string }) {
   const notice = ctx && s.notice ? s.notice(ctx) : null;
   const cols = useMemo(() => {
     const c = [...s.cols];
-    if (!c.includes("value")) c.splice(c.indexOf("chg_pct") + 1, 0, "value");
+    // 跟「排除成交清淡」用同一個指標：20 日均成交值（不是當天成交金額）
+    if (!c.includes("avg_value20")) c.splice(c.indexOf("chg_pct") + 1, 0, "avg_value20");
     return c;
   }, [s]);
   const changed = s.params.some((x) => p[x.key] !== x.value);

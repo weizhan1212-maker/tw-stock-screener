@@ -50,7 +50,7 @@ export default function AiMarket() {
     <section className="mt-4 rounded-lg border border-line bg-surface p-4">
       <div className="flex flex-wrap items-center gap-2">
         <span className="rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-bold text-accent">AI 市場摘要</span>
-        {s && <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${TONE[s.tone] ?? TONE["中性"]}`}>今日氣氛：{s.tone}</span>}
+        {s && <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${TONE[s.tone] ?? TONE["中性"]}`}>{s.asof.slice(5).replace("-", "/")} 氣氛：{s.tone}</span>}
         {state === "working" && <span className="text-sm text-muted">AI 正在整理今天的市場…（約 15–30 秒）</span>}
         {state === "error" && err && <span className="text-sm text-muted">{err.msg}{err.detail && <span className="ml-1 break-all text-xs">（管理員除錯）{err.detail}</span>}</span>}
       </div>

@@ -2,7 +2,7 @@
  * 篩選欄位定義：名稱、分類、單位、白話說明。
  * key 必須對應 pipeline/snapshot.py 輸出的欄位（或下方 derived 欄位）。
  */
-export type Format = "price" | "pct" | "lots" | "yi" | "yiRaw" | "times" | "days" | "num" | "bool" | "years" | "count";
+export type Format = "price" | "pct" | "lots" | "yi" | "yiRaw" | "times" | "days" | "num" | "bool" | "years" | "count" | "text";
 export type Group = "價量" | "技術面" | "估值" | "籌碼面" | "基本面" | "ETF";
 
 export interface Field {
@@ -118,7 +118,9 @@ export const FIELDS: Field[] = [
   { key: "gm_stability", label: "毛利率穩定度", group: "基本面", format: "pct", help: "近 5 年毛利率最低值 ÷ 最高值。越接近 100% 越穩定。" },
   { key: "health_score", label: "財務健康度", group: "基本面", format: "num", help: "盈利能力、流動性、財務結構、營運效率、成長性五項的平均分數（0–100），用全市場百分位計算。85 分以上為 A+。" },
   { key: "div_years", label: "連續配息年數", group: "基本面", format: "years", help: "連續幾年都有發現金股利。" },
-  { key: "cash_div_last", label: "最近一年現金股利", group: "基本面", format: "price", help: "最近一個年度合計發多少現金股利（元）。" },
+  { key: "cash_div_last", label: "最近一年度現金股利", group: "基本面", format: "price", help: "最近一個股利所屬年度合計發多少現金股利（元）。季配息公司的當年度可能還沒發完。" },
+  { key: "cash_div_12m", label: "近一年現金股利", group: "基本面", format: "price", help: "除息日在最近 12 個月內的現金股利合計（元）。殖利率也是用這段期間的股利計算。" },
+  { key: "payout_ratio", label: "配發率", group: "基本面", format: "pct", help: "近一年現金股利 ÷ 上一個完整年度的 EPS。超過 100% 代表發的比賺的多（可能動用保留盈餘），通常難以持續；60–80% 較常見。" },
   { key: "etf_aum", label: "ETF 規模（估算）", group: "ETF", format: "yiRaw", help: "發行單位數 × 收盤價（億元）。用市價估算，跟投信公布的淨資產會有些微差距。" },
   { key: "etf_premium", label: "ETF 折溢價", group: "ETF", format: "pct", help: "（市價 − 投信預估淨值）÷ 預估淨值。正數＝溢價（買貴了），負數＝折價。來源：證交所 ETF 淨值表。" },
   { key: "etf_nav", label: "ETF 預估淨值", group: "ETF", format: "price", help: "投信盤後公布的每單位預估淨值（元）。" },
@@ -129,6 +131,7 @@ export const FIELDS: Field[] = [
 
 /** 只在策略結果裡出現、不放進自訂篩選選單的欄位 */
 const HIDDEN: Field[] = [
+  { key: "div_fill", label: "除息／填息", group: "基本面", format: "text", help: "最近一年那次除息之後：已填息＝收盤回到除息前價格（括號為花了幾個交易日）；填息中＝在除息參考價之上、還沒填完（百分比為已填回多少）；貼息＝跌破除息參考價，殖利率會因股價下跌而被墊高，要特別小心。" },
   { key: "magic_rank", label: "神奇公式排名", group: "估值", format: "num", help: "盈餘殖利率與資本報酬率兩項排名相加後的名次。" },
   { key: "years_fin", label: "財報年數", group: "基本面", format: "years", help: "有完整四季財報的年數。" },
 ];

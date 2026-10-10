@@ -215,6 +215,7 @@ def fundamentals(store: DataStore, asof: pd.Timestamp) -> pd.DataFrame:
                                         gm_min5y=("gm", "min"), gm_max5y=("gm", "max"))
         f = f.join(agg)
         f["gm_stability"] = (f["gm_min5y"] / f["gm_max5y"] * 100).where(f["gm_max5y"] > 0)
+        f["_eps_last_fy"] = yearly.groupby("code").tail(1).set_index("code")["eps_y"]     # 最近一個完整年度 EPS（配發率用）
         out.append(f)
 
     bal = store.read_table("balance")
@@ -358,6 +359,9 @@ def build_snapshot(store: DataStore, asof=None, lookback_days: int = 420) -> tup
             base["pe_calc"] = (base["close"] / base["eps_ttm"]).where(base["eps_ttm"] > 0)
         if "_rev_q_ttm" in base and "_assets" in base:
             base["asset_turnover"] = (base["_rev_q_ttm"] / base["_assets"]).where(base["_assets"] > 0)
+    base = base.join(dividend_status(store, asof, prices))
+    if "cash_div_12m" in base and "_eps_last_fy" in base:
+        base["payout_ratio"] = (base["cash_div_12m"] / base["_eps_last_fy"] * 100).where((base["_eps_last_fy"] > 0) & (base["cash_div_12m"] > 0))
     base = base.join(stock_extras(store, asof, base))
     base = base.join(holder_stats(store, asof))
     sf = strategy_factors(store)
@@ -375,6 +379,9 @@ def build_snapshot(store: DataStore, asof=None, lookback_days: int = 420) -> tup
             "count": int(len(base)), "fin_complete": bool(store.get_state("finmind_backfill", {}).get("_complete")),
             **chips_asof(store, asof),
             **market_state(store, asof)}
+    # 證交所休市日（資料日前後一段期間），網站用來判斷資料是不是真的落後
+    lo, hi = (asof - pd.Timedelta(days=30)).strftime("%Y-%m-%d"), (asof + pd.Timedelta(days=60)).strftime("%Y-%m-%d")
+    meta["holidays"] = [d for d in store.get_state("holidays", []) if lo <= d <= hi]
     return base, meta
 
 
@@ -435,6 +442,55 @@ def etf_columns(store: DataStore, asof: pd.Timestamp, base: pd.DataFrame) -> pd.
         y = (base["etf_div12m"].fillna(0) / base["close"] * 100).where(is_etf)
         base["dividend_yield"] = base.get("dividend_yield", pd.Series(np.nan, index=base.index)).where(~is_etf, y)
     return base
+
+
+def dividend_status(store: DataStore, asof: pd.Timestamp, prices: pd.DataFrame) -> pd.DataFrame:
+    """
+    近一年現金股利（依除息日）與最近一次除息後的填息狀態（用原始收盤價）：
+      除息前收盤 = 除息日前一個交易日收盤；參考價 ≈ 除息前收盤 − 現金股利
+      已填息：除息後任一天收盤 ≥ 除息前收盤（記錄花了幾個交易日）
+      填息中：還沒填息，但現價 ≥ 參考價（記錄已填回幾 %）
+      貼息：現價 < 參考價
+    有配股（股票股利）的那次不判斷，因為參考價計算不同。
+    """
+    div = store.read_table("dividend")
+    if div.empty or "cash_ex_date" not in div:
+        return pd.DataFrame()
+    d = div[(div["cash"] > 0) & div["cash_ex_date"].notna()].copy()
+    d["cash_ex_date"] = pd.to_datetime(d["cash_ex_date"])
+    d = d[(d["cash_ex_date"] > asof - pd.Timedelta(days=365)) & (d["cash_ex_date"] <= asof)]
+    if d.empty:
+        return pd.DataFrame()
+    out = pd.DataFrame({"cash_div_12m": d.groupby("code")["cash"].sum()})
+    last = d.sort_values("cash_ex_date").groupby("code").tail(1).set_index("code")
+    px = prices[["code", "date", "close"]].dropna(subset=["close"])
+    px = px[px["code"].isin(last.index)]
+    recs = {}
+    for code, g in px.groupby("code", sort=False):
+        ev = last.loc[code]
+        if (ev.get("stock") or 0) > 0:
+            continue
+        g = g.sort_values("date")
+        before = g[g["date"] < ev["cash_ex_date"]]
+        after = g[g["date"] >= ev["cash_ex_date"]]
+        if before.empty or after.empty:
+            continue
+        pre = float(before["close"].iloc[-1])
+        ref = pre - float(ev["cash"])
+        cur = float(after["close"].iloc[-1])
+        hit = after[after["close"] >= pre]
+        if not hit.empty:
+            state, days = 2, int((after["date"] <= hit["date"].iloc[0]).sum())
+            pct = 100.0
+        elif cur >= ref:
+            state, days, pct = 1, None, (cur - ref) / (pre - ref) * 100 if pre > ref else None
+        else:
+            state, days, pct = 0, None, None
+        recs[code] = {"div_fill_state": state, "div_fill_days": days, "div_fill_pct": pct,
+                      "div_ex_date": ev["cash_ex_date"].strftime("%Y-%m-%d"), "div_ref_price": ref, "div_pre_close": pre}
+    if recs:
+        out = out.join(pd.DataFrame.from_dict(recs, orient="index"))
+    return out
 
 
 def holder_stats(store: DataStore, asof: pd.Timestamp) -> pd.DataFrame:

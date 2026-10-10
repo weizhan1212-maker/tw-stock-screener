@@ -7,7 +7,9 @@ export interface Snapshot {
   meta: { asof: string; generated_at: string; count: number; fin_complete: boolean;
     /** 融資融券、外資持股的資料日（傍晚場會比 asof 早一天）；complete＝當天籌碼已到齊 */
     margin_asof?: string | null; qfii_asof?: string | null; complete?: boolean;
-    taiex?: number; taiex_ma200?: number; market_bull?: boolean };
+    taiex?: number; taiex_ma200?: number; market_bull?: boolean;
+    /** 證交所休市日（資料日前後一段期間），判斷資料是否落後用 */
+    holidays?: string[] };
   rows: Row[];
 }
 
@@ -35,6 +37,11 @@ export function decode(raw: RawSnapshot): Snapshot {
     o.pe_pb = pe != null && pb != null && pe > 0 ? pe * pb : null;
     o.peg = pe != null && g != null && pe > 0 && g > 0 ? pe / g : null;
     o.neff_ratio = pe != null && g != null && pe > 0 ? (g + (y ?? 0)) / pe : null;
+    // 除息／填息狀態（pipeline 給代碼：2 已填息、1 填息中、0 貼息）
+    const fs = num(o.div_fill_state);
+    o.div_fill = fs == null ? null
+      : fs === 2 ? `已填息${num(o.div_fill_days) != null ? `（${o.div_fill_days} 天）` : ""}`
+      : fs === 1 ? `填息中${num(o.div_fill_pct) != null ? ` ${Math.round(num(o.div_fill_pct)!)}%` : ""}` : "貼息";
     return o;
   });
   return { meta: raw.meta, rows };
@@ -98,6 +105,7 @@ export function isSigned(key: string): boolean {
 }
 
 export function fmt(v: unknown, format: Format, signed = false): string {
+  if (format === "text") return v == null || v === "" ? "—" : String(v);
   if (v == null || typeof v !== "number" || Number.isNaN(v)) return "—";
   switch (format) {
     case "bool":

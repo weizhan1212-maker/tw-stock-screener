@@ -264,6 +264,7 @@ const SYSTEM = `你是資深台股研究員，替一般散戶寫「個股解讀�
 11. change：出現什麼具體、可觀察的情況代表目前的狀況改變了（1～2 個條件，60 字內）。這是觀察條件，不是停損。
 12. watch：接下來最值得追蹤的 3 件事，每件 30 字內，具體寫出指標或時間點。
 13. 台灣慣用的繁體中文白話；必要的術語用括號簡短解釋。
+14. 資料日不一定是今天：不要寫「今日」「今天」，改寫「最近交易日」或直接寫日期。
 只輸出 JSON。`;
 
 const POINT = { type: "OBJECT", properties: { title: { type: "STRING" }, text: { type: "STRING" } }, required: ["title", "text"] };
@@ -356,6 +357,8 @@ export function textProblems(strict: string[], loose: string[], factsText: strin
   const problems: string[] = [];
   const hit = [...strict, ...loose].map((t) => t.match(BANNED)?.[0]).filter(Boolean);
   if (hit.length) problems.push(`出現不允許的字眼：${[...new Set(hit)].join("、")}`);
+  const today = [...strict, ...loose].map((t) => t.match(/今日|今天/)?.[0]).filter(Boolean);
+  if (today.length) problems.push("不要寫「今日／今天」（資料日不一定是今天），請改寫「本交易日」「最近交易日」或直接寫日期");
   const soft = strict.map((t) => t.match(STRICT_BANNED)?.[0]).filter(Boolean);
   if (soft.length) problems.push(`出現沒有根據的趨勢詞或暗示後市的說法：${[...new Set(soft)].join("、")}（請改成只描述資料裡看得到的比較，例如「較上週減少」）`);
   const pool = factsText.replace(/,/g, "");
