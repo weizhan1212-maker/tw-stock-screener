@@ -52,9 +52,9 @@ export default function AiMarket() {
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span className="shrink-0 rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-bold text-accent">AI 市場摘要</span>
         {s && <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${TONE[s.tone] ?? TONE["中性"]}`}>{s.asof.slice(5).replace("-", "/")} {s.tone}</span>}
-        {s && <span className="min-w-0 flex-1 text-sm font-medium text-ink">{s.headline}</span>}
+        {s && <span className="order-last w-full text-sm font-medium leading-snug text-ink lg:order-none lg:w-auto lg:min-w-0 lg:flex-1">{s.headline}</span>}
         {s && (
-          <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="shrink-0 text-sm text-accent hover:underline">
+          <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="ml-auto shrink-0 text-sm text-accent hover:underline lg:ml-0">
             {open ? "收起" : "展開"}
           </button>
         )}

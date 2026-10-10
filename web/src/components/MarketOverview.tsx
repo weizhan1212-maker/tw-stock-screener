@@ -178,6 +178,7 @@ export default function MarketOverview() {
       <AiMarket />
 
       <div className="mt-4 grid gap-3 lg:grid-cols-4">
+        <div className="hidden lg:block">
         <Panel title="漲跌家數" date={m.asof} asof={m.asof} freq="每日盤後">
           <Seg label="市場" value={scope} onChange={setScope} options={[["all", "全部"], ["TWSE", "上市"], ["TPEX", "上櫃"]]} />
           {b && (
@@ -195,6 +196,7 @@ export default function MarketOverview() {
             </>
           )}
         </Panel>
+        </div>
 
         <Panel title="成交值（股票＋ETF）" date={m.asof} asof={m.asof} freq="每日盤後">
           {m.turnover && (
