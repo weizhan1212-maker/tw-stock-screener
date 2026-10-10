@@ -1,0 +1,136 @@
+2026-10-10 11:56:42,244 INFO ## 每日任務 2026-10-10
+
+| 日期 | 狀態 |
+|---|---|
+| 2026-09-30 | 完成 |
+| 2026-10-01 | 完成 |
+| 2026-10-02 | 完成 |
+| 2026-10-05 | 完成 |
+| 2026-10-06 | 完成 |
+| 2026-10-07 | 完成 |
+| 2026-10-08 | 完成 |
+| 2026-10-09 | 休市 |
+
+寫入筆數：holders=3330, revenue=1977, income_periods=1934, qfii_tpex=893, securities=2420, company=1982, delisting=706, etf_info=271, etf_nav=359, etf_top10=202608 已有, events=10, extras_business_light=512, extras_pcr=17, extras_fut_large=1, extras_fut_insti=1, extras_fx=26, extras_taiex_ohlc=6, extras_dca_rank=40, extras_tpex_insti=1, extras_tpex_daytrade=6, extras_tpex_sbl=932, extras_tpex_block=8, extras_futures=2, extras_tpex_index=6, extras_twse_extra_days=0
+2026-10-10 11:56:42,245 INFO 下載量（daily）：0.2 MB／4 次，本機快取命中 21 次；master/_state 0.2 MB
+2026-10-10 11:56:42,245 INFO ## Supabase 下載量
+
+下載量（daily）：0.2 MB／4 次，本機快取命中 21 次；master/_state 0.2 MB
+2026-10-10 11:56:46,528 INFO ## 季報補抓
+
+完成 0 檔，佇列剩 0 檔
+2026-10-10 11:56:46,528 INFO 下載量（fin-refresh）：0.1 MB／3 次，本機快取命中 3 次；master/_state 0.1 MB
+2026-10-10 11:56:46,528 INFO ## Supabase 下載量
+
+下載量（fin-refresh）：0.1 MB／3 次，本機快取命中 3 次；master/_state 0.1 MB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:542: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  base["hs_profit"] = avg([pct("roe"), pct("roa"), pct("gross_margin", mask=nonfin), pct("op_margin", mask=nonfin)], 2)
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:543: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  base["hs_liquid"] = avg([pct("current_ratio", mask=nonfin), fcf_pos.where(nonfin & stock)], 1)
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:544: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  base["hs_struct"] = avg([pct("debt_ratio", higher=False, mask=nonfin)], 1)
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:545: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  base["hs_eff"] = avg([pct("asset_turnover", mask=nonfin), pct("f_score", mask=nonfin)], 1)
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:546: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  base["hs_growth"] = avg([pct("rev_ttm_yoy"), pct("eps_q_yoy"), pct("eps_cagr3")], 2)
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:549: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  base["health_score"] = parts.mean(axis=1).where(parts.notna().sum(axis=1) >= need).where(stock)
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:377: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  base = base.reset_index().rename(columns={"index": "code"})
+2026-10-10 11:58:10,182 INFO 快照：2355 檔、148 欄，壓縮後 821 KB
+2026-10-10 11:58:10,189 INFO ## 篩選快照
+
+資料日 2026-10-08，2355 檔，148 欄
+2026-10-10 11:58:10,189 INFO 下載量（snapshot）：0.6 MB／4 次，本機快取命中 97 次；master/_state 0.6 MB
+2026-10-10 11:58:10,189 INFO ## Supabase 下載量
+
+下載量（snapshot）：0.6 MB／4 次，本機快取命中 97 次；master/_state 0.6 MB
+2026-10-10 11:59:55,243 INFO ## 市場總覽
+
+資料日 2026-10-08，指數 10 項，5 KB，指數歷史 192 KB，重大訊息 11 KB
+2026-10-10 11:59:55,243 INFO 下載量（market）：0.5 MB／4 次，本機快取命中 184 次；master/_state 0.5 MB
+2026-10-10 11:59:55,243 INFO ## Supabase 下載量
+
+下載量（market）：0.5 MB／4 次，本機快取命中 184 次；master/_state 0.5 MB
+2026-10-10 12:03:38,703 INFO 個股檔：{'asof': '2026-10-08', 'count': 2341, 'failed': [], 'n_failed': 0, 'avg_kb': 15.7, 'total_mb': 35.9}
+2026-10-10 12:03:38,753 INFO ## 個股檔
+
+2341 檔，平均 15.7 KB，合計 35.9 MB，失敗 0 檔
+2026-10-10 12:03:38,753 INFO 下載量（stocks）：0.2 MB／1 次，本機快取命中 222 次；master/_state 0.2 MB
+2026-10-10 12:03:38,753 INFO ## Supabase 下載量
+
+下載量（stocks）：0.2 MB／1 次，本機快取命中 222 次；master/_state 0.2 MB
+{"asof":"2026-10-08","full":true,"users":0,"notes":0,"telegram":0,"tgFailed":0,"errors":0}
+2026-10-10 12:05:16,355 INFO ## 回測資料
+
+本次新增 0 個月、失敗 []，可回測 36/36 個月，價格檔 {2026: 1213} KB，1.6 分鐘
+2026-10-10 12:05:16,355 INFO 下載量（backtest-data）：0.0 MB／1 次，本機快取命中 177 次；master/_state 0.0 MB
+2026-10-10 12:05:16,356 INFO ## Supabase 下載量
+
+下載量（backtest-data）：0.0 MB／1 次，本機快取命中 177 次；master/_state 0.0 MB
+2026-10-10 12:06:17,334 INFO ## 資料檢查報告
+
+### 日資料
+
+| 資料集 | 月份數 | 近 3 個月筆數 | 近 3 個月日期範圍 | 近 20 日每日檔數（最少/中位/最多） | 缺值比例 |
+|---|---|---|---|---|---|
+| prices | 59 | 148,970 | 2026-07-08 ~ 2026-10-08 | 2328/2331/2336 | close=1.1%, volume=0.0% |
+| insti | 59 | 141,632 | 2026-07-08 ~ 2026-10-08 | 2188/2210/2231 | foreign=0.0%, trust=0.0%, dealer=0.0% |
+| margin | 59 | 141,180 | 2026-07-08 ~ 2026-10-08 | 2211/2212/2213 | margin_balance=0.0%, short_balance=0.0% |
+| valuation | 59 | 126,008 | 2026-07-08 ~ 2026-10-08 | 1965/1968/1973 | pe=23.1%, pb=0.0%, dividend_yield=0.0% |
+| qfii | 59 | 89,232 | 2026-07-08 ~ 2026-10-08 | 1328/1329/2222 | foreign_ratio=0.0% |
+| exright | 124 | 1,135 | 2026-07-08 ~ 2026-10-08 | 1/7/54 | prev_close=0.0%, ref_price=0.0% |
+| index | 59 | 64 | 2026-07-08 ~ 2026-10-08 | 1/1/1 | taiex=0.0%, taiex_tr=0.0% |
+| holders | 1 | 6,653 | 2026-10-02 ~ 2026-10-08 | 3323/3326/3330 |  |
+| taiex_ohlc | 49 | 64 | 2026-07-08 ~ 2026-10-08 | 1/1/1 |  |
+| indices | 59 | 3,648 | 2026-07-08 ~ 2026-10-08 | 57/57/57 |  |
+| margin_total | 15 | 64 | 2026-07-08 ~ 2026-10-08 | 1/1/1 |  |
+| market_insti | 5 | 68 | 2026-07-08 ~ 2026-10-08 | 1/1/2 |  |
+| daytrade | 5 | 78,216 | 2026-07-08 ~ 2026-10-08 | 1218/1230/1233 |  |
+| daytrade_total | 5 | 70 | 2026-07-08 ~ 2026-10-08 | 1/1/2 |  |
+| sbl | 5 | 87,353 | 2026-07-08 ~ 2026-10-08 | 1296/1296/2228 |  |
+| block | 5 | 1,179 | 2026-07-08 ~ 2026-10-08 | 12/20/30 |  |
+| futures | 1 | 10 | 2026-10-02 ~ 2026-10-08 | 2/2/2 |  |
+| pcr | 2 | 22 | 2026-09-07 ~ 2026-10-08 | 1/1/1 |  |
+| fut_large | 1 | 3 | 2026-10-06 ~ 2026-10-08 | 1/1/1 |  |
+| fut_insti | 1 | 3 | 2026-10-06 ~ 2026-10-08 | 1/1/1 |  |
+| fx | 2 | 26 | 2026-09-01 ~ 2026-10-08 | 1/1/1 |  |
+| etf_nav | 1 | 359 | 2026-10-06 ~ 2026-10-09 | 1/16/342 |  |
+
+### 其他表
+
+| 表 | 筆數 | 檔數 |
+|---|---|---|
+| income | 960,395 | 2055 |
+| balance | 2,509,703 | 2069 |
+| cashflow | 1,455,112 | 2057 |
+| revenue | 184,556 | 1891 |
+| revenue_latest | 1,977 | 1977 |
+| dividend | 13,297 | 1861 |
+| securities | 2,420 | 2420 |
+| company | 1,982 | 1982 |
+| etf_info | 271 | 271 |
+| etf_top10 | 860 |  |
+| events | 294 | 214 |
+| delisting | 706 | 706 |
+| income_periods | 1,934 | 1934 |
+
+### 回補進度
+
+- 日資料：完成 1167 個交易日、休市 91 天、未完成 5 天、有缺漏端點 0 天
+- FinMind：完成 1997 檔（全部完成：True）
+- 季報補抓佇列：0 檔
+- 未完成範例：2022-07-01: {'twse_quotes': 'ok', 'tpex_quotes': 'ok', 'twse_insti': 'ok', 'tpex_insti': 'ok', 'twse_margin': 'ok', 'tpex_margin': 'ok', 'twse_valuation': 'ok', 'tpex_valuation': 'ok', '_tries': 1, 'twse_qfii': "error:https://www.twse.com.tw/rwd/zh/fund/MI_QFIIS {'date': '20220701', 'selectType': 'ALLBUT0999', 'response': 'json'}: HTTPSConnectionPool(host='www.twse.com.tw', port=443): Read timed out. (read ti"}；2022-06-29: {'twse_quotes': 'ok', 'tpex_quotes': 'ok', 'twse_insti': 'ok', 'tpex_insti': 'ok', 'twse_margin': 'ok', 'tpex_margin': 'ok', '_tries': 1, 'twse_valuation': "error:https://www.twse.com.tw/rwd/zh/afterTrading/BWIBBU_d {'date': '20220629', 'selectType': 'ALL', 'response': 'json'}: HTTPSConnectionPool(host='www.twse.com.tw', port=443): Read timed out. (read t", 'tpex_valuation': 'ok', 'twse_qfii': 'ok'}；2022-06-23: {'twse_quotes': 'ok', 'tpex_quotes': 'ok', 'twse_insti': 'ok', 'tpex_insti': 'ok', 'twse_margin': 'ok', 'tpex_margin': 'ok', 'twse_valuation': 'ok', 'tpex_valuation': 'ok', '_tries': 1, 'twse_qfii': "error:https://www.twse.com.tw/rwd/zh/fund/MI_QFIIS {'date': '20220623', 'selectType': 'ALLBUT0999', 'response': 'json'}: HTTPSConnectionPool(host='www.twse.com.tw', port=443): Read timed out. (read ti"}；2022-06-17: {'twse_quotes': 'ok', 'tpex_quotes': 'ok', '_tries': 1, 'twse_insti': "error:https://www.twse.com.tw/rwd/zh/fund/T86 {'date': '20220617', 'selectType': 'ALLBUT0999', 'response': 'json'}: HTTPSConnectionPool(host='www.twse.com.tw', port=443): Read timed out. (read timeout", 'tpex_insti': 'ok', 'twse_margin': 'ok', 'tpex_margin': 'ok', 'twse_valuation': 'ok', 'tpex_valuation': 'ok', 'twse_qfii': 'ok'}；2022-06-15: {'twse_quotes': 'ok', 'tpex_quotes': 'ok', 'twse_insti': 'ok', 'tpex_insti': 'ok', '_tries': 1, 'twse_margin': "error:https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN {'date': '20220615', 'selectType': 'ALL', 'response': 'json'}: HTTPSConnectionPool(host='www.twse.com.tw', port=443): Read timed out. (read ", 'tpex_margin': 'ok', 'twse_valuation': 'ok', 'tpex_valuation': 'ok', 'twse_qfii': 'ok'}
+
+### 抽樣：台積電最近 3 天
+
+```
+      date code market name   open   high    low  close     volume        value  trades  shares_issued  ref_next
+2026-10-06 2330   TWSE  台積電 2575.0 2590.0 2565.0 2585.0 20801802.0 5.363915e+10 83438.0            NaN       NaN
+2026-10-07 2330   TWSE  台積電 2565.0 2585.0 2560.0 2585.0 16941183.0 4.364360e+10 70880.0            NaN       NaN
+2026-10-08 2330   TWSE  台積電 2550.0 2575.0 2550.0 2550.0 20154000.0 5.150892e+10 11418.0            NaN       NaN
+```
+2026-10-10 12:06:17,334 INFO 下載量（report）：0.4 MB／3 次，本機快取命中 86 次；master/_state 0.4 MB
+2026-10-10 12:06:17,335 INFO ## Supabase 下載量
+
+下載量（report）：0.4 MB／3 次，本機快取命中 86 次；master/_state 0.4 MB
