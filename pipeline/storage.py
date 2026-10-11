@@ -203,9 +203,22 @@ class SupabaseStorage:
         return sorted(out)
 
 
+# R2 免費額度（每月）：儲存 10 GB、Class A（寫入、列出）100 萬次、Class B（讀取、HEAD）1,000 萬次。
+# 用到 80% 就停止，避免產生費用。
+R2_FREE = {"A": 1_000_000, "B": 10_000_000, "bytes": 10 * 1024**3}
+R2_STOP_AT = 0.8
+USAGE_KEY = "_usage/r2-{ym}.json"
+
+
+class R2QuotaError(RuntimeError):
+    pass
+
+
 class R2Storage:
-    """Cloudflare R2（S3 相容）：下載流量免費。介面與 SupabaseStorage 相同，也沿用同一份下載量統計與本機 ETag 快取。"""
+    """Cloudflare R2（S3 相容）：下載流量免費。介面與 SupabaseStorage 相同，也沿用同一份下載量統計與本機 ETag 快取。
+    每次操作都計數（ops），指令結束時累加到 R2 上的 _usage/r2-YYYY-MM.json；開始前超過免費額度 80% 就拒絕執行。"""
     stats = SupabaseStorage.stats
+    ops = {"A": 0, "B": 0}
 
     def __init__(self, account: str, key_id: str, secret: str, bucket: str = "market-data"):
         import boto3
@@ -221,6 +234,7 @@ class R2Storage:
         return R2Storage(*self._args)
 
     def ensure_bucket(self):
+        R2Storage.ops["B"] += 1
         self.s3.head_bucket(Bucket=self.bucket)          # bucket 由 Willy 在 Cloudflare 後台建立；這裡只確認存在
 
     _cache_path = SupabaseStorage._cache_path
@@ -228,6 +242,7 @@ class R2Storage:
 
     def _etag(self, path: str) -> str | None:
         from botocore.exceptions import ClientError
+        R2Storage.ops["B"] += 1
         try:
             return self.s3.head_object(Bucket=self.bucket, Key=path)["ETag"].strip('"')
         except ClientError:
@@ -244,6 +259,7 @@ class R2Storage:
                 self.stats["cache_hits"] = self.stats.get("cache_hits", 0) + 1
                 with open(cp, "rb") as g:
                     return g.read()
+        R2Storage.ops["B"] += 1
         try:
             r = self.s3.get_object(Bucket=self.bucket, Key=path)
         except ClientError as e:
@@ -262,6 +278,7 @@ class R2Storage:
         return data
 
     def put(self, path: str, data: bytes, content_type: str = "application/octet-stream"):
+        R2Storage.ops["A"] += 1
         r = self.s3.put_object(Bucket=self.bucket, Key=path, Body=data, ContentType=content_type)
         self.stats["put_bytes"] += len(data)
         cp = self._cache_path(path)
@@ -275,9 +292,44 @@ class R2Storage:
     def sizes(self, prefix: str = "") -> dict:
         out = {}
         for page in self.s3.get_paginator("list_objects_v2").paginate(Bucket=self.bucket, Prefix=prefix.rstrip("/")):
+            R2Storage.ops["A"] += 1
             for o in page.get("Contents", []) or []:
                 out[o["Key"]] = int(o["Size"])
         return out
+
+    # ---- 用量管控 ----
+    def _usage_key(self):
+        import datetime as _dt
+        return USAGE_KEY.format(ym=_dt.datetime.utcnow().strftime("%Y-%m"))
+
+    def read_usage(self) -> dict:
+        import json
+        from botocore.exceptions import ClientError
+        try:
+            R2Storage.ops["B"] += 1
+            return json.loads(self.s3.get_object(Bucket=self.bucket, Key=self._usage_key())["Body"].read())
+        except ClientError:
+            return {"A": 0, "B": 0, "bytes": 0}
+
+    def check_quota(self):
+        u = self.read_usage()
+        over = [f"{k} {u.get(k, 0):,}／{R2_FREE[k]:,}" for k in R2_FREE if u.get(k, 0) >= R2_FREE[k] * R2_STOP_AT]
+        if over:
+            raise R2QuotaError("R2 本月用量已達免費額度 80%，為避免產生費用，停止執行：" + "、".join(over))
+        return u
+
+    def record_usage(self, measure_bytes: bool = False):
+        """把這次的操作次數累加到本月用量；measure_bytes=True 時順便量一次總容量（列出所有檔案，算 Class A）。"""
+        import json
+        u = self.read_usage()
+        a, b = R2Storage.ops["A"], R2Storage.ops["B"]
+        R2Storage.ops.update(A=0, B=0)
+        if measure_bytes:
+            u["bytes"] = sum(self.sizes("").values())
+        u["A"] = u.get("A", 0) + a + 1          # +1：寫入這個用量檔本身
+        u["B"] = u.get("B", 0) + b
+        self.s3.put_object(Bucket=self.bucket, Key=self._usage_key(), Body=json.dumps(u).encode(), ContentType="application/json")
+        return u
 
     def list(self, prefix: str) -> list[str]:
         p = prefix.rstrip("/")
@@ -286,6 +338,8 @@ class R2Storage:
 
 def r2_from_env() -> "R2Storage":
     acct = os.environ.get("R2_ACCOUNT_ID", "").strip()
+    # 容許貼成整個網址（https://<id>.r2.cloudflarestorage.com/...）：只取 <id>
+    acct = acct.split("://")[-1].split("/")[0].split(".")[0]
     kid = os.environ.get("R2_ACCESS_KEY_ID", "").strip()
     sec = os.environ.get("R2_SECRET_ACCESS_KEY", "").strip()
     if not (acct and kid and sec):
@@ -299,6 +353,7 @@ def from_env():
     if os.environ.get("STORAGE", "").strip().lower() == "r2":
         st = r2_from_env()
         st.ensure_bucket()
+        st.check_quota()                     # 本月用量超過免費額度 80% 就不執行
         return st
     url = os.environ.get("SUPABASE_URL", "").strip()
     key = os.environ.get("SUPABASE_SERVICE_KEY", "").strip()

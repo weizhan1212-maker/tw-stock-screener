@@ -10,7 +10,9 @@ const isR2 = () => (process.env.STORAGE ?? "").toLowerCase() === "r2";
 let r2: { client: AwsClient; base: string } | null = null;
 function r2cfg() {
   if (r2) return r2;
-  const acct = process.env.R2_ACCOUNT_ID, id = process.env.R2_ACCESS_KEY_ID, secret = process.env.R2_SECRET_ACCESS_KEY;
+  // 容許貼成整個網址（https://<id>.r2.cloudflarestorage.com/...）：只取 <id>
+  const acct = process.env.R2_ACCOUNT_ID?.trim().split("://").pop()?.split("/")[0].split(".")[0];
+  const id = process.env.R2_ACCESS_KEY_ID?.trim(), secret = process.env.R2_SECRET_ACCESS_KEY?.trim();
   if (!acct || !id || !secret) throw new Error("伺服器尚未設定 R2_ACCOUNT_ID／R2_ACCESS_KEY_ID／R2_SECRET_ACCESS_KEY");
   r2 = {
     client: new AwsClient({ accessKeyId: id, secretAccessKey: secret, service: "s3", region: "auto" }),

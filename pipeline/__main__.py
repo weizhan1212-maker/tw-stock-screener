@@ -127,6 +127,17 @@ def main(argv=None):
     elif a.cmd == "fin-refresh":
         jobs.run_fin_refresh(store, fetcher, budget_min=a.budget_min)
     _report_traffic(a.cmd)
+    _record_r2(store, a.cmd)
+
+
+def _record_r2(store, cmd: str):
+    from .storage import R2_FREE, R2Storage
+    if not isinstance(store.st, R2Storage):
+        return
+    u = store.st.record_usage(measure_bytes=cmd in ("daily", "migrate-r2"))
+    msg = "R2 本月用量：" + "、".join(f"{k} {u.get(k, 0):,}／{R2_FREE[k]:,}（{u.get(k, 0) / R2_FREE[k] * 100:.1f}%）" for k in R2_FREE)
+    log.info(msg)
+    jobs.summary(f"## R2 用量\n\n{msg}\n\n到 80% 會自動停止，避免產生費用。")
 
 
 def _report_traffic(cmd: str):

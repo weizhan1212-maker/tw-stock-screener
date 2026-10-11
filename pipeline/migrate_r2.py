@@ -46,6 +46,8 @@ def run(verify_only: bool = False, workers: int = 8):
             log.warning("複製失敗 %d 個：%s", len(errs), "；".join(errs[:20]))
         b = dst.sizes("")
 
+    u = dst.record_usage(measure_bytes=True)
+    log.info("R2 本月用量：寫入類 %s 次、讀取類 %s 次、容量 %.1f MB", f"{u['A']:,}", f"{u['B']:,}", u["bytes"] / 1e6)
     missing = [k for k in a if k not in b]
     diff = [k for k in a if k in b and b[k] != a[k]]
     st = SupabaseStorage.stats
