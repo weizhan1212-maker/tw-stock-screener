@@ -35,6 +35,7 @@ def main(argv=None):
     f.add_argument("--chain", action="store_true")
     sub.add_parser("report")
     sub.add_parser("storage-usage")
+    sub.add_parser("migrate-r2").add_argument("--verify-only", action="store_true")
     mu = sub.add_parser("migrate-users")
     mu.add_argument("--mode", choices=["merge", "ignore", "check", "selftest"], default="check")
     sub.add_parser("snapshot")
@@ -54,6 +55,10 @@ def main(argv=None):
     a = p.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s", stream=sys.stdout)
+    if a.cmd == "migrate-r2":
+        from .migrate_r2 import run
+        run(verify_only=a.verify_only)
+        return
     store = DataStore(from_env())
     fetcher = Fetcher(delay=3.0)
 

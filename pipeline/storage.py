@@ -203,8 +203,103 @@ class SupabaseStorage:
         return sorted(out)
 
 
+class R2Storage:
+    """Cloudflare R2（S3 相容）：下載流量免費。介面與 SupabaseStorage 相同，也沿用同一份下載量統計與本機 ETag 快取。"""
+    stats = SupabaseStorage.stats
+
+    def __init__(self, account: str, key_id: str, secret: str, bucket: str = "market-data"):
+        import boto3
+        from botocore.config import Config
+        self._args = (account, key_id, secret, bucket)
+        self.bucket = bucket
+        self.s3 = boto3.client(
+            "s3", endpoint_url=f"https://{account}.r2.cloudflarestorage.com",
+            aws_access_key_id=key_id, aws_secret_access_key=secret, region_name="auto",
+            config=Config(retries={"max_attempts": 5, "mode": "standard"}, connect_timeout=30, read_timeout=120))
+
+    def clone(self):
+        return R2Storage(*self._args)
+
+    def ensure_bucket(self):
+        self.s3.head_bucket(Bucket=self.bucket)          # bucket 由 Willy 在 Cloudflare 後台建立；這裡只確認存在
+
+    _cache_path = SupabaseStorage._cache_path
+    _save_cache = staticmethod(SupabaseStorage._save_cache)
+
+    def _etag(self, path: str) -> str | None:
+        from botocore.exceptions import ClientError
+        try:
+            return self.s3.head_object(Bucket=self.bucket, Key=path)["ETag"].strip('"')
+        except ClientError:
+            return None
+
+    def get(self, path: str) -> bytes | None:
+        from botocore.exceptions import ClientError
+        cp = self._cache_path(path)
+        if cp and os.path.exists(cp) and os.path.exists(cp + ".etag"):
+            tag = self._etag(path)
+            with open(cp + ".etag") as f:
+                same = bool(tag) and f.read().strip() == tag
+            if same:
+                self.stats["cache_hits"] = self.stats.get("cache_hits", 0) + 1
+                with open(cp, "rb") as g:
+                    return g.read()
+        try:
+            r = self.s3.get_object(Bucket=self.bucket, Key=path)
+        except ClientError as e:
+            if e.response.get("Error", {}).get("Code") in ("NoSuchKey", "404", "NotFound"):
+                return None
+            raise
+        data = r["Body"].read()
+        st = self.stats
+        st["get_bytes"] += len(data)
+        st["get_count"] += 1
+        key = "/".join(path.split("/")[:2])
+        st["by_prefix"][key] = st["by_prefix"].get(key, 0) + len(data)
+        tag = (r.get("ETag") or "").strip('"')
+        if cp and tag:
+            self._save_cache(cp, data, tag)
+        return data
+
+    def put(self, path: str, data: bytes, content_type: str = "application/octet-stream"):
+        r = self.s3.put_object(Bucket=self.bucket, Key=path, Body=data, ContentType=content_type)
+        self.stats["put_bytes"] += len(data)
+        cp = self._cache_path(path)
+        tag = (r.get("ETag") or "").strip('"')
+        if cp and tag:
+            self._save_cache(cp, data, tag)
+
+    def exists(self, path: str) -> bool:
+        return self._etag(path) is not None
+
+    def sizes(self, prefix: str = "") -> dict:
+        out = {}
+        for page in self.s3.get_paginator("list_objects_v2").paginate(Bucket=self.bucket, Prefix=prefix.rstrip("/")):
+            for o in page.get("Contents", []) or []:
+                out[o["Key"]] = int(o["Size"])
+        return out
+
+    def list(self, prefix: str) -> list[str]:
+        p = prefix.rstrip("/")
+        return sorted(k for k in self.sizes(p) if k == p or k.startswith(p + "/") or not p)
+
+
+def r2_from_env() -> "R2Storage":
+    acct = os.environ.get("R2_ACCOUNT_ID", "").strip()
+    kid = os.environ.get("R2_ACCESS_KEY_ID", "").strip()
+    sec = os.environ.get("R2_SECRET_ACCESS_KEY", "").strip()
+    if not (acct and kid and sec):
+        raise RuntimeError("缺少 R2_ACCOUNT_ID／R2_ACCESS_KEY_ID／R2_SECRET_ACCESS_KEY")
+    return R2Storage(acct, kid, sec, os.environ.get("R2_BUCKET", "market-data"))
+
+
 def from_env():
-    """有 SUPABASE_URL / SUPABASE_SERVICE_KEY 就用 Supabase，否則用本機 data/ 資料夾。"""
+    """STORAGE=r2 且有 R2_* 金鑰就用 Cloudflare R2；否則有 SUPABASE_URL / SUPABASE_SERVICE_KEY 就用 Supabase；都沒有用本機 data/ 資料夾。
+    （R2 要等資料搬完、核對過才把 STORAGE 設成 r2，避免讀到空的 R2）"""
+    if os.environ.get("STORAGE", "").strip().lower() == "r2":
+        st = r2_from_env()
+        st.ensure_bucket()
+        return st
     url = os.environ.get("SUPABASE_URL", "").strip()
     key = os.environ.get("SUPABASE_SERVICE_KEY", "").strip()
     if url and key:

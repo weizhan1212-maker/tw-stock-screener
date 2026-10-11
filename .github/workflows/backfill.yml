@@ -34,6 +34,11 @@ jobs:
     timeout-minutes: 350
     env:
       PIPELINE_CACHE_DIR: ${{ github.workspace }}/.pcache
+      # 儲存位置：Repository variable STORAGE=r2 時改用 Cloudflare R2（資料搬完、核對後才設定）
+      STORAGE: ${{ vars.STORAGE }}
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
       FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
