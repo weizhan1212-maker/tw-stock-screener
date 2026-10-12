@@ -74,3 +74,11 @@ body {
     animation: none !important;
   }
 }
+
+/* 電腦版頁首往下捲時淡出收起（HeaderAutoHide 在 <html> 標 data-hdr="hidden"）；--hdr＝目前頁首占的高度 */
+:root { --hdr: 3.5rem; }
+@media (min-width: 1024px) {
+  .site-header { transition: opacity 200ms ease, transform 200ms ease; }
+  :root[data-hdr="hidden"] { --hdr: 0px; }
+  :root[data-hdr="hidden"] .site-header { opacity: 0; transform: translateY(-100%); pointer-events: none; }
+}

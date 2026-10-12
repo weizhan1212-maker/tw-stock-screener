@@ -3,6 +3,7 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import StockSearch from "@/components/StockSearch";
 import { NavTracker } from "@/components/BackLink";
+import HeaderAutoHide from "@/components/HeaderAutoHide";
 import HideOnAbout from "@/components/HideOnAbout";
 import { DesktopNav, MobileTabBar } from "@/components/SiteNav";
 import UserMenu from "@/components/UserMenu";
@@ -42,7 +43,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className={`flex min-h-dvh flex-col antialiased ${user ? "pb-[calc(56px+env(safe-area-inset-bottom))] lg:pb-0" : ""}`}>
         <HideOnAbout>
-        <header className="z-40 border-b lg:sticky lg:top-0 border-line bg-surface/95 backdrop-blur">
+        <header className="site-header z-40 border-b lg:sticky lg:top-0 border-line bg-surface/95 backdrop-blur">
           <div className="mx-auto flex h-14 max-w-[1440px] items-center gap-3 px-4">
             <Link href={user ? "/" : "/about"} className="flex shrink-0 items-center gap-2 whitespace-nowrap text-[17px] font-bold tracking-wide text-ink">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -58,6 +59,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           </div>
         </header>
         {user && <MobileTabBar />}
+        <HeaderAutoHide />
         </HideOnAbout>
         <NavTracker />
         <main className="flex-1">{children}</main>

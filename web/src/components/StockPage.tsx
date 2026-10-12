@@ -193,7 +193,7 @@ export default function StockPage({ code }: { code: string }) {
       </div>
 
       {/* 分頁：不用一路往下捲；分頁列捲動時固定在上方 */}
-      <div ref={tabsRef} className="sticky top-0 z-20 -mx-4 mt-4 border-b border-line bg-paper/95 px-4 backdrop-blur lg:top-14">
+      <div ref={tabsRef} className="sticky top-0 z-20 -mx-4 mt-4 border-b border-line bg-paper/95 px-4 backdrop-blur transition-[top] duration-200 lg:top-[var(--hdr)]">
         <div role="tablist" aria-label="個股內容" className="flex gap-1 overflow-x-auto">
           {tabs.map(([k, label]) => (
             <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => pick(k)}

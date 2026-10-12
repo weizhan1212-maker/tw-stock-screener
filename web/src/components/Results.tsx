@@ -45,7 +45,8 @@ function useStickyHead(top = 56) {
       const w = wrap.current, h = head.current;
       if (!w || !h) return;
       const r = w.getBoundingClientRect();
-      const y = Math.max(0, Math.min(top - r.top, r.height - h.offsetHeight));
+      const t = document.documentElement.dataset.hdr === "hidden" && window.innerWidth >= 1024 ? 0 : top;   // 頁首收起時貼到最上面
+      const y = Math.max(0, Math.min(t - r.top, r.height - h.offsetHeight));
       h.style.transform = y > 0 ? `translateY(${y}px)` : "";
     };
     const on = () => { if (!raf) raf = requestAnimationFrame(update); };
