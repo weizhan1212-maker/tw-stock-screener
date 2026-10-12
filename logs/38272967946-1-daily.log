@@ -1,0 +1,78 @@
+2026-10-12 15:49:25,344 INFO 2026-10-12 → {'twse_quotes': 'ok', 'tpex_quotes': 'ok', 'twse_insti': 'ok', 'tpex_insti': 'ok', 'twse_margin': 'ok', 'tpex_margin': 'ok', 'twse_valuation': 'ok', 'tpex_valuation': 'ok', 'twse_qfii': 'ok'}
+2026-10-12 15:49:51,562 WARNING 抓取失敗 https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap06_O_ci（第 1 次）：Response ended prematurely，10 秒後重試
+2026-10-12 15:50:11,765 WARNING 抓取失敗 https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap06_O_ci（第 2 次）：Response ended prematurely，30 秒後重試
+2026-10-12 15:51:10,182 WARNING 抓取失敗 https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap03_O（第 1 次）：Response ended prematurely，10 秒後重試
+2026-10-12 15:52:13,340 INFO ## 每日任務 2026-10-12
+
+| 日期 | 狀態 |
+|---|---|
+| 2026-10-09 | 休市 |
+| 2026-10-12 | 完成 |
+
+寫入筆數：margin=2214, margin_total=1, qfii=1330, exright_twse=14, exright_tpex=9, holders=3330, revenue=1629, income_periods=1934, qfii_tpex=893, securities=2420, company=1982, delisting=706, etf_info=271, etf_nav=359, etf_top10=202608 已有, events=7, extras_business_light=512, extras_pcr=17, extras_fut_large=1, extras_fut_insti=1, extras_fx=26, extras_taiex_ohlc=7, extras_dca_rank=40, extras_tpex_insti=1, extras_tpex_daytrade=7, extras_tpex_sbl=932, extras_tpex_block=3, extras_futures=2, extras_tpex_index=7, extras_twse_extra_days=1
+2026-10-12 15:52:13,341 INFO 下載量（daily）：1.0 MB／5 次，本機快取命中 33 次；master/_state 1.0 MB
+2026-10-12 15:52:13,341 INFO ## Supabase 下載量
+
+下載量（daily）：1.0 MB／5 次，本機快取命中 33 次；master/_state 1.0 MB
+2026-10-12 15:52:19,452 INFO R2 本月用量：A 10,051／1,000,000（1.0%）、B 4,564／10,000,000（0.0%）、bytes 406,490,974／10,737,418,240（3.8%）
+2026-10-12 15:52:19,452 INFO ## R2 用量
+
+R2 本月用量：A 10,051／1,000,000（1.0%）、B 4,564／10,000,000（0.0%）、bytes 406,490,974／10,737,418,240（3.8%）
+
+到 80% 會自動停止，避免產生費用。
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:542: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  base["hs_profit"] = avg([pct("roe"), pct("roa"), pct("gross_margin", mask=nonfin), pct("op_margin", mask=nonfin)], 2)
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:543: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  base["hs_liquid"] = avg([pct("current_ratio", mask=nonfin), fcf_pos.where(nonfin & stock)], 1)
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:544: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  base["hs_struct"] = avg([pct("debt_ratio", higher=False, mask=nonfin)], 1)
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:545: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  base["hs_eff"] = avg([pct("asset_turnover", mask=nonfin), pct("f_score", mask=nonfin)], 1)
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:546: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  base["hs_growth"] = avg([pct("rev_ttm_yoy"), pct("eps_q_yoy"), pct("eps_cagr3")], 2)
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:549: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  base["health_score"] = parts.mean(axis=1).where(parts.notna().sum(axis=1) >= need).where(stock)
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:377: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  base = base.reset_index().rename(columns={"index": "code"})
+2026-10-12 15:53:11,050 INFO 快照：2355 檔、148 欄，壓縮後 826 KB
+2026-10-12 15:53:11,055 INFO ## 篩選快照
+
+資料日 2026-10-12，2355 檔，148 欄
+2026-10-12 15:53:11,055 INFO 下載量（snapshot）：1.2 MB／4 次，本機快取命中 93 次；master/_state 1.2 MB
+2026-10-12 15:53:11,055 INFO ## Supabase 下載量
+
+下載量（snapshot）：1.2 MB／4 次，本機快取命中 93 次；master/_state 1.2 MB
+2026-10-12 15:53:11,966 INFO R2 本月用量：A 10,069／1,000,000（1.0%）、B 4,664／10,000,000（0.0%）、bytes 406,490,974／10,737,418,240（3.8%）
+2026-10-12 15:53:11,966 INFO ## R2 用量
+
+R2 本月用量：A 10,069／1,000,000（1.0%）、B 4,664／10,000,000（0.0%）、bytes 406,490,974／10,737,418,240（3.8%）
+
+到 80% 會自動停止，避免產生費用。
+2026-10-12 15:54:07,023 INFO ## 市場總覽
+
+資料日 2026-10-12，指數 10 項，5 KB，指數歷史 192 KB，重大訊息 11 KB
+2026-10-12 15:54:07,023 INFO 下載量（market）：1.0 MB／4 次，本機快取命中 182 次；master/_state 1.0 MB
+2026-10-12 15:54:07,023 INFO ## Supabase 下載量
+
+下載量（market）：1.0 MB／4 次，本機快取命中 182 次；master/_state 1.0 MB
+2026-10-12 15:54:07,927 INFO R2 本月用量：A 10,090／1,000,000（1.0%）、B 4,853／10,000,000（0.0%）、bytes 406,490,974／10,737,418,240（3.8%）
+2026-10-12 15:54:07,927 INFO ## R2 用量
+
+R2 本月用量：A 10,090／1,000,000（1.0%）、B 4,853／10,000,000（0.0%）、bytes 406,490,974／10,737,418,240（3.8%）
+
+到 80% 會自動停止，避免產生費用。
+2026-10-12 16:00:15,907 INFO 個股檔：{'asof': '2026-10-12', 'count': 2341, 'failed': [], 'n_failed': 0, 'avg_kb': 31.3, 'total_mb': 71.7}
+2026-10-12 16:00:15,954 INFO ## 個股檔
+
+2341 檔，平均 31.3 KB，合計 71.7 MB，失敗 0 檔
+2026-10-12 16:00:15,954 INFO 下載量（stocks）：8.7 MB／27 次，本機快取命中 484 次；master/margin 5.6 MB、master/insti 2.5 MB、master/_state 0.5 MB
+2026-10-12 16:00:15,954 INFO ## Supabase 下載量
+
+下載量（stocks）：8.7 MB／27 次，本機快取命中 484 次；master/margin 5.6 MB、master/insti 2.5 MB、master/_state 0.5 MB
+2026-10-12 16:00:16,803 INFO R2 本月用量：A 12,439／1,000,000（1.2%）、B 5,369／10,000,000（0.1%）、bytes 406,490,974／10,737,418,240（3.8%）
+2026-10-12 16:00:16,803 INFO ## R2 用量
+
+R2 本月用量：A 12,439／1,000,000（1.2%）、B 5,369／10,000,000（0.1%）、bytes 406,490,974／10,737,418,240（3.8%）
+
+到 80% 會自動停止，避免產生費用。
+{"asof":"2026-10-12","full":true,"users":0,"notes":0,"telegram":0,"tgFailed":0,"errors":0}
