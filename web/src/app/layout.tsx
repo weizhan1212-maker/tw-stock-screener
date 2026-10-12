@@ -13,9 +13,17 @@ export const metadata: Metadata = {
   applicationName: "股見未來",
   description: "台股盤後選股：基本面、技術面、籌碼面篩選",
   robots: { index: false, follow: false },
+  // iPhone「加入主畫面」後全螢幕開啟、狀態列跟著頁面顏色
+  appleWebApp: { capable: true, title: "股見未來", statusBarStyle: "default" },
 };
 
-export const viewport: Viewport = { width: "device-width", initialScale: 1 };
+export const viewport: Viewport = {
+  width: "device-width", initialScale: 1, viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#151b25" },
+  ],
+};
 
 // 在畫面出現前套用深淺色，避免閃一下
 const themeScript = `try{var t=localStorage.getItem('theme');if(!t){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.dataset.theme=t}catch(e){}`;
