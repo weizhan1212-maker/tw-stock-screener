@@ -12,6 +12,7 @@ import { EtfInfoCard, EventStatsCard, HealthExplain, NoticesCard, RiskCard, Valu
 import KChart from "@/components/KChart";
 import LivePanel, { liveLabel } from "@/components/LivePanel";
 import NewsList from "@/components/NewsList";
+import QuickAlert from "@/components/QuickAlert";
 import WatchStar from "@/components/WatchStar";
 import { useLiveQuotes } from "@/hooks/useLiveQuotes";
 import { useUrlState } from "@/hooks/useUrlState";
@@ -128,7 +129,7 @@ export default function StockPage({ code }: { code: string }) {
         <div className="flex flex-wrap items-center gap-2">
           <WatchStar code={code} name={name} size="md" />
           <Link href={`/compare?codes=${code}`} className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1 text-sm text-muted hover:border-accent hover:text-ink">⇄ 比較</Link>
-          <Link href={`/alerts?code=${code}`} className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1 text-sm text-muted hover:border-accent hover:text-ink">🔔 警報</Link>
+          <QuickAlert code={code} name={name} close={num(row?.close)} />
         </div>
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-2"><DataStatus snap={snap} error={snapErr} /></div>
