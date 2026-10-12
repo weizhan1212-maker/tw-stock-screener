@@ -8,11 +8,16 @@ import NewsList from "@/components/NewsList";
 import Sentiment, { type SentimentData } from "@/components/Sentiment";
 import Sparkline from "@/components/Sparkline";
 import { Seg } from "@/components/Screener";
+import { useLiveQuotes } from "@/hooks/useLiveQuotes";
 import { useSnapshot } from "@/hooks/useSnapshot";
 import { breadthNotes, computeBreadth } from "@/lib/breadth";
 import { fmt } from "@/lib/screener";
 
-type Card = { label: string; name?: string; date: string; close: number | null; chg: number | null; chg_pct: number | null; spark: (number | null)[] };
+type Card = { label: string; name?: string; date: string; close: number | null; chg: number | null; chg_pct: number | null; spark: (number | null)[]; live?: "盤中" | "收盤" };
+
+/** 盤中即時（富果）：加權、櫃買兩個指數。盤後資料還沒更新前也用富果的今日收盤。 */
+const LIVE_IDX: [RegExp, string][] = [[/加權/, "IX0001"], [/櫃買/, "IX0043"]];
+const LIVE_CODES = LIVE_IDX.map((x) => x[1]);
 interface Market {
   asof: string;
   indices: Card[];
@@ -69,6 +74,15 @@ function Bars({ values }: { values: (number | null)[] }) {
   );
 }
 
+function LiveTag({ kind, date }: { kind: "盤中" | "收盤"; date?: string }) {
+  return (
+    <span className="num inline-flex shrink-0 items-center gap-1 rounded bg-accent-soft px-1 text-[11px] text-accent" title="富果即時行情">
+      {kind === "盤中" && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" aria-hidden />}
+      {kind === "盤中" ? "即時" : `${date ? md(date) + " " : ""}收盤`}
+    </span>
+  );
+}
+
 export default function MarketOverview() {
   const [m, setM] = useState<Market | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -80,6 +94,15 @@ export default function MarketOverview() {
       setM(j);
     }).catch((e) => setError(String(e.message ?? e)));
   }, []);
+
+  const live = useLiveQuotes(LIVE_CODES, 15_000);
+  // 富果資料日期比盤後資料新（或同一天盤中）時，用即時數字蓋過去
+  const indices = useMemo(() => (m?.indices ?? []).map((c): Card => {
+    const code = LIVE_IDX.find(([re]) => re.test(c.label))?.[1];
+    const q = code ? live?.[code] : undefined;
+    if (!q || q.price == null || !q.date || q.date < c.date || (q.date === c.date && q.isClose)) return c;
+    return { ...c, date: q.date, close: q.price, chg: q.change, chg_pct: q.pct, live: q.isClose ? "收盤" : "盤中" };
+  }), [m, live]);
 
   const { snap } = useSnapshot();
   const structure = useMemo(() => {
@@ -109,8 +132,8 @@ export default function MarketOverview() {
 
       {/* 手機第一屏：三個最重要的數字＋漲跌家數；類股指數改成緊湊列表 */}
       {(() => {
-        const key = m.indices.filter((c) => /加權/.test(c.label) || /櫃買/.test(c.label) || c.label === "台指期");
-        const rest = m.indices.filter((c) => !key.includes(c));
+        const key = indices.filter((c) => /加權/.test(c.label) || /櫃買/.test(c.label) || c.label === "台指期");
+        const rest = indices.filter((c) => !key.includes(c));
         const all = m.breadth?.all;
         const tot = all ? all.up + all.flat + all.down : 0;
         return (
@@ -119,7 +142,7 @@ export default function MarketOverview() {
               {key.map((c) => (
                 <li key={c.label}>
                   <Link href={`/market/index/${encodeURIComponent(c.name ?? c.label)}`} className="block rounded-lg border border-line bg-surface px-2 py-2">
-                    <div className="truncate text-xs text-muted">{c.label.replace("發行量加權股價指數", "加權指數")}</div>
+                    <div className="flex items-center gap-1 truncate text-xs text-muted">{c.label.replace("發行量加權股價指數", "加權指數")}{c.live && <LiveTag kind={c.live} />}</div>
                     <div className={`num text-base font-bold leading-tight ${toneCls(c.chg)}`}>{fmt(c.close, "price").replace(/\.\d+$/, "")}</div>
                     <div className={`num text-xs ${toneCls(c.chg)}`}>{sign(c.chg_pct)}{fmt(c.chg_pct, "num")}%</div>
                   </Link>
@@ -156,13 +179,13 @@ export default function MarketOverview() {
 
       {/* 指數全覽（電腦版） */}
       <ul className="mt-4 hidden grid-cols-2 gap-2 sm:grid-cols-3 lg:grid lg:grid-cols-5">
-        {m.indices.map((c) => (
+        {indices.map((c) => (
           <li key={c.label}>
             <Link href={`/market/index/${encodeURIComponent(c.name ?? c.label)}`}
               className="block h-full rounded-lg border border-line bg-surface p-3 transition-colors hover:border-accent">
             <div className="flex items-baseline justify-between gap-2">
               <span className="truncate text-sm text-ink">{c.label}</span>
-              {c.date !== m.asof && (
+              {c.live ? <LiveTag kind={c.live} date={c.date} /> : c.date !== m.asof && (
                 <span className="num shrink-0 rounded bg-warn-bg px-1 text-[11px] text-warn-ink"
                   title={c.date < m.asof ? "這個指數的資料比整頁舊（期交所的公開資料隔一個交易日才更新）" : undefined}>{md(c.date)}</span>
               )}
