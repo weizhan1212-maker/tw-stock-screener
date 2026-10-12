@@ -64,7 +64,7 @@ def _pivot(df: pd.DataFrame, types) -> pd.DataFrame:
     return p.sort_values(["code", "date"])
 
 
-def load_inputs(store: DataStore, asof: pd.Timestamp, years: float = 4.2) -> dict:
+def load_inputs(store: DataStore, asof: pd.Timestamp, years: float = 10.2) -> dict:
     start = asof - pd.Timedelta(days=int(365.25 * years))
     prices = store.read_daily("prices", start, asof).reset_index(drop=True)
     exr = store.read_daily("exright", start, asof + pd.Timedelta(days=1))
