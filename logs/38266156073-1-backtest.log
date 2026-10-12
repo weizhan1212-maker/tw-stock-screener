@@ -1,0 +1,208 @@
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:549: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  base["health_score"] = parts.mean(axis=1).where(parts.notna().sum(axis=1) >= need).where(stock)
+2026-10-12 14:54:56,622 INFO 回測快照 2026-09：580 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:549: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  base["health_score"] = parts.mean(axis=1).where(parts.notna().sum(axis=1) >= need).where(stock)
+2026-10-12 14:55:33,396 INFO 回測快照 2026-08：581 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:549: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  base["health_score"] = parts.mean(axis=1).where(parts.notna().sum(axis=1) >= need).where(stock)
+2026-10-12 14:56:09,237 INFO 回測快照 2026-07：579 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:549: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  base["health_score"] = parts.mean(axis=1).where(parts.notna().sum(axis=1) >= need).where(stock)
+2026-10-12 14:56:47,624 INFO 回測快照 2026-06：578 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 14:57:25,572 INFO 回測快照 2026-05：580 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 14:58:01,798 INFO 回測快照 2026-04：572 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 14:58:38,523 INFO 回測快照 2026-03：570 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 14:59:14,460 INFO 回測快照 2026-02：574 KB
+2026-10-12 14:59:50,864 INFO 回測快照 2026-01：571 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:00:27,281 INFO 回測快照 2025-12：563 KB
+2026-10-12 15:01:03,643 INFO 回測快照 2025-11：562 KB
+2026-10-12 15:01:38,932 INFO 回測快照 2025-10：562 KB
+2026-10-12 15:02:14,147 INFO 回測快照 2025-09：557 KB
+2026-10-12 15:02:49,562 INFO 回測快照 2025-08：558 KB
+2026-10-12 15:03:26,855 INFO 回測快照 2025-07：554 KB
+2026-10-12 15:04:02,159 INFO 回測快照 2025-06：556 KB
+2026-10-12 15:04:39,023 INFO 回測快照 2025-05：555 KB
+2026-10-12 15:05:14,356 INFO 回測快照 2025-04：555 KB
+2026-10-12 15:05:50,234 INFO 回測快照 2025-03：559 KB
+2026-10-12 15:06:26,206 INFO 回測快照 2025-02：552 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:07:02,551 INFO 回測快照 2025-01：550 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:07:36,572 INFO 回測快照 2024-12：550 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:08:11,443 INFO 回測快照 2024-11：547 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:08:47,557 INFO 回測快照 2024-10：547 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:09:22,500 INFO 回測快照 2024-09：547 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:09:57,779 INFO 回測快照 2024-08：542 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:10:32,509 INFO 回測快照 2024-07：543 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:11:07,222 INFO 回測快照 2024-06：542 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:11:42,205 INFO 回測快照 2024-05：544 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:12:16,561 INFO 回測快照 2024-04：538 KB
+2026-10-12 15:12:51,500 INFO 回測快照 2024-03：539 KB
+2026-10-12 15:13:25,642 INFO 回測快照 2024-02：538 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:13:59,627 INFO 回測快照 2024-01：532 KB
+2026-10-12 15:14:35,022 INFO 回測快照 2023-12：533 KB
+2026-10-12 15:15:09,182 INFO 回測快照 2023-11：530 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:15:44,787 INFO 回測快照 2023-10：527 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:16:19,694 INFO 回測快照 2023-09：525 KB
+2026-10-12 15:16:54,547 INFO 回測快照 2023-08：529 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:17:29,369 INFO 回測快照 2023-07：530 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:18:04,086 INFO 回測快照 2023-06：524 KB
+2026-10-12 15:18:39,162 INFO 回測快照 2023-05：525 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:19:13,746 INFO 回測快照 2023-04：520 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:19:47,978 INFO 回測快照 2023-03：521 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:20:24,122 INFO 回測快照 2023-02：519 KB
+2026-10-12 15:20:57,294 INFO 回測快照 2023-01：518 KB
+2026-10-12 15:21:31,843 INFO 回測快照 2022-12：514 KB
+2026-10-12 15:22:06,350 INFO 回測快照 2022-11：518 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:22:40,720 INFO 回測快照 2022-10：515 KB
+2026-10-12 15:23:15,137 INFO 回測快照 2022-09：515 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:23:48,974 INFO 回測快照 2022-08：515 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:24:21,883 INFO 回測快照 2022-07：513 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:24:56,003 INFO 回測快照 2022-06：517 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:25:30,956 INFO 回測快照 2022-05：511 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:26:05,311 INFO 回測快照 2022-04：509 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:26:39,817 INFO 回測快照 2022-03：508 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:27:15,141 INFO 回測快照 2022-02：507 KB
+2026-10-12 15:27:48,928 INFO 回測快照 2022-01：507 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:28:20,945 INFO 回測快照 2021-12：503 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:28:52,617 INFO 回測快照 2021-11：506 KB
+2026-10-12 15:29:24,220 INFO 回測快照 2021-10：504 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:29:56,029 INFO 回測快照 2021-09：503 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:30:27,559 INFO 回測快照 2021-08：500 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:30:59,212 INFO 回測快照 2021-07：495 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:31:30,857 INFO 回測快照 2021-06：499 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:32:01,959 INFO 回測快照 2021-05：503 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:32:33,376 INFO 回測快照 2021-04：504 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:33:05,437 INFO 回測快照 2021-03：499 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:33:37,244 INFO 回測快照 2021-02：496 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:34:08,515 INFO 回測快照 2021-01：493 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:34:40,068 INFO 回測快照 2020-12：490 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:35:11,927 INFO 回測快照 2020-11：487 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:35:43,345 INFO 回測快照 2020-10：483 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:36:14,543 INFO 回測快照 2020-09：481 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:36:45,822 INFO 回測快照 2020-08：483 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:37:16,548 INFO 回測快照 2020-07：482 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:37:48,242 INFO 回測快照 2020-06：480 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:38:19,168 INFO 回測快照 2020-05：479 KB
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:264: RuntimeWarning: invalid value encountered in scalar subtract
+  "rev_yoy_chg": gr["yoy"].apply(lambda x: x.iloc[-1] - x.iloc[-4] if len(x) >= 4 else np.nan),   # 對 3 個月前的變化（百分點）
+2026-10-12 15:38:50,390 INFO 回測快照 2020-04：483 KB
+2026-10-12 15:39:59,132 INFO ## 回測資料
+
+本次新增 78 個月、失敗 []，可回測 78/110 個月，價格檔 {2016: 413, 2017: 1079, 2018: 1275, 2019: 1288, 2020: 1370, 2021: 1393, 2022: 1434, 2023: 1417, 2024: 1495, 2025: 1550, 2026: 1245} KB，46.4 分鐘
+2026-10-12 15:40:00,798 INFO 重新觸發 backtest.yml：204 
+2026-10-12 15:40:00,799 INFO 下載量（backtest-data）：38.8 MB／219 次，本機快取命中 491 次；master/qfii 12.2 MB、master/valuation 11.2 MB、master/prices 10.0 MB、master/margin 2.3 MB、master/insti 1.7 MB、master/_state 0.7 MB、master/exright 0.5 MB、master/daytrade 0.1 MB
+2026-10-12 15:40:00,799 INFO ## Supabase 下載量
+
+下載量（backtest-data）：38.8 MB／219 次，本機快取命中 491 次；master/qfii 12.2 MB、master/valuation 11.2 MB、master/prices 10.0 MB、master/margin 2.3 MB、master/insti 1.7 MB、master/_state 0.7 MB、master/exright 0.5 MB、master/daytrade 0.1 MB
+2026-10-12 15:40:01,929 INFO R2 本月用量：A 10,003／1,000,000（1.0%）、B 4,147／10,000,000（0.0%）、bytes 375,622,720／10,737,418,240（3.5%）
+2026-10-12 15:40:01,929 INFO ## R2 用量
+
+R2 本月用量：A 10,003／1,000,000（1.0%）、B 4,147／10,000,000（0.0%）、bytes 375,622,720／10,737,418,240（3.5%）
+
+到 80% 會自動停止，避免產生費用。
