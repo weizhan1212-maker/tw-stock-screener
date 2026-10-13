@@ -1,14 +1,15 @@
 "use client";
 
-/** 指數詳細頁：走勢圖（加權指數為 K 線，其他為收盤線）、期間漲跌、成分／產業股票列表。 */
-import { AreaSeries, CandlestickSeries, ColorType, createChart, type Time } from "lightweight-charts";
+/** 指數詳細頁：K 線圖（含均線、KD、MACD 等技術指標）、期間漲跌、成分／產業股票列表。 */
 import BackLink from "@/components/BackLink";
+import KChart from "@/components/KChart";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import DataStatus from "@/components/DataStatus";
 import Results, { type Sort } from "@/components/Results";
 import { useSnapshot } from "@/hooks/useSnapshot";
 import type { Row } from "@/lib/screener";
+import type { StockFile } from "@/lib/stock";
 
 interface Series { market: string; d: string[]; c: (number | null)[]; o?: (number | null)[]; h?: (number | null)[]; l?: (number | null)[] }
 interface IndicesFile { asof: string; series: Record<string, Series> }
@@ -34,16 +35,12 @@ function pool(name: string, rows: Row[]): { rows: Row[]; note: string } | null {
   return hit.length ? { rows: hit, note: `產業分類含「${kws.join("、")}」的上市櫃普通股` } : null;
 }
 
-const RANGES: [string, number][] = [["1 月", 22], ["3 月", 66], ["6 月", 130], ["1 年", 250], ["3 年", 750], ["全部", 99999]];
-
 export default function IndexPage({ name: asked }: { name: string }) {
   const router = useRouter();
   const [data, setData] = useState<IndicesFile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { snap, error: snapErr } = useSnapshot();
-  const [range, setRange] = useState(130);
   const [sort, setSort] = useState<Sort>({ key: "market_cap", dir: -1 });
-  const box = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch("/api/indices")
@@ -75,32 +72,20 @@ export default function IndexPage({ name: asked }: { name: string }) {
       r1m: ret(22), r3m: ret(66), r1y: ret(250), hi: Math.max(...y), lo: Math.min(...y), date: s.d[s.d.length - 1] };
   }, [s]);
 
-  useEffect(() => {
-    const el = box.current;
-    if (!el || !s) return;
-    const v = (n: string) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-    const chart = createChart(el, {
-      autoSize: true,
-      layout: { background: { type: ColorType.Solid, color: v("--surface") }, textColor: v("--muted"), fontSize: 11, fontFamily: "'Noto Sans TC', system-ui, sans-serif" },
-      grid: { vertLines: { visible: false }, horzLines: { color: v("--line") } },
-      rightPriceScale: { borderVisible: false }, timeScale: { borderVisible: false, rightOffset: 3 },
-      handleScroll: { mouseWheel: false, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
-      handleScale: { mouseWheel: false, pinch: true, axisPressedMouseMove: true, axisDoubleClickReset: true },
-      localization: { locale: "zh-TW", dateFormat: "yyyy/MM/dd" },
-    });
+  // 指數轉成 K 線圖用的格式；只有收盤價的指數，用「前一日收盤 → 當日收盤」畫 K 棒
+  const kfile = useMemo<StockFile | null>(() => {
+    if (!s) return null;
     const n = s.d.length;
-    if (s.o && s.h && s.l) {
-      const up = v("--up"), down = v("--down");
-      const ser = chart.addSeries(CandlestickSeries, { upColor: up, downColor: down, borderUpColor: up, borderDownColor: down, wickUpColor: up, wickDownColor: down, priceLineVisible: false });
-      ser.setData(s.d.flatMap((d, i) => (s.c[i] == null || s.o![i] == null ? [] : [{ time: d as Time, open: s.o![i]!, high: s.h![i]!, low: s.l![i]!, close: s.c[i]! }])));
-    } else {
-      const acc = v("--accent");
-      const ser = chart.addSeries(AreaSeries, { lineColor: acc, topColor: `${acc}33`, bottomColor: `${acc}00`, lineWidth: 2, priceLineVisible: false });
-      ser.setData(s.d.flatMap((d, i) => (s.c[i] == null ? [] : [{ time: d as Time, value: s.c[i]! }])));
-    }
-    chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, n - range), to: n + 2 });
-    return () => chart.remove();
-  }, [s, range]);
+    const none = Array<null>(n).fill(null);
+    const ohlc = !!(s.o && s.h && s.l);
+    const o = s.c.map((c, i) => (ohlc ? s.o![i] : i > 0 ? (s.c[i - 1] ?? c) : c));
+    const h = s.c.map((c, i) => (ohlc ? s.h![i] : c == null || o[i] == null ? c : Math.max(c, o[i]!)));
+    const l = s.c.map((c, i) => (ohlc ? s.l![i] : c == null || o[i] == null ? c : Math.min(c, o[i]!)));
+    return {
+      code: `IDX:${name}`, asof: s.d[n - 1] ?? "", info: { name: label(name), market: s.market, sec_type: null },
+      daily: { d: s.d, o, h, l, c: s.c, v: Array<number>(n).fill(0), f: none, fi: none, it: none, dl: none, mb: none, sb: none },
+    };
+  }, [s, name]);
 
   const p = useMemo(() => (snap && data ? pool(name, snap.rows) : null), [snap, data, name]);
   const breadth = useMemo(() => {
@@ -155,17 +140,12 @@ export default function IndexPage({ name: asked }: { name: string }) {
         </dl>
       )}
 
-      {s && (
-        <div className="mt-4 rounded-lg border border-line bg-surface p-3">
-          <div role="radiogroup" aria-label="期間" className="mb-2 inline-flex rounded-md border border-line p-0.5 text-xs">
-            {RANGES.map(([l, n]) => (
-              <button key={l} type="button" role="radio" aria-checked={range === n} onClick={() => setRange(n)}
-                className={`rounded px-2 py-1 ${range === n ? "bg-accent-soft font-medium text-accent" : "text-muted hover:text-ink"}`}>{l}</button>
-            ))}
-          </div>
-          <div ref={box} className="h-[360px] w-full sm:h-[440px]" role="img" aria-label={`${label(name)}走勢圖`} />
+      {s && kfile && (
+        <div className="mt-4">
+          <KChart key={name} s={kfile} mode="index" />
           <p className="mt-1 text-xs text-muted">
-            {s.o ? "日 K 線，紅漲綠跌。" : "每日收盤走勢。"}拖曳可左右移動。{s.market === "TAIFEX" && "期貨從網站上線起每日累積，歷史較短。"}
+            {s.o ? "日 K 線，紅漲綠跌。" : "這個指數只有每日收盤價，K 棒以前一日收盤到當日收盤繪製（沒有盤中高低點）。"}
+            {s.market === "TAIFEX" && "期貨從網站上線起每日累積，歷史較短。"}
           </p>
         </div>
       )}

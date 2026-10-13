@@ -116,14 +116,19 @@ function Popover({ label, children }: { label: string; children: React.ReactNode
 interface Series { label: string; color: string; values: (number | null)[]; digits?: number }
 interface PaneDef { id: PaneId | "main"; title: string; series: Series[] }
 
-export default function KChart({ s }: { s: StockFile }) {
+/** 指數沒有成交量與籌碼資料，這些副圖不提供 */
+const INDEX_SKIP: PaneId[] = ["vol", "obv", "chip", "margin"];
+
+export default function KChart({ s, mode = "stock" }: { s: StockFile; mode?: "stock" | "index" }) {
+  const isIndex = mode === "index";
   const box = useRef<HTMLDivElement>(null);
   const dark = useTheme();
   const [period, setPeriod] = useState<Period>("D");
   const [adjusted, setAdjusted] = useState(false);
   const [mas, setMas] = useStored<number[]>("chart:mas", [5, 20, 60]);
   const [boll, setBoll] = useStored<boolean>("chart:boll", false);
-  const [panes, setPanes] = useStored<PaneId[]>("chart:panes", ["vol", "kd"]);
+  const [panes, setPanes] = useStored<PaneId[]>(isIndex ? "chart:idx:panes" : "chart:panes", isIndex ? ["kd"] : ["vol", "kd"]);
+  const paneList = isIndex ? PANES.filter((p) => !INDEX_SKIP.includes(p.id)) : PANES;
   const [drawings, setDrawings] = useStored<Drawing[]>(`draw:${s.code}`, []);
   const [tool, setTool] = useState<"none" | "h" | "t">("none");
   const [moreTools, setMoreTools] = useState(false);          // 手機：指標與畫線工具預設收起
@@ -144,7 +149,7 @@ export default function KChart({ s }: { s: StockFile }) {
     }
     const out: PaneDef[] = [{ id: "main", title: "", series: main }];
     const chips = panes.some((p) => p === "chip" || p === "margin") ? chipSeries(s, bars, period) : [];
-    for (const id of panes) {
+    for (const id of panes.filter((x) => !isIndex || !INDEX_SKIP.includes(x))) {
       const label = PANES.find((p) => p.id === id)!.label;
       if (id === "vol") out.push({ id, title: label, series: [{ label: "量（張）", color: col("gray"), values: bars.map((b) => b.v), digits: 0 }] });
       if (id === "kd") { const k = kd(bars); out.push({ id, title: label, series: [{ label: "K", color: col("blue"), values: k.k }, { label: "D", color: col("yellow"), values: k.d }] }); }
@@ -158,7 +163,7 @@ export default function KChart({ s }: { s: StockFile }) {
       if (id === "margin") out.push({ id, title: label, series: [{ label: "融資餘額（張）", color: col("violet"), values: chips.map((x) => x.mb), digits: 0 }] });
     }
     return out;
-  }, [bars, mas, boll, panes, s, period, col]);
+  }, [bars, mas, boll, panes, s, period, col, isIndex]);
 
   const chartRef = useRef<IChartApi | null>(null);
   const candleRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -294,7 +299,7 @@ export default function KChart({ s }: { s: StockFile }) {
     <div className="rounded-lg border border-line bg-surface p-3">
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <Seg label="週期" value={period} onChange={setPeriod} options={[["D", "日"], ["W", "週"], ["M", "月"]]} />
-        <Seg label="價格" value={adjusted ? "adj" : "raw"} onChange={(v) => setAdjusted(v === "adj")} options={[["raw", "原始價"], ["adj", "還原價"]]} />
+        {!isIndex && <Seg label="價格" value={adjusted ? "adj" : "raw"} onChange={(v) => setAdjusted(v === "adj")} options={[["raw", "原始價"], ["adj", "還原價"]]} />}
         {/* 手機只顯示週期與還原價；指標與畫線收進「更多」 */}
         <button type="button" onClick={() => setMoreTools((v) => !v)} aria-expanded={moreTools}
           className="ml-auto rounded-md border border-line px-2 py-1 text-xs text-muted lg:hidden">{moreTools ? "收起" : "指標・畫線"}</button>
@@ -319,7 +324,7 @@ export default function KChart({ s }: { s: StockFile }) {
         <Popover label={`副圖（${panes.length}）`}>
           <p className="mb-2 text-xs text-muted">最多同時 {MAX_PANES} 個，依勾選順序排列。</p>
           <ul className="space-y-1.5">
-            {PANES.map((p) => {
+            {paneList.map((p) => {
               const on = panes.includes(p.id);
               return (
                 <li key={p.id}>
@@ -358,7 +363,7 @@ export default function KChart({ s }: { s: StockFile }) {
           <span>低 <b className="font-medium text-ink">{fmt(b.l)}</b></span>
           <span>收 <b className="font-medium text-ink">{fmt(b.c)}</b></span>
           {chg != null && <span className={chg > 0 ? "text-up" : chg < 0 ? "text-down" : ""}>{chg > 0 ? "+" : ""}{fmt(chg)}%</span>}
-          <span>量 <b className="font-medium text-ink">{fmt(b.v, 0)}</b> 張</span>
+          {!isIndex && <span>量 <b className="font-medium text-ink">{fmt(b.v, 0)}</b> 張</span>}
           {defs[0].series.map((ser) => <Key key={ser.label} color={ser.color} label={ser.label} value={fmt(ser.values[i], ser.digits ?? 2)} />)}
         </div>
       )}
