@@ -29,16 +29,16 @@ export default function Rotation({ rows, asof }: { rows: Row[]; asof: string }) 
           <span className="num text-xs text-muted">{asof.slice(5).replace("-", "/")}・每日盤後</span>
         </div>
       </div>
-      <div className="num grid grid-cols-[minmax(0,1fr)_4.5rem_5rem] gap-2 border-b border-line pb-1 text-[11px] text-muted sm:grid-cols-[9rem_minmax(0,1fr)_4.5rem_4.5rem_minmax(0,9rem)]">
+      <div className="num grid grid-cols-[minmax(0,1fr)_4.5rem_5rem] gap-2 border-b border-line pb-1 text-[11px] text-muted sm:grid-cols-[9rem_11rem_4.5rem_4.5rem_minmax(0,1fr)]">
         <span>{kind === "theme" ? "題材" : "產業"}</span>
-        <span className="hidden sm:block" title="今天成交占比 ÷ 20 日平均占比；1 倍＝跟平常一樣">熱度（成交占比對平常）</span>
+        <span className="hidden sm:block" title="今天成交占比 ÷ 20 日平均占比；1 倍＝跟平常一樣">熱度（對平常）</span>
         <span className="text-right">漲跌中位數</span>
         <span className="text-right">法人 5 日</span>
         <span className="hidden sm:block">今天漲最多</span>
       </div>
       <ul className={`divide-y divide-line ${all ? "max-h-[520px] overflow-y-auto" : ""}`}>
         {shown.map((g) => (
-          <li key={g.name} className="num grid grid-cols-[minmax(0,1fr)_4.5rem_5rem] items-center gap-2 py-1.5 text-sm sm:grid-cols-[9rem_minmax(0,1fr)_4.5rem_4.5rem_minmax(0,9rem)]">
+          <li key={g.name} className="num grid grid-cols-[minmax(0,1fr)_4.5rem_5rem] items-center gap-2 py-1.5 text-sm sm:grid-cols-[9rem_11rem_4.5rem_4.5rem_minmax(0,1fr)]">
             <span className="truncate text-ink" title={`${g.name}（${g.n} 檔）`}>{g.name}<span className="ml-1 text-[11px] text-muted sm:hidden">{g.heat.toFixed(1)}倍</span></span>
             <span className="hidden items-center gap-2 sm:flex">
               <span className="relative h-2 flex-1 rounded-full bg-surface-2">
@@ -50,7 +50,7 @@ export default function Rotation({ rows, asof }: { rows: Row[]; asof: string }) 
             <span className={`text-right ${tone(g.chg)}`}>{pct(g.chg)}</span>
             <span className={`text-right text-xs ${tone(g.inst5)}`}>{g.inst5 == null ? "—" : `${g.inst5 > 0 ? "+" : ""}${g.inst5.toFixed(1)}億`}</span>
             <span className="hidden truncate text-xs sm:block">
-              {g.leaders.slice(0, 2).map((s, i) => (
+              {g.leaders.slice(0, 3).map((s, i) => (
                 <Link key={s.code} href={`/stock/${s.code}`} className="text-ink hover:text-accent">
                   {i > 0 && "、"}{s.name}<span className={tone(s.chg)}>{pct(s.chg, 1)}</span>
                 </Link>
