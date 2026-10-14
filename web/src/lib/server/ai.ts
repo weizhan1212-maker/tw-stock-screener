@@ -312,38 +312,6 @@ async function callOnce(model: string, spec: AiSpec<unknown>, factsText: string,
   return { status: res.status, body };
 }
 
-/** NVIDIA build.nvidia.com（OpenAI 相容）：模型名稱以 nvidia/ 開頭時走這裡。金鑰：NVIDIA_API_KEY */
-const isNvidia = (model: string) => model.startsWith("nvidia/");
-const nvThinkOff = new Map<string, boolean>();          // 記住「關閉思考」參數是否被接受
-
-async function callNvidia(model: string, spec: AiSpec<unknown>, factsText: string, extra: string) {
-  const key = process.env.NVIDIA_API_KEY;
-  if (!key) throw new AiError("no_key", "尚未設定 NVIDIA 金鑰");
-  const system = `${spec.system}\n\n只輸出一個 JSON 物件（不要 Markdown、不要說明文字），必須符合這個 JSON Schema：\n${JSON.stringify(spec.schema)}`;
-  const send = (thinkOff: boolean) => fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
-    method: "POST", cache: "no-store", signal: AbortSignal.timeout(100_000),
-    headers: { authorization: `Bearer ${key}`, "content-type": "application/json", accept: "application/json" },
-    body: JSON.stringify({
-      model, temperature: 0.4, max_tokens: 6000,
-      messages: [{ role: "system", content: system }, { role: "user", content: `事實資料：\n${factsText}${extra}` }],
-      ...(thinkOff ? { chat_template_kwargs: { enable_thinking: false } } : {}),
-    }),
-  });
-  let off = nvThinkOff.get(model) ?? true;
-  let res = await send(off);
-  if (res.status === 400 && off) { off = false; res = await send(false); }
-  nvThinkOff.set(model, off);
-  const body = await res.text();
-  if (res.status !== 200) return { status: res.status === 402 ? 429 : res.status, body: res.status === 402 ? `credits per day ${body}` : body };
-  // 轉成跟 Gemini 一樣的格式，後面共用
-  const j = JSON.parse(body) as { choices?: { message?: { content?: string }; finish_reason?: string }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
-  const text = (j.choices?.[0]?.message?.content ?? "").replace(/<think>[\s\S]*?<\/think>/g, "").trim();
-  return { status: 200, body: JSON.stringify({
-    candidates: [{ content: { parts: [{ text }] }, finishReason: j.choices?.[0]?.finish_reason }],
-    usageMetadata: { promptTokenCount: j.usage?.prompt_tokens, candidatesTokenCount: j.usage?.completion_tokens },
-  }) };
-}
-
 interface GeminiResp {
   candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] }; finishReason?: string }[];
   usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number };
@@ -351,10 +319,8 @@ interface GeminiResp {
 
 async function generate<T>(model: string, spec: AiSpec<T>, factsText: string, extra = ""): Promise<{ out: T; usage: Usage }> {
   let lv = levelOf.get(model) ?? 0;
-  let r = isNvidia(model)
-    ? await callNvidia(model, spec as AiSpec<unknown>, factsText, extra)
-    : await callOnce(model, spec as AiSpec<unknown>, factsText, extra, LEVELS[lv]);
-  while (!isNvidia(model) && r.status === 400 && lv < LEVELS.length - 1) {
+  let r = await callOnce(model, spec as AiSpec<unknown>, factsText, extra, LEVELS[lv]);
+  while (r.status === 400 && lv < LEVELS.length - 1) {
     console.warn(`[ai] ${model} 400（${LEVELS[lv]}）：${r.body.slice(0, 300)}`);
     lv++;
     r = await callOnce(model, spec as AiSpec<unknown>, factsText, extra, LEVELS[lv]);

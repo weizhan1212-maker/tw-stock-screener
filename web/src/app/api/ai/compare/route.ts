@@ -1,6 +1,6 @@
 /**
  * 管理員用：同一份事實資料讓不同模型各寫一次，並排比較（不存檔、不影響正式摘要）。
- * GET ?kind=stock&code=6274&models=gemini-3.8-flash,nvidia/nemotron-3-ultra-550b-a55b
+ * GET ?kind=stock&code=6274&models=gemini-3.8-flash,gemini-3.5-flash
  * GET ?kind=market
  */
 import { isAdmin } from "@/lib/allowlist";
@@ -14,7 +14,7 @@ export async function GET(req: Request) {
   const u = await currentUser();
   if (!u || !isAdmin(u.email)) return Response.json({ error: "只有管理員能用" }, { status: 403 });
   const q = new URL(req.url).searchParams;
-  const models = (q.get("models") || "gemini-3.8-flash,nvidia/nemotron-3-ultra-550b-a55b").split(",").map((x) => x.trim()).filter(Boolean).slice(0, 4);
+  const models = (q.get("models") || "gemini-3.8-flash,gemini-3.5-flash").split(",").map((x) => x.trim()).filter(Boolean).slice(0, 4);
   const snap = await loadSnapshot();
   if (!snap) return Response.json({ error: "沒有快照" }, { status: 500 });
   let facts: string;
