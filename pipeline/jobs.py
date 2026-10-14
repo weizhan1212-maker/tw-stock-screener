@@ -127,7 +127,20 @@ def derive_tpex_exright(store: DataStore, start: pd.Timestamp, end: pd.Timestamp
 def fetch_twse_exright(fetcher: Fetcher, store: DataStore, start: dt.date, end: dt.date) -> int:
     url, params = twse.exright_request(start, end)
     body = fetcher.get_json(url, params)
-    return store.upsert_daily("exright", twse.parse_exright(body))
+    n = store.upsert_daily("exright", twse.parse_exright(body))
+    # 面額變更、減資、ETF 分割也會讓股價跳空（例如 0050 在 2025/6/18 一拆四），一起寫進還原用的事件表。
+    # 第一次執行時把 2014 年起的全部補齊（這三個端點一次就能查整段期間）
+    if not store.get_state("resume_events_full"):
+        start = dt.date(2014, 1, 1)
+    for kind, path in twse.RESUME_SOURCES.items():
+        try:
+            u, p = twse.resume_request(path, start, end)
+            n += store.upsert_daily("exright", twse.parse_resume(fetcher.get_json(u, p), kind))
+        except FetchError as e:
+            log.warning("證交所%s抓取失敗：%s", kind, e)
+            return n
+    store.put_state("resume_events_full", True)
+    return n
 
 
 def summary(text: str):

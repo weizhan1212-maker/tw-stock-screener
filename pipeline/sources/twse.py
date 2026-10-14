@@ -27,6 +27,37 @@ def exright_request(start: dt.date, end: dt.date):
             {"startDate": start.strftime("%Y%m%d"), "endDate": end.strftime("%Y%m%d"), "response": "json"})
 
 
+# 除權息以外、也會讓股價跳空的事件（恢復買賣參考價）：面額變更、減資、ETF 分割／反分割
+RESUME_SOURCES = {"面額變更": "change/TWTB8U", "減資": "reducation/TWTAUU", "ETF分割": "split/TWTCAU"}
+
+
+def resume_request(path: str, start: dt.date, end: dt.date):
+    return (f"{BASE}/{path}", {"startDate": start.strftime("%Y%m%d"), "endDate": end.strftime("%Y%m%d"), "response": "json"})
+
+
+def parse_resume(body, kind: str) -> pd.DataFrame:
+    """面額變更／減資／ETF 分割：恢復買賣日、停止買賣前收盤、恢復買賣參考價 → 跟除權息同一張表（還原股價用）。"""
+    if not has_data(body):
+        return pd.DataFrame()
+    f = body.get("fields") or []
+    pos = {name: i for i, name in enumerate(f)}
+    code_col = "股票代號" if "股票代號" in pos else "ETF代號"
+    recs = []
+    for r in body.get("data") or []:
+        code = clean_code(r[pos[code_col]])
+        if security_type(code) is None:
+            continue
+        label = kind
+        if "分割(反分割)" in pos:
+            label = str(r[pos["分割(反分割)"]]).strip() or kind
+        recs.append({
+            "date": pd.Timestamp(roc_to_date(r[pos["恢復買賣日期"]])), "code": code, "market": MARKET,
+            "prev_close": to_num(r[pos["停止買賣前收盤價格"]]), "ref_price": to_num(r[pos["恢復買賣參考價"]]),
+            "value": float("nan"), "kind": label,
+        })
+    return pd.DataFrame.from_records(recs)
+
+
 def has_data(body) -> bool:
     return isinstance(body, dict) and body.get("stat") == "OK"
 
