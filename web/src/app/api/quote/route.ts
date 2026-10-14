@@ -20,13 +20,14 @@ export async function GET(req: Request) {
     .filter((c) => /^[0-9A-Z]{4,6}$/.test(c) || c === "TXF" || c === "TXF_AH").slice(0, MAX);
   const quotes: Record<string, LiveQuote> = {};
   let failed = 0;
+  const errors: string[] = [];
   // 一次 5 檔，避免瞬間打太多
   for (let i = 0; i < codes.length; i += 5) {
     const res = await Promise.allSettled(codes.slice(i, i + 5).map(quote));
     res.forEach((r, k) => {
       if (r.status === "fulfilled" && r.value) quotes[codes[i + k]] = r.value;
-      else failed++;
+      else { failed++; if (r.status === "rejected") errors.push(`${codes[i + k]}：${String(r.reason?.message ?? r.reason).slice(0, 120)}`); }
     });
   }
-  return Response.json({ enabled: true, quotes, failed }, { headers: { "Cache-Control": "no-store" } });
+  return Response.json({ enabled: true, quotes, failed, ...(errors.length ? { errors } : {}) }, { headers: { "Cache-Control": "no-store" } });
 }

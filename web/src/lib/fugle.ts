@@ -96,7 +96,7 @@ export async function quote(code: string): Promise<LiveQuote | null> {
     headers: { "X-API-KEY": process.env.FUGLE_API_KEY ?? "" }, cache: "no-store",
   });
   if (r.status === 429) return old();
-  if (!r.ok) throw new Error(`富果 HTTP ${r.status}`);
+  if (!r.ok) throw new Error(`富果 HTTP ${r.status}${fut ? `（${txfSymbol()}）：${(await r.text().catch(() => "")).slice(0, 80)}` : ""}`);
   const q = { ...normalize(code, await r.json()), fetchedAt: new Date().toISOString() };
   cache.set(code, { t: Date.now(), q });
   return q;
