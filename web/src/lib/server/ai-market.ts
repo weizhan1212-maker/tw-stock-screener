@@ -164,6 +164,6 @@ function validate(o: MarketAi, factsText: string): string[] {
 }
 
 /** 市場摘要指定用 3.8 Flash（Willy 指定）；額度用完才改用共用模型清單。 */
-const SPEC: AiSpec<MarketAi> = { system: SYSTEM, schema: SCHEMA, validate, models: [process.env.GEMINI_MARKET_MODEL || "gemini-3.8-flash"] };
+export const MARKET_SPEC: AiSpec<MarketAi> = { system: SYSTEM, schema: SCHEMA, validate, models: [process.env.GEMINI_MARKET_MODEL || "gemini-3.8-flash"] };
 
-export const summarizeMarket = (facts: MarketFacts) => runAi(SPEC, facts.text);
+export const summarizeMarket = (facts: MarketFacts) => runAi(MARKET_SPEC, facts.text);
