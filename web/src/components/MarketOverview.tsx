@@ -5,6 +5,7 @@ import { useUrlState } from "@/hooks/useUrlState";
 import { useEffect, useMemo, useState } from "react";
 import AiMarket from "@/components/AiMarket";
 import NewsList from "@/components/NewsList";
+import Rotation from "@/components/Rotation";
 import Sentiment, { type SentimentData } from "@/components/Sentiment";
 import Sparkline from "@/components/Sparkline";
 import { Seg } from "@/components/Screener";
@@ -301,6 +302,7 @@ export default function MarketOverview() {
       <Sentiment s={m.sentiment} asof={m.asof} />
 
       <div className="mt-4 grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="space-y-3">
         <Panel title={`三大法人近 ${m.industry_flow?.days ?? 5} 日產業資金（估算）`} date={m.asof} asof={m.asof} freq="每日盤後・估算">
           <div className="grid gap-4 sm:grid-cols-2">
             {[["買超", inflow], ["賣超", outflow]].map(([title, rows]) => (
@@ -322,6 +324,8 @@ export default function MarketOverview() {
           </div>
           <p className="mt-3 text-xs text-muted">以每天各股三大法人買賣超股數 × 收盤價估算，再依產業加總。</p>
         </Panel>
+        {snap && <Rotation rows={snap.rows} asof={snap.meta.asof} />}
+        </div>
         <Panel title="台股新聞" asof={m.asof} freq="即時">
           <NewsList q="台股" limit={10} more />
         </Panel>
