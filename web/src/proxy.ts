@@ -9,8 +9,17 @@ import { auth } from "@/auth";
 // 這兩個由外部呼叫，各自用密鑰驗證：Telegram webhook、每日警報評估
 const PUBLIC = ["/login", "/about", "/api/auth", "/api/telegram/webhook", "/api/alerts/run"];
 
+// 正式網址只有一個（Google 登入只登記這個網域的回呼網址）；從 Vercel 另一個預設網址進來的一律轉過去
+const CANONICAL = "tw-stock-screener-willy1212.vercel.app";
+const ALIASES = ["tw-stock-screener-ten.vercel.app"];
+
 export const proxy = auth((req) => {
   const path = req.nextUrl.pathname;
+  const host = req.headers.get("host") ?? "";
+  if (ALIASES.includes(host)) {
+    const url = new URL(req.nextUrl.pathname + req.nextUrl.search, `https://${CANONICAL}`);
+    return NextResponse.redirect(url, 308);
+  }
   // 本機測試用：只有在非 Vercel 環境且明確設定 SKIP_AUTH=1 時才跳過登入
   if (process.env.SKIP_AUTH === "1" && !process.env.VERCEL) return NextResponse.next();
   if (PUBLIC.some((p) => path.startsWith(p))) return NextResponse.next();
