@@ -10,6 +10,10 @@ import Results, { type Sort } from "@/components/Results";
 import { useSnapshot } from "@/hooks/useSnapshot";
 import type { Row } from "@/lib/screener";
 import type { StockFile } from "@/lib/stock";
+import { inSession, useLiveQuotes } from "@/hooks/useLiveQuotes";
+import { inNightSession, liveCode } from "@/lib/liveIndex";
+
+const liveActive = () => inSession() || inNightSession();
 
 interface Series { market: string; d: string[]; c: (number | null)[]; o?: (number | null)[]; h?: (number | null)[]; l?: (number | null)[] }
 interface IndicesFile { asof: string; series: Record<string, Series> }
@@ -53,7 +57,20 @@ export default function IndexPage({ name: asked }: { name: string }) {
     if (!data || data.series[asked]) return asked;
     return Object.keys(data.series).find((k) => label(k) === asked) ?? asked;
   }, [data, asked]);
-  const s = data?.series[name];
+  const raw = data?.series[name];
+  // 即時（富果）：今天的數字接在歷史資料最後一天後面（同一天就蓋過去）
+  const code = liveCode(name);
+  const live = useLiveQuotes(code ? [code] : [], 15_000, liveActive);
+  const q = code ? live?.[code] : undefined;
+  const s = useMemo<Series | undefined>(() => {
+    if (!raw || !q || q.price == null || !q.date) return raw;
+    const n = raw.d.length, last = raw.d[n - 1];
+    if (last && q.date < last) return raw;
+    const keep = last === q.date ? n - 1 : n;
+    const cut = <T,>(a: T[] | undefined, v: T) => (a ? [...a.slice(0, keep), v] : undefined);
+    return { ...raw, d: cut(raw.d, q.date)!, c: cut(raw.c, q.price)!, o: cut(raw.o, q.open ?? q.price), h: cut(raw.h, q.high ?? q.price), l: cut(raw.l, q.low ?? q.price) };
+  }, [raw, q]);
+  const liveTag = q && s !== raw ? (q.isClose ? "今日收盤（即時來源）" : "盤中即時") : null;
   useEffect(() => { document.title = `${label(name)}｜股見未來`; }, [name]);
   const names = useMemo(() => {
     if (!data) return [];
@@ -72,7 +89,9 @@ export default function IndexPage({ name: asked }: { name: string }) {
       r1m: ret(22), r3m: ret(66), r1y: ret(250), hi: Math.max(...y), lo: Math.min(...y), date: s.d[s.d.length - 1] };
   }, [s]);
 
-  // 指數轉成 K 線圖用的格式；只有收盤價的指數，用「前一日收盤 → 當日收盤」畫 K 棒
+  // 指數轉成 K 線圖用的格式；只有收盤價的指數，用「前一日收盤 → 當日收盤」畫 K 棒。
+  // 圖只在「多了一天」時重畫（盤中每 15 秒更新的是上方數字），避免使用者縮放、拖曳到一半被重設
+  const liveDay = s?.d[s.d.length - 1];
   const kfile = useMemo<StockFile | null>(() => {
     if (!s) return null;
     const n = s.d.length;
@@ -85,7 +104,7 @@ export default function IndexPage({ name: asked }: { name: string }) {
       code: `IDX:${name}`, asof: s.d[n - 1] ?? "", info: { name: label(name), market: s.market, sec_type: null },
       daily: { d: s.d, o, h, l, c: s.c, v: Array<number>(n).fill(0), f: none, fi: none, it: none, dl: none, mb: none, sb: none },
     };
-  }, [s, name]);
+  }, [raw, liveDay, name]); // eslint-disable-line react-hooks/exhaustive-deps -- 刻意只在換日時重畫
 
   const p = useMemo(() => (snap && data ? pool(name, snap.rows) : null), [snap, data, name]);
   const breadth = useMemo(() => {
@@ -114,6 +133,7 @@ export default function IndexPage({ name: asked }: { name: string }) {
             <span className="text-3xl font-bold text-ink">{n2(stats.last)}</span>
             <span className={`text-lg ${tone(stats.chg)}`}>{sg(stats.chg)}{n2(stats.chg)}（{sg(stats.pct)}{n2(stats.pct)}%）</span>
             <span className="text-sm text-muted">{stats.date.replaceAll("-", "/")}</span>
+            {liveTag && <span className="rounded bg-accent-soft px-1.5 py-0.5 text-xs text-accent">{liveTag}</span>}
           </div>
         )}
         {names.length > 0 && (

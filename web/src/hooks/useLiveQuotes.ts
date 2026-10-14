@@ -13,7 +13,8 @@ export function inSession(d = new Date()) {
   return !["Sat", "Sun"].includes(p.weekday) && m >= 8 * 60 + 30 && m <= 13 * 60 + 35;
 }
 
-export function useLiveQuotes(codes: string[], everyMs: number) {
+/** active：什麼時候要持續更新（預設台股交易時段；台指期盤後可另外傳入） */
+export function useLiveQuotes(codes: string[], everyMs: number, active: () => boolean = inSession) {
   const [quotes, setQuotes] = useState<Record<string, LiveQuote> | null>(null);
   const key = codes.join(",");
   useEffect(() => {
@@ -23,7 +24,7 @@ export function useLiveQuotes(codes: string[], everyMs: number) {
     let first = true;
     const tick = async () => {
       // 非交易時段只在進頁面時抓一次，之後每 5 分鐘看看開盤了沒
-      if (!first && !inSession()) { timer = setTimeout(tick, 300_000); return; }
+      if (!first && !active()) { timer = setTimeout(tick, 300_000); return; }
       if (!first && document.hidden) { timer = setTimeout(tick, everyMs); return; } // 分頁在背景：不耗額度
       first = false;
       try {
@@ -34,10 +35,10 @@ export function useLiveQuotes(codes: string[], everyMs: number) {
           if (!stop) setQuotes((old) => ({ ...(old ?? {}), ...j.quotes }));
         }
       } catch { /* 網路暫時失敗：下一輪再試 */ }
-      if (!stop) timer = setTimeout(tick, inSession() ? everyMs : 300_000);
+      if (!stop) timer = setTimeout(tick, active() ? everyMs : 300_000);
     };
     tick();
     return () => { stop = true; clearTimeout(timer); };
-  }, [key, everyMs]);
+  }, [key, everyMs, active]);
   return quotes;
 }

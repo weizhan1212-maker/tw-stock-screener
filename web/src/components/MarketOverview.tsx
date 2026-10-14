@@ -8,16 +8,16 @@ import NewsList from "@/components/NewsList";
 import Sentiment, { type SentimentData } from "@/components/Sentiment";
 import Sparkline from "@/components/Sparkline";
 import { Seg } from "@/components/Screener";
-import { useLiveQuotes } from "@/hooks/useLiveQuotes";
+import { inSession, useLiveQuotes } from "@/hooks/useLiveQuotes";
+import { inNightSession, liveCode } from "@/lib/liveIndex";
 import { useSnapshot } from "@/hooks/useSnapshot";
 import { breadthNotes, computeBreadth } from "@/lib/breadth";
 import { fmt } from "@/lib/screener";
 
 type Card = { label: string; name?: string; date: string; close: number | null; chg: number | null; chg_pct: number | null; spark: (number | null)[]; live?: "盤中" | "收盤" };
 
-/** 盤中即時（富果）：加權、櫃買兩個指數。盤後資料還沒更新前也用富果的今日收盤。 */
-const LIVE_IDX: [RegExp, string][] = [[/加權/, "IX0001"], [/櫃買/, "IX0043"]];
-const LIVE_CODES = LIVE_IDX.map((x) => x[1]);
+/** 首頁指數卡片全部即時（富果）：盤中每 30 秒；台指期盤後在夜盤時段也持續更新 */
+const liveActive = () => inSession() || inNightSession();
 interface Market {
   asof: string;
   indices: Card[];
@@ -95,10 +95,11 @@ export default function MarketOverview() {
     }).catch((e) => setError(String(e.message ?? e)));
   }, []);
 
-  const live = useLiveQuotes(LIVE_CODES, 15_000);
+  const liveCodes = useMemo(() => (m?.indices ?? []).map((c) => liveCode(c.name ?? c.label)).filter((x): x is string => !!x), [m]);
+  const live = useLiveQuotes(liveCodes, 30_000, liveActive);
   // 富果資料日期比盤後資料新（或同一天盤中）時，用即時數字蓋過去
   const indices = useMemo(() => (m?.indices ?? []).map((c): Card => {
-    const code = LIVE_IDX.find(([re]) => re.test(c.label))?.[1];
+    const code = liveCode(c.name ?? c.label);
     const q = code ? live?.[code] : undefined;
     if (!q || q.price == null || !q.date || q.date < c.date || (q.date === c.date && q.isClose)) return c;
     return { ...c, date: q.date, close: q.price, chg: q.change, chg_pct: q.pct, live: q.isClose ? "收盤" : "盤中" };

@@ -17,7 +17,7 @@ export async function GET(req: Request) {
     if (!u?.email || u.status !== "approved") return Response.json({ enabled: false }, { status: 403 });
   }
   const codes = [...new Set((new URL(req.url).searchParams.get("codes") ?? "").split(","))]
-    .filter((c) => /^[0-9A-Z]{4,6}$/.test(c)).slice(0, MAX);
+    .filter((c) => /^[0-9A-Z]{4,6}$/.test(c) || c === "TXF" || c === "TXF_AH").slice(0, MAX);
   const quotes: Record<string, LiveQuote> = {};
   let failed = 0;
   // 一次 5 檔，避免瞬間打太多
