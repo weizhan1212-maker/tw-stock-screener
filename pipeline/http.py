@@ -50,14 +50,14 @@ class Fetcher:
                         return r.content.decode(enc)
                     except UnicodeDecodeError:
                         continue
-                return r.content.decode("utf-8", errors="replace")
+                return r.content.decode(encoding, errors="replace")
             except (requests.RequestException, FetchError) as e:
                 err = e
                 if attempt < self.retries:
                     time.sleep(self.backoff[min(attempt, len(self.backoff) - 1)])
         raise FetchError(f"{url}: {err}")
 
-    def post_text(self, url: str, data: dict, delay: float | None = None) -> str:
+    def post_text(self, url: str, data: dict, delay: float | None = None, encoding: str = "utf-8") -> str:
         """POST 表單、回傳文字（投信投顧公會等 ASP.NET 查詢頁）。"""
         host = urlparse(url).netloc
         err = None
@@ -68,7 +68,7 @@ class Fetcher:
                 self.count += 1
                 if r.status_code != 200:
                     raise FetchError(f"HTTP {r.status_code}")
-                return r.content.decode("utf-8", errors="replace")
+                return r.content.decode(encoding, errors="replace")
             except (requests.RequestException, FetchError) as e:
                 err = e
                 if attempt < self.retries:

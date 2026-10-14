@@ -82,7 +82,16 @@ def fetch_latest_extras(fetcher: Fetcher, store: DataStore) -> dict:
         return len(df)
 
     def futures():
-        df = extras.parse_futures(fetcher.get_json(extras.LATEST["futures"], delay=1))
+        # 先抓期交所下載檔（當天收盤後就有），失敗才用 OpenAPI（隔一個交易日才更新）
+        today = util.today_tw()
+        try:
+            text = fetcher.post_text(extras.FUT_CSV_URL, extras.fut_csv_form(today - dt.timedelta(days=7), today), delay=1, encoding="big5")
+            df = extras.parse_futures_csv(text)
+            if df.empty:
+                raise ValueError("下載檔沒有台指期資料")
+        except Exception as e:  # noqa: BLE001
+            log.warning("期交所下載檔失敗，改用 OpenAPI：%s", e)
+            df = extras.parse_futures(fetcher.get_json(extras.LATEST["futures"], delay=1))
         _put(store, "futures", df)
         return len(df)
 

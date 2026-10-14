@@ -224,6 +224,27 @@ def parse_futures(rows) -> pd.DataFrame:
     return df
 
 
+FUT_CSV_URL = "https://www.taifex.com.tw/cht/3/futDataDown"
+
+
+def fut_csv_form(start, end) -> dict:
+    """期交所「期貨每日交易行情」下載（當天收盤後就有；OpenAPI 要隔一個交易日才更新）。"""
+    return {"down_type": "1", "commodity_id": "TX",
+            "queryStartDate": start.strftime("%Y/%m/%d"), "queryEndDate": end.strftime("%Y/%m/%d")}
+
+
+def parse_futures_csv(text: str) -> pd.DataFrame:
+    """同 parse_futures，來源是期交所下載的 CSV（Big5）。欄位：交易日期,契約,到期月份(週別),開,高,低,收,漲跌價,漲跌%,成交量,結算價,未沖銷…,交易時段"""
+    rows = []
+    for line in text.splitlines()[1:]:
+        f = [x.strip() for x in line.split(",")]
+        if len(f) < 18 or f[1] != "TX":
+            continue
+        rows.append({"Date": f[0].replace("/", ""), "Contract": "TX", "ContractMonth(Week)": f[2], "Last": f[6],
+                     "Change": f[7], "%": f[8], "Volume": f[9], "OpenInterest": f[11], "TradingSession": f[17]})
+    return parse_futures(rows)
+
+
 # ---------- 市場情緒（期交所） ----------
 
 def _d(x):
