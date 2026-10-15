@@ -43,6 +43,8 @@ def main(argv=None):
     sk = sub.add_parser("stocks")
     sk.add_argument("--codes", help="只產生這些代號（逗號分隔），測試用")
     sub.add_parser("backfill-extras").add_argument("--days", type=int, default=70)
+    sub.add_parser("backfill-margin").add_argument("--days", type=int, default=300)
+    sub.add_parser("backfill-futures").add_argument("--years", type=float, default=10.2)
     bi = sub.add_parser("backfill-indices")
     bi.add_argument("--years", type=float, default=4)
     bi.add_argument("--budget-min", type=float, default=320)
@@ -113,6 +115,12 @@ def main(argv=None):
     elif a.cmd == "backfill-extras":
         from .market import backfill_extras
         jobs.summary(f"## 補充資料回補\n\n{backfill_extras(store, fetcher, days=a.days)} 個交易日")
+    elif a.cmd == "backfill-margin":
+        from .market import backfill_margin_total
+        jobs.summary(f"## 融資總額回補\n\n新補 {backfill_margin_total(store, fetcher, days=a.days)} 天")
+    elif a.cmd == "backfill-futures":
+        from .market import backfill_futures
+        jobs.summary(f"## 台指期歷史回補\n\n寫入 {backfill_futures(store, fetcher, years=a.years)} 筆")
     elif a.cmd == "backfill-indices":
         from .market import backfill_indices
         total, left = backfill_indices(store, fetcher, years=a.years, budget_min=a.budget_min)

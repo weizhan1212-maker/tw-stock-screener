@@ -214,7 +214,8 @@ def parse_futures(rows) -> pd.DataFrame:
             continue
         recs.append({"date": pd.to_datetime(str(r.get("Date")), format="%Y%m%d", errors="coerce"),
                      "session": "盤後" if "盤後" in str(r.get("TradingSession", "")) else "一般",
-                     "month": month, "close": to_num(r.get("Last")), "chg": to_num(r.get("Change")),
+                     "month": month, "open": to_num(r.get("Open")), "high": to_num(r.get("High")), "low": to_num(r.get("Low")),
+                     "close": to_num(r.get("Last")), "chg": to_num(r.get("Change")),
                      "chg_pct": to_num(str(r.get("%", "")).replace("%", "")), "volume": to_num(r.get("Volume")),
                      "oi": to_num(r.get("OpenInterest"))})
     df = pd.DataFrame.from_records(recs)
@@ -240,7 +241,8 @@ def parse_futures_csv(text: str) -> pd.DataFrame:
         f = [x.strip() for x in line.split(",")]
         if len(f) < 18 or f[1] != "TX":
             continue
-        rows.append({"Date": f[0].replace("/", ""), "Contract": "TX", "ContractMonth(Week)": f[2], "Last": f[6],
+        rows.append({"Date": f[0].replace("/", ""), "Contract": "TX", "ContractMonth(Week)": f[2],
+                     "Open": f[3], "High": f[4], "Low": f[5], "Last": f[6],
                      "Change": f[7], "%": f[8], "Volume": f[9], "OpenInterest": f[11], "TradingSession": f[17]})
     return parse_futures(rows)
 

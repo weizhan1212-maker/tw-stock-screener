@@ -159,6 +159,49 @@ def run_extras(store: DataStore, fetcher: Fetcher, trading_days: list[dt.date]) 
     return counts
 
 
+def backfill_margin_total(store: DataStore, fetcher: Fetcher, days: int = 300) -> int:
+    """補上市融資餘額總額（市場情緒「融資水位」要約 80 個交易日以上才算得出百分位）。已有的日子跳過。"""
+    state = store.get_state("days", {})
+    trading = sorted(dt.date.fromisoformat(k) for k, v in state.items()
+                     if isinstance(v, dict) and v.get("twse_quotes") == "ok")[-days:]
+    if not trading:
+        return 0
+    have = store.read_daily("margin_total", pd.Timestamp(trading[0]), pd.Timestamp(trading[-1]))
+    done = set(have["date"].dt.date) if not have.empty else set()
+    n = 0
+    for d in trading:
+        if d in done:
+            continue
+        try:
+            url, params = extras.margin_request(d)
+            _put(store, "margin_total", twse.parse_margin(fetcher.get_json(url, params), d).get("margin_total"))
+            n += 1
+        except FetchError as e:
+            log.warning("%s 融資總額失敗：%s", d, e)
+    return n
+
+
+def backfill_futures(store: DataStore, fetcher: Fetcher, years: float = 10.2) -> int:
+    """補台指期近月（一般／盤後）歷史：期交所「期貨每日交易行情」下載檔，一次查一個月。"""
+    today = util.today_tw()
+    start = today - dt.timedelta(days=int(365.25 * years))
+    m = dt.date(start.year, start.month, 1)
+    n = 0
+    while m <= today:
+        nxt = dt.date(m.year + (m.month == 12), m.month % 12 + 1, 1)
+        end = min(nxt - dt.timedelta(days=1), today)
+        try:
+            text = fetcher.post_text(extras.FUT_CSV_URL, extras.fut_csv_form(m, end), delay=1, encoding="big5")
+            df = extras.parse_futures_csv(text)
+            if not df.empty:
+                _put(store, "futures", df)
+                n += len(df)
+        except FetchError as e:
+            log.warning("%s 台指期歷史失敗：%s", m, e)
+        m = nxt
+    return n
+
+
 def backfill_extras(store: DataStore, fetcher: Fetcher, days: int = 70) -> int:
     """補最近 N 個交易日的類股指數、融資總額與證交所補充資料，以及最近幾個月的櫃買指數。"""
     state = store.get_state("days", {})
@@ -271,8 +314,11 @@ def build_indices(store: DataStore, asof=None) -> dict:
     for session, label in (("一般", "台指期"), ("盤後", "台指期盤後")):
         g = fut[fut["session"] == session].sort_values("date") if not fut.empty else fut
         if g is not None and not g.empty:
-            out["series"][label] = {"market": "TAIFEX", "d": g["date"].dt.strftime("%Y-%m-%d").tolist(),
-                                    "c": [_num(x) for x in g["close"]]}
+            ser = {"market": "TAIFEX", "d": g["date"].dt.strftime("%Y-%m-%d").tolist(), "c": [_num(x) for x in g["close"]]}
+            # 有開高低（期交所下載檔）就給 K 線用；早期只有收盤的日子用收盤補
+            if {"open", "high", "low"} <= set(g.columns) and g["open"].notna().any():
+                ser.update({k[0]: [_num(o if pd.notna(o) else c) for o, c in zip(g[k], g["close"])] for k in ("open", "high", "low")})
+            out["series"][label] = ser
     return out
 
 
