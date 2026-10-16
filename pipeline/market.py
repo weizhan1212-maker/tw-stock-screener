@@ -115,7 +115,16 @@ def fetch_latest_extras(fetcher: Fetcher, store: DataStore) -> dict:
 
     def sentiment(name, parser):
         def fn():
-            df = parser(fetcher.get_json(extras.LATEST[name], delay=1))
+            today = util.today_tw()
+            try:   # 期交所下載檔：當天盤後就有
+                text = fetcher.post_text(extras.TAIFEX_DOWN[name], extras.taifex_down_form(name, today - dt.timedelta(days=10), today),
+                                         delay=1, encoding="big5")
+                df = parser(extras.taifex_csv_rows(name, text))
+                if df.empty:
+                    raise ValueError("下載檔沒有資料")
+            except Exception as e:  # noqa: BLE001
+                log.warning("期交所 %s 下載檔失敗，改用 OpenAPI：%s", name, e)
+                df = parser(fetcher.get_json(extras.LATEST[name], delay=1))
             _put(store, name, df)
             return len(df)
         return fn

@@ -6,6 +6,8 @@
 """
 import datetime as dt
 
+import re
+
 import pandas as pd
 
 from ..util import clean_code, roc_to_date, security_type, to_num
@@ -248,6 +250,42 @@ def parse_futures_csv(text: str) -> pd.DataFrame:
 
 
 # ---------- 市場情緒（期交所） ----------
+# 期交所網站的「下載」檔當天盤後就有；OpenAPI 要隔一個交易日。先用下載檔，轉成 OpenAPI 的欄位名稱後共用同一套解析。
+
+TAIFEX_DOWN = {
+    "pcr": "https://www.taifex.com.tw/cht/3/pcRatioDown",
+    "fut_insti": "https://www.taifex.com.tw/cht/3/futContractsDateDown",
+    "fut_large": "https://www.taifex.com.tw/cht/3/largeTraderFutDown",
+    "fx": "https://www.taifex.com.tw/cht/3/dailyFXRateDown",
+}
+
+
+def taifex_down_form(name: str, start, end) -> dict:
+    form = {"queryStartDate": start.strftime("%Y/%m/%d"), "queryEndDate": end.strftime("%Y/%m/%d")}
+    if name == "fut_insti":
+        form["commodityId"] = "TXF"
+    return form
+
+
+def taifex_csv_rows(name: str, text: str) -> list[dict]:
+    """期交所下載 CSV → OpenAPI 格式的 dict（只轉解析會用到的欄位）。"""
+    out = []
+    for line in text.splitlines()[1:]:
+        f = [x.strip() for x in line.split(",")]
+        if not f or not re.match(r"^\d{4}/\d{2}/\d{2}$", f[0]):
+            continue
+        d = f[0].replace("/", "")
+        if name == "pcr" and len(f) >= 7:
+            out.append({"Date": d, "PutCallVolumeRatio%": f[3], "PutCallOIRatio%": f[6], "PutOI": f[4], "CallOI": f[5]})
+        elif name == "fut_insti" and len(f) >= 14:
+            out.append({"Date": d, "ContractCode": f[1], "Item": f[2], "OpenInterest(Net)": f[13]})
+        elif name == "fut_large" and len(f) >= 10:
+            month = "999912" if f[3] == "999999" else f[3]
+            out.append({"Date": d, "Contract": f[1], "SettlementMonth": month, "TypeOfTraders": f[4], "Top5Buy": f[5],
+                        "Top5Sell": f[6], "Top10Buy": f[7], "Top10Sell": f[8], "OIOfMarket": f[9]})
+        elif name == "fx" and len(f) >= 2:
+            out.append({"Date": d, "USD/NTD": f[1]})
+    return out
 
 def _d(x):
     return pd.to_datetime(str(x), format="%Y%m%d", errors="coerce")
