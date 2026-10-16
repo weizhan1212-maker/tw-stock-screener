@@ -13,7 +13,7 @@ interface Summary {
   v: 2; code: string; name: string; asof: string; generatedAt: string; model: string; factors: Factor[];
   positioning: string; headline: string; bulls: Point[]; risks: Point[]; change: string; watch: string[];
 }
-interface State { enabled: boolean; cached: Summary | null; used: number; limit: number }
+interface State { enabled: boolean; cached: Summary | null; used: number; limit: number; admin?: boolean }
 
 const when = (iso: string) =>
   new Date(iso).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
@@ -61,13 +61,13 @@ export default function AiSummaryCard({ code, asof }: { code: string; asof: stri
     return () => { alive = false; };
   }, [code, asof]);
 
-  const generate = useCallback(async () => {
+  const generate = useCallback(async (refresh = false) => {
     setBusy(true); setErr(null);
     try {
-      const r = await fetch("/api/ai/stock", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ code }) });
+      const r = await fetch("/api/ai/stock", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ code, refresh }) });
       const j = await r.json();
       if (!r.ok) { setErr({ msg: j.error ?? `產生失敗（${r.status}）`, detail: j.detail }); return; }
-      setSt((p) => ({ enabled: true, cached: j.summary as Summary, used: j.used, limit: j.limit ?? p?.limit ?? 0 }));
+      setSt((p) => ({ enabled: true, cached: j.summary as Summary, used: j.used, limit: j.limit ?? p?.limit ?? 0, admin: p?.admin }));
     } catch {
       setErr({ msg: "網路不穩，請稍後再試" });
     } finally {
@@ -115,11 +115,17 @@ export default function AiSummaryCard({ code, asof }: { code: string; asof: stri
 
           <p className="num text-xs text-muted">
             資料日 {s.asof.replaceAll("-", "/")}・產生於 {when(s.generatedAt)}・{s.model}・同一檔同一天只產生一次，大家共用
+            {st.admin && (
+              <button type="button" onClick={() => generate(true)} disabled={busy} className="ml-2 text-accent underline disabled:opacity-50">
+                {busy ? "重新產生中…" : "重新產生（管理員）"}
+              </button>
+            )}
           </p>
+          {err && <p className="text-xs text-up">{err.msg}{err.detail && <span className="ml-1 break-all text-muted">（管理員除錯）{err.detail}</span>}</p>}
         </div>
       ) : (
         <div className="flex flex-wrap items-center gap-3">
-          <button type="button" onClick={generate} disabled={busy || st.used >= st.limit}
+          <button type="button" onClick={() => generate()} disabled={busy || st.used >= st.limit}
             className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50">
             {busy ? "分析中…（約 10–30 秒）" : "產生 AI 解讀"}
           </button>

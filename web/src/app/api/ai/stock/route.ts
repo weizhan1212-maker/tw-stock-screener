@@ -55,7 +55,7 @@ export async function GET(req: Request) {
   let cached: AiSummary | null = null;
   if (okCode(code) && asof && /^\d{4}-\d{2}-\d{2}$/.test(asof)) cached = await kvGet<AiSummary | null>(SHARED, sumKey(code, asof), null);
   const used = (await kvGet<Counter>(u.hash, `ai:quota:${today()}`, { n: 0 })).n;
-  return json({ enabled: true, cached, used, limit: limitFor(u.email) });
+  return json({ enabled: true, cached, used, limit: limitFor(u.email), admin: isAdmin(u.email) });
 }
 
 export async function POST(req: Request) {
