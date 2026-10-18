@@ -29,13 +29,19 @@ export default function AiMarket() {
         if (!g.enabled) { setState("off"); return; }
         if (g.summary) { setS(g.summary); setState("ready"); return; }
         setState("working");
-        for (let i = 0; i < 12 && alive; i++) {
+        let fails = 0;
+        for (let i = 0; i < 20 && alive; i++) {
           const r = await fetch("/api/ai/market", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
-          const j = await r.json();
+          const j = await r.json().catch(() => ({}));
           if (!alive) return;
           if (r.ok && j.summary) { setS(j.summary); setState("ready"); return; }
-          if (r.status !== 202) { setErr({ msg: j.error ?? "AI 摘要暫時無法產生", detail: j.detail }); setState("error"); return; }
-          await sleep(8000);                               // 別人正在產生，等一下再問
+          if (r.status === 202) { await sleep(8000); continue; }   // 別人正在產生，等一下再問
+          // Google 忙碌／逾時常常幾分鐘就好：自動再試 3 次（每次隔 1 分鐘），還不行才顯示失敗
+          if (++fails > 3) { setErr({ msg: j.error ?? "AI 摘要暫時無法產生", detail: j.detail }); setState("error"); return; }
+          setErr({ msg: `${j.error ?? "AI 暫時忙碌"}，1 分鐘後自動再試（第 ${fails}／3 次）`, detail: j.detail });
+          setState("error");
+          await sleep(60_000);
+          if (alive) setState("working");
         }
         if (alive) { setErr({ msg: "AI 摘要還在整理中，請稍後重新整理頁面" }); setState("error"); }
       } catch {

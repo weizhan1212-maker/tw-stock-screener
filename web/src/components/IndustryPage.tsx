@@ -11,19 +11,27 @@ import Treemap from "@/components/Treemap";
 import { useSnapshot } from "@/hooks/useSnapshot";
 import { groupIndustries, industryNotes, type Period, PERIODS, SCALE, statOf } from "@/lib/industry";
 import { num, type Row } from "@/lib/screener";
+import { THEMES } from "@/lib/themes";
 
 const pct = (v: number | null) => (v == null ? "—" : `${v > 0 ? "+" : ""}${v.toFixed(2)}%`);
 const tone = (v: number | null) => (v == null || Math.abs(v) < 0.005 ? "text-ink" : v > 0 ? "text-up" : "text-down");
 const COLS = ["close", "chg_pct", "ret20", "rs60", "pe", "pb", "rev_yoy", "inst_amt5", "market_cap"];
 
-export default function IndustryPage({ name }: { name: string }) {
+/** 產業頁與題材頁共用：kind="theme" 時成分股取自 lib/themes.ts 的代表股。 */
+export default function IndustryPage({ name, kind = "industry" }: { name: string; kind?: "industry" | "theme" }) {
+  const label = kind === "theme" ? "題材" : "產業";
   const { snap, error } = useSnapshot();
   const [period, setPeriod] = useUrlState<Period>("p", "chg_pct", ["chg_pct", "ret5", "ret20", "ret60"]);
   const [sort, setSort] = useState<Sort>({ key: "market_cap", dir: -1 });
-  useEffect(() => { document.title = `${name}｜產業｜股見未來`; }, [name]);
-  const rows = useMemo<Row[]>(() => (snap ? groupIndustries(snap.rows).get(name) ?? [] : []), [snap, name]);
+  useEffect(() => { document.title = `${name}｜${label}｜股見未來`; }, [name, label]);
+  const rows = useMemo<Row[]>(() => {
+    if (!snap) return [];
+    if (kind === "industry") return groupIndustries(snap.rows).get(name) ?? [];
+    const codes = new Set(THEMES.find((t) => t.name === name)?.codes ?? []);
+    return snap.rows.filter((r) => codes.has(String(r.code)) && r.sec_type === "stock" && r.stale !== 1);
+  }, [snap, name, kind]);
   const s = useMemo(() => (rows.length ? statOf(name, rows) : null), [rows, name]);
-  const notes = s ? industryNotes(s) : [];
+  const notes = s ? industryNotes(s).map((n) => (kind === "theme" ? n.replaceAll("產業", "題材") : n)) : [];
   const byRet = [...rows].filter((r) => num(r.ret20) != null).sort((a, b) => (num(b.ret20) as number) - (num(a.ret20) as number));
   const items = [...rows].sort((a, b) => (num(b.market_cap) ?? 0) - (num(a.market_cap) ?? 0)).slice(0, 80).map((r) => ({
     key: r.code as string, label: r.name as string, sub: r.code as string, value: num(r.market_cap) ?? 0,
@@ -32,20 +40,21 @@ export default function IndustryPage({ name }: { name: string }) {
 
   return (
     <div className="mx-auto max-w-[1440px] px-4 py-5">
-      <nav className="mb-2 text-sm"><BackLink fallback="/industry" fallbackLabel="產業" /></nav>
+      <nav className="mb-2 text-sm">{kind === "theme" ? <BackLink fallback="/" fallbackLabel="總覽" /> : <BackLink fallback="/industry" fallbackLabel="產業" />}</nav>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <h1 className="text-2xl font-bold text-ink">{name}</h1>
         <DataStatus snap={snap} error={error} />
       </div>
+      {kind === "theme" && <p className="mt-1 text-xs text-muted">題材成分為本站整理的代表股，不求完整。</p>}
 
-      {snap && !s && <p className="mt-4 rounded-lg border border-line bg-surface p-4 text-sm text-ink">找不到這個產業的股票。</p>}
+      {snap && !s && <p className="mt-4 rounded-lg border border-line bg-surface p-4 text-sm text-ink">找不到這個{label}的股票。</p>}
 
       {s && (
         <>
           <dl className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
             <Metric label="檔數／總市值" value={`${s.n} 檔／${Math.round(s.cap).toLocaleString()} 億`} />
             <Metric label="今日漲跌（市值加權）" value={pct(s.ret.chg_pct)} cls={tone(s.ret.chg_pct)} />
-            <Metric label="20 日相對強度" value={pct(s.rs20)} cls={tone(s.rs20)} hint="產業漲幅 − 大盤漲幅" />
+            <Metric label="20 日相對強度" value={pct(s.rs20)} cls={tone(s.rs20)} hint={`${label}漲幅 − 大盤漲幅`} />
             <Metric label="60 日相對強度" value={pct(s.rs60)} cls={tone(s.rs60)} />
             <Metric label="法人 5／20 日（億，估算）" value={`${s.inst5.toFixed(1)}／${s.inst20.toFixed(1)}`} cls={tone(s.inst5)} />
             <Metric label="站上季線比例" value={s.above60 == null ? "—" : `${Math.round(s.above60)}%`} />

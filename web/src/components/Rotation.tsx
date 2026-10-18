@@ -39,7 +39,7 @@ export default function Rotation({ rows, asof }: { rows: Row[]; asof: string }) 
       <ul className={`divide-y divide-line ${all ? "max-h-[520px] overflow-y-auto" : ""}`}>
         {shown.map((g) => (
           <li key={g.name} className="num grid grid-cols-[minmax(0,1fr)_4.5rem_5rem] items-center gap-2 py-1.5 text-sm sm:grid-cols-[9rem_11rem_4.5rem_4.5rem_minmax(0,1fr)]">
-            <span className="truncate text-ink" title={`${g.name}（${g.n} 檔）`}>{g.name}<span className="ml-1 text-[11px] text-muted sm:hidden">{g.heat.toFixed(1)}倍</span></span>
+            <Link href={`/${kind === "theme" ? "theme" : "industry"}/${encodeURIComponent(g.name)}`} className="truncate text-ink hover:text-accent hover:underline" title={`${g.name}（${g.n} 檔）：看成分股`}>{g.name}<span className="ml-1 text-[11px] text-muted sm:hidden">{g.heat.toFixed(1)}倍</span></Link>
             <span className="hidden items-center gap-2 sm:flex">
               <span className="relative h-2 flex-1 rounded-full bg-surface-2">
                 <span className="absolute inset-y-0 w-px bg-muted/50" style={{ left: `${(1 / maxHeat) * 100}%` }} aria-hidden />

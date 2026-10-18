@@ -407,7 +407,9 @@ export async function runAi<T>(spec: AiSpec<T>, factsText: string): Promise<{ ou
   for (const model of order) {
     try {
       return { ...(await runWith(model, spec, factsText)), model };
-    } catch (e) {
+    } catch (err) {
+      // 等太久（逾時）當作忙碌，換下一個模型，不要直接失敗
+      const e = err instanceof Error && err.name === "TimeoutError" ? new AiError("busy", "AI 服務回應太慢，請稍後再試", `${model} timeout`) : err;
       // 內容一直沒過檢查：換下一個模型再試一次（最多一次），不再試就丟錯
       if (e instanceof AiError && e.code === "bad_output" && badTries++ < 1) { console.warn(`[ai] ${model} 內容沒過檢查，換下一個模型`); last = e; continue; }
       if (!(e instanceof AiError) || !["quota", "no_model", "busy"].includes(e.code)) throw e;
