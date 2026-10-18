@@ -71,8 +71,12 @@ export default function IndustryPage({ name, kind = "industry" }: { name: string
           )}
 
           <div className="mt-5 grid gap-3 md:grid-cols-2">
-            <Movers title="近 20 日領漲" rows={byRet.slice(0, 5)} />
-            <Movers title="近 20 日落後" rows={byRet.slice(-5).reverse()} />
+            {byRet.length > 5 ? (
+              <>
+                <Movers title="近 20 日領漲" rows={byRet.slice(0, 5)} />
+                <Movers title="近 20 日落後" rows={byRet.slice(-5).reverse()} />
+              </>
+            ) : <Movers title="近 20 日漲跌排行" rows={byRet} />}
           </div>
 
           <div className="mt-5 flex flex-wrap items-center gap-3">
