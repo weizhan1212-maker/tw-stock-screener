@@ -131,6 +131,7 @@ export const FIELDS: Field[] = [
 
 /** 只在策略結果裡出現、不放進自訂篩選選單的欄位 */
 const HIDDEN: Field[] = [
+  { key: "value_ratio", label: "成交金額倍數", group: "價量", format: "times", help: "今天成交金額是過去 20 天平均的幾倍。大於 1 代表今天比平常更多錢在這檔。" },
   { key: "div_fill", label: "除息／填息", group: "基本面", format: "text", help: "最近一年那次除息之後：已填息＝收盤回到除息前價格（括號為花了幾個交易日）；填息中＝在除息參考價之上、還沒填完（百分比為已填回多少）；貼息＝跌破除息參考價，殖利率會因股價下跌而被墊高，要特別小心。" },
   { key: "magic_rank", label: "神奇公式排名", group: "估值", format: "num", help: "盈餘殖利率與資本報酬率兩項排名相加後的名次。" },
   { key: "years_fin", label: "財報年數", group: "基本面", format: "years", help: "有完整四季財報的年數。" },

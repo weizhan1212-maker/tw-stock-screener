@@ -29,6 +29,7 @@ const GROUPS: { id: string; label: string; ranks: Rank[] }[] = [
     { id: "volume", label: "成交量", key: "volume_lots", dir: -1, cols: [...BASE, "volume_lots", "value"] },
     { id: "gainers", label: "漲幅", key: "chg_pct", dir: -1, cols: [...BASE, "volume_lots", "value"], keep: liquid(100), note: "成交量 100 張以上" },
     { id: "losers", label: "跌幅", key: "chg_pct", dir: 1, cols: [...BASE, "volume_lots", "value"], keep: liquid(100), note: "成交量 100 張以上" },
+    { id: "valratio", label: "成交金額倍數", key: "value_ratio", dir: -1, cols: [...BASE, "value_ratio", "value", "avg_value20"], keep: (r) => (num(r.value) ?? 0) >= 1e8, note: "今日成交金額 1 億以上；倍數 = 今日成交金額 ÷ 20 日平均成交金額（跟資金輪動的熱度同一種算法）" },
     { id: "volratio", label: "爆量", key: "vol_ratio", dir: -1, cols: [...BASE, "vol_ratio", "volume_lots"], keep: liquid(500), note: "成交量 500 張以上；量比 = 今日量 ÷ 20 日均量" },
   ] },
   { id: "insti", label: "法人", ranks: [
@@ -74,8 +75,15 @@ const GROUPS: { id: string; label: string; ranks: Rank[] }[] = [
 ];
 
 /** 依排行條件取前 100 名；之後使用者點表頭可再自由排序。 */
+/** 成交金額倍數：value 單位是元、avg_value20 是億 */
+const withValueRatio = (r: Row): Row => {
+  const v = num(r.value), a = num(r.avg_value20);
+  return { ...r, value_ratio: v != null && a ? v / 1e8 / a : null };
+};
+
 function topRows(all: Row[], rank: Rank, universe: Universe, market: Market): Row[] {
   const k = rank.key;
+  if (k === "value_ratio") all = all.map(withValueRatio);
   const pool = all.filter((r) => r.stale !== 1 && inUniverse(r, universe, market) && num(r[k]) != null && (!rank.keep || rank.keep(r)));
   return pool.sort((a, b) => ((num(a[k]) as number) - (num(b[k]) as number)) * rank.dir).slice(0, TOP);
 }
