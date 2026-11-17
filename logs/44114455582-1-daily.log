@@ -1,0 +1,177 @@
+2026-11-17 15:27:53,674 INFO 2026-11-17 → {'twse_quotes': 'ok', 'tpex_quotes': 'ok', 'twse_insti': 'ok', 'tpex_insti': 'ok', 'twse_margin': 'ok', 'tpex_margin': 'ok', 'twse_valuation': 'ok', 'tpex_valuation': 'ok', 'twse_qfii': 'ok'}
+2026-11-17 15:30:07,329 INFO ## 每日任務 2026-11-17
+
+| 日期 | 狀態 |
+|---|---|
+| 2026-11-09 | 完成 |
+| 2026-11-10 | 完成 |
+| 2026-11-11 | 完成 |
+| 2026-11-12 | 完成 |
+| 2026-11-13 | 完成 |
+| 2026-11-16 | 完成 |
+| 2026-11-17 | 完成 |
+
+寫入筆數：margin=2229, margin_total=1, qfii=1340, exright_twse=33, exright_tpex=38, holders=3351, revenue=1982, income_periods=1944, qfii_tpex=898, securities=2427, company=1991, delisting=707, etf_info=278, etf_nav=356, etf_top10=202610 已有, events=189, extras_business_light=513, extras_pcr=7, extras_fut_large=7, extras_fut_insti=7, extras_fx=7, extras_taiex_ohlc=12, extras_dca_rank=40, extras_tpex_insti=1, extras_tpex_daytrade=12, extras_tpex_sbl=936, extras_tpex_block=5, extras_futures=12, extras_tpex_index=12, extras_twse_extra_days=1
+2026-11-17 15:30:07,329 INFO 下載量（daily）：1.1 MB／6 次，本機快取命中 33 次；master/_state 1.1 MB
+2026-11-17 15:30:07,330 INFO ## Supabase 下載量
+
+下載量（daily）：1.1 MB／6 次，本機快取命中 33 次；master/_state 1.1 MB
+2026-11-17 15:30:11,996 INFO R2 本月用量：A 56,851／1,000,000（5.7%）、B 26,638／10,000,000（0.3%）、bytes 470,967,111／10,737,418,240（4.4%）
+2026-11-17 15:30:11,996 INFO ## R2 用量
+
+R2 本月用量：A 56,851／1,000,000（5.7%）、B 26,638／10,000,000（0.3%）、bytes 470,967,111／10,737,418,240（4.4%）
+
+到 80% 會自動停止，避免產生費用。
+2026-11-17 15:50:33,882 INFO ## 季報補抓
+
+完成 48 檔，佇列剩 1377 檔
+2026-11-17 15:50:33,887 INFO 下載量（fin-refresh）：0.1 MB／4 次，本機快取命中 8 次；master/_state 0.1 MB
+2026-11-17 15:50:33,887 INFO ## Supabase 下載量
+
+下載量（fin-refresh）：0.1 MB／4 次，本機快取命中 8 次；master/_state 0.1 MB
+2026-11-17 15:50:35,088 INFO R2 本月用量：A 56,858／1,000,000（5.7%）、B 26,653／10,000,000（0.3%）、bytes 470,967,111／10,737,418,240（4.4%）
+2026-11-17 15:50:35,088 INFO ## R2 用量
+
+R2 本月用量：A 56,858／1,000,000（5.7%）、B 26,653／10,000,000（0.3%）、bytes 470,967,111／10,737,418,240（4.4%）
+
+到 80% 會自動停止，避免產生費用。
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:542: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  base["hs_profit"] = avg([pct("roe"), pct("roa"), pct("gross_margin", mask=nonfin), pct("op_margin", mask=nonfin)], 2)
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:543: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  base["hs_liquid"] = avg([pct("current_ratio", mask=nonfin), fcf_pos.where(nonfin & stock)], 1)
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:544: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  base["hs_struct"] = avg([pct("debt_ratio", higher=False, mask=nonfin)], 1)
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:545: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  base["hs_eff"] = avg([pct("asset_turnover", mask=nonfin), pct("f_score", mask=nonfin)], 1)
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:546: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  base["hs_growth"] = avg([pct("rev_ttm_yoy"), pct("eps_q_yoy"), pct("eps_cagr3")], 2)
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:549: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  base["health_score"] = parts.mean(axis=1).where(parts.notna().sum(axis=1) >= need).where(stock)
+/home/runner/work/tw-stock-screener/tw-stock-screener/pipeline/snapshot.py:377: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  base = base.reset_index().rename(columns={"index": "code"})
+2026-11-17 15:51:19,188 INFO 快照：2368 檔、148 欄，壓縮後 835 KB
+2026-11-17 15:51:19,193 INFO ## 篩選快照
+
+資料日 2026-11-17，2368 檔，148 欄
+2026-11-17 15:51:19,193 INFO 下載量（snapshot）：1.2 MB／4 次，本機快取命中 91 次；master/_state 1.2 MB
+2026-11-17 15:51:19,193 INFO ## Supabase 下載量
+
+下載量（snapshot）：1.2 MB／4 次，本機快取命中 91 次；master/_state 1.2 MB
+2026-11-17 15:51:20,105 INFO R2 本月用量：A 56,876／1,000,000（5.7%）、B 26,751／10,000,000（0.3%）、bytes 470,967,111／10,737,418,240（4.4%）
+2026-11-17 15:51:20,105 INFO ## R2 用量
+
+R2 本月用量：A 56,876／1,000,000（5.7%）、B 26,751／10,000,000（0.3%）、bytes 470,967,111／10,737,418,240（4.4%）
+
+到 80% 會自動停止，避免產生費用。
+2026-11-17 15:52:23,331 INFO ## 市場總覽
+
+資料日 2026-11-17，指數 10 項，6 KB，指數歷史 216 KB，重大訊息 69 KB
+2026-11-17 15:52:23,331 INFO 下載量（market）：1.1 MB／4 次，本機快取命中 243 次；master/_state 1.1 MB
+2026-11-17 15:52:23,331 INFO ## Supabase 下載量
+
+下載量（market）：1.1 MB／4 次，本機快取命中 243 次；master/_state 1.1 MB
+2026-11-17 15:52:24,355 INFO R2 本月用量：A 56,897／1,000,000（5.7%）、B 27,001／10,000,000（0.3%）、bytes 470,967,111／10,737,418,240（4.4%）
+2026-11-17 15:52:24,355 INFO ## R2 用量
+
+R2 本月用量：A 56,897／1,000,000（5.7%）、B 27,001／10,000,000（0.3%）、bytes 470,967,111／10,737,418,240（4.4%）
+
+到 80% 會自動停止，避免產生費用。
+2026-11-17 15:58:31,244 INFO 個股檔：{'asof': '2026-11-17', 'count': 2354, 'failed': [], 'n_failed': 0, 'avg_kb': 32.6, 'total_mb': 75.0}
+2026-11-17 15:58:31,310 INFO ## 個股檔
+
+2354 檔，平均 32.6 KB，合計 75.0 MB，失敗 0 檔
+2026-11-17 15:58:31,310 INFO 下載量（stocks）：0.5 MB／1 次，本機快取命中 508 次；master/_state 0.5 MB
+2026-11-17 15:58:31,310 INFO ## Supabase 下載量
+
+下載量（stocks）：0.5 MB／1 次，本機快取命中 508 次；master/_state 0.5 MB
+2026-11-17 15:58:32,573 INFO R2 本月用量：A 59,259／1,000,000（5.9%）、B 27,513／10,000,000（0.3%）、bytes 470,967,111／10,737,418,240（4.4%）
+2026-11-17 15:58:32,573 INFO ## R2 用量
+
+R2 本月用量：A 59,259／1,000,000（5.9%）、B 27,513／10,000,000（0.3%）、bytes 470,967,111／10,737,418,240（4.4%）
+
+到 80% 會自動停止，避免產生費用。
+{"asof":"2026-11-17","full":true,"users":0,"notes":0,"telegram":0,"tgFailed":0,"errors":0}
+2026-11-17 16:00:07,770 INFO ## 回測資料
+
+本次新增 0 個月、失敗 []，可回測 111/111 個月，價格檔 {2026: 1415} KB，1.5 分鐘
+2026-11-17 16:00:07,770 INFO 下載量（backtest-data）：0.0 MB／1 次，本機快取命中 375 次；master/_state 0.0 MB
+2026-11-17 16:00:07,770 INFO ## Supabase 下載量
+
+下載量（backtest-data）：0.0 MB／1 次，本機快取命中 375 次；master/_state 0.0 MB
+2026-11-17 16:00:08,613 INFO R2 本月用量：A 59,266／1,000,000（5.9%）、B 27,892／10,000,000（0.3%）、bytes 470,967,111／10,737,418,240（4.4%）
+2026-11-17 16:00:08,614 INFO ## R2 用量
+
+R2 本月用量：A 59,266／1,000,000（5.9%）、B 27,892／10,000,000（0.3%）、bytes 470,967,111／10,737,418,240（4.4%）
+
+到 80% 會自動停止，避免產生費用。
+2026-11-17 16:00:45,121 INFO ## 資料檢查報告
+
+### 日資料
+
+| 資料集 | 月份數 | 近 3 個月筆數 | 近 3 個月日期範圍 | 近 20 日每日檔數（最少/中位/最多） | 缺值比例 |
+|---|---|---|---|---|---|
+| prices | 125 | 144,807 | 2026-08-17 ~ 2026-11-17 | 2337/2347/2353 | close=1.2%, volume=0.0% |
+| insti | 125 | 137,151 | 2026-08-17 ~ 2026-11-17 | 2192/2215/2240 | foreign=0.0%, trust=0.0%, dealer=0.0% |
+| margin | 125 | 137,326 | 2026-08-17 ~ 2026-11-17 | 2216/2221/2229 | margin_balance=0.0%, short_balance=0.0% |
+| valuation | 125 | 122,259 | 2026-08-17 ~ 2026-11-17 | 1973/1980/1983 | pe=21.7%, pb=0.0%, dividend_yield=0.0% |
+| qfii | 125 | 109,371 | 2026-08-17 ~ 2026-11-17 | 2226/2235/2238 | foreign_ratio=0.0% |
+| exright | 141 | 684 | 2026-08-17 ~ 2026-11-17 | 1/4/61 | prev_close=0.0%, ref_price=0.0% |
+| index | 125 | 62 | 2026-08-17 ~ 2026-11-17 | 1/1/1 | taiex=0.0%, taiex_tr=0.0% |
+| holders | 2 | 23,364 | 2026-10-02 ~ 2026-11-13 | 3323/3338/3351 |  |
+| taiex_ohlc | 50 | 62 | 2026-08-17 ~ 2026-11-17 | 1/1/1 |  |
+| indices | 125 | 3,534 | 2026-08-17 ~ 2026-11-17 | 57/57/57 |  |
+| margin_total | 92 | 62 | 2026-08-17 ~ 2026-11-17 | 1/1/1 |  |
+| market_insti | 6 | 91 | 2026-08-17 ~ 2026-11-17 | 2/2/2 |  |
+| daytrade | 6 | 76,336 | 2026-08-17 ~ 2026-11-17 | 1233/1239/1242 |  |
+| daytrade_total | 6 | 93 | 2026-08-17 ~ 2026-11-17 | 2/2/2 |  |
+| sbl | 6 | 108,454 | 2026-08-17 ~ 2026-11-17 | 2231/2236/2243 |  |
+| block | 6 | 1,295 | 2026-08-17 ~ 2026-11-17 | 11/19/46 |  |
+| futures | 52 | 124 | 2026-08-17 ~ 2026-11-17 | 2/2/2 |  |
+| pcr | 3 | 47 | 2026-09-07 ~ 2026-11-17 | 1/1/1 |  |
+| fut_large | 2 | 28 | 2026-10-06 ~ 2026-11-17 | 1/1/1 |  |
+| fut_insti | 2 | 28 | 2026-10-06 ~ 2026-11-17 | 1/1/1 |  |
+| fx | 3 | 51 | 2026-09-01 ~ 2026-11-17 | 1/1/1 |  |
+| etf_nav | 2 | 9,394 | 2026-10-06 ~ 2026-11-17 | 13/360/365 |  |
+
+### 其他表
+
+| 表 | 筆數 | 檔數 |
+|---|---|---|
+| income | 1,240,219 | 2064 |
+| balance | 3,163,281 | 2086 |
+| cashflow | 1,833,377 | 2065 |
+| revenue | 233,661 | 1891 |
+| revenue_latest | 5,939 | 1989 |
+| dividend | 16,380 | 1899 |
+| securities | 2,427 | 2427 |
+| company | 1,991 | 1991 |
+| etf_info | 278 | 278 |
+| etf_top10 | 2,610 |  |
+| events | 6,760 | 1811 |
+| delisting | 707 | 707 |
+| income_periods | 3,885 | 1944 |
+
+### 回補進度
+
+- 日資料：完成 2509 個交易日、休市 183 天、未完成 0 天、有缺漏端點 0 天
+- FinMind：完成 1997 檔（全部完成：True）
+- 季報補抓佇列：1377 檔
+
+### 抽樣：台積電最近 3 天
+
+```
+      date code market name   open   high    low  close     volume        value   trades  shares_issued  ref_next
+2026-11-13 2330   TWSE  台積電 2375.0 2390.0 2340.0 2350.0 30973127.0 7.332671e+10  76864.0            NaN       NaN
+2026-11-16 2330   TWSE  台積電 2340.0 2350.0 2215.0 2215.0 52604545.0 1.193053e+11 408529.0            NaN       NaN
+2026-11-17 2330   TWSE  台積電 2195.0 2270.0 2155.0 2170.0 61610981.0 1.354654e+11 371462.0            NaN       NaN
+```
+2026-11-17 16:00:45,122 INFO 下載量（report）：0.7 MB／3 次，本機快取命中 95 次；master/_state 0.7 MB
+2026-11-17 16:00:45,122 INFO ## Supabase 下載量
+
+下載量（report）：0.7 MB／3 次，本機快取命中 95 次；master/_state 0.7 MB
+2026-11-17 16:00:46,042 INFO R2 本月用量：A 59,312／1,000,000（5.9%）、B 27,993／10,000,000（0.3%）、bytes 470,967,111／10,737,418,240（4.4%）
+2026-11-17 16:00:46,042 INFO ## R2 用量
+
+R2 本月用量：A 59,312／1,000,000（5.9%）、B 27,993／10,000,000（0.3%）、bytes 470,967,111／10,737,418,240（4.4%）
+
+到 80% 會自動停止，避免產生費用。
